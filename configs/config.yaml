@@ -1,0 +1,108 @@
+# Central config for the XAI-IDS pipeline. Every path, hyperparameter, and toggle
+# used by src/, pipelines/, and dashboard/ lives here — nothing should be hardcoded
+# in code. To swap models, change `model.type` and add a matching branch in
+# src/models/model_factory.py (see that file for the one-line-per-model pattern).
+
+project:
+  name: "xai-ids"
+  seed: 42
+
+paths:
+  raw_dir: "data/raw"
+  processed_dir: "data/processed"
+  models_dir: "models_saved"
+  results_dir: "results"
+  unsw_train: "data/raw/unsw_nb15_train.csv"
+  unsw_test: "data/raw/unsw_nb15_test.csv"
+  cic_file: "data/raw/cicids2017_combined.csv"
+
+data:
+  label_column: "label"                        # binary: 0 = normal, 1 = attack
+  target_column: "label_merged"                # primary multiclass target used for training/explanations
+  fine_grained_target_column: "attack_cat"     # original, ungrouped attack categories (kept for diagnostics)
+  normal_category: "Normal"
+  # Categories withheld from training entirely to simulate zero-day / open-set attacks.
+  unknown_attack_categories: ["Worms", "Shellcode"]
+  test_size: 0.2
+  synthetic_fallback_rows: 4000  # used only if raw dataset files are missing
+
+  # Analysis/Backdoor/DoS share IDENTICAL median values across dur/rate/sload/dload/
+  # sbytes/dbytes/spkts/dpkts/smean/dmean in this dataset release (confirmed by direct
+  # inspection, not assumed) — the flow-level features simply don't encode a distinction
+  # between them here. Connection-tracking fields that might otherwise help (sttl, dttl,
+  # ct_state_ttl, ct_srv_src, ct_srv_dst, ct_dst_ltm, ct_src_ltm, ct_dst_src_ltm) are
+  # either absent from this dataset release entirely, or (ct_src_dport_ltm,
+  # ct_dst_sport_ltm, is_sm_ips_ports) already in the feature set without resolving it.
+  # So rather than force the classifier to guess a distinction the features can't support,
+  # these three are merged into one label for the primary classification task. The
+  # fine-grained column is preserved (`fine_grained_target_column` above) — see
+  # results/overlap_diagnostic_<feature_set>.csv for how this bucket maps back to the
+  # original three categories.
+  label_merge_groups:
+    "Overlap-Group-1": ["Analysis", "Backdoor", "DoS"]
+
+feature_selection:
+  active_set: "49"   # one of: "49", "30", "20", "15" — see configs/feature_sets.yaml
+
+model:
+  type: "xgboost"     # swap target: "xgboost" | "random_forest" | "logistic_regression"
+  params:
+    n_estimators: 400
+    max_depth: 8
+    learning_rate: 0.08
+    subsample: 0.9
+    colsample_bytree: 0.9
+    min_child_weight: 3
+    reg_lambda: 1.5
+    random_state: 42
+    n_jobs: -1
+    eval_metric: "mlogloss"
+
+open_set:
+  enabled: true
+  # 0.65 chosen by sweeping 0.3-0.7 against zero-day detection rate vs. false "Unknown"
+  # alarm rate after the model.params/sample-weight tuning made predictions more
+  # confident overall (0.6 alone under-detected zero-days at this model's new calibration).
+  confidence_threshold: 0.65
+  unknown_label: "Unknown"
+
+xai:
+  shap_background_samples: 100
+  top_k_features: 5
+
+narrative:
+  # Suggested remediation action per attack category, used by NarrativeGenerator.
+  suggested_actions:
+    DoS: "Consider rate-limiting or temporarily blocking this source IP."
+    Exploits: "Isolate the target host and check for unpatched vulnerabilities."
+    Fuzzers: "Inspect the application for crash logs; consider input validation hardening."
+    Generic: "Review firewall rules for this flow's protocol/service combination."
+    Reconnaissance: "Flag source IP for monitoring; likely pre-attack scanning."
+    Analysis: "Review web server logs for injection or scanning patterns."
+    Backdoor: "Isolate host immediately and inspect for persistence mechanisms."
+    Worms: "Quarantine the host and scan the subnet for lateral movement."
+    Shellcode: "Isolate host and inspect payload for known exploit signatures."
+    Unknown: "Unrecognized pattern — escalate to a human analyst for manual review."
+    Normal: "No action required."
+    "Overlap-Group-1": >-
+      Flagged as DoS, Backdoor, or Analysis-type behavior — this dataset's flow-level
+      features can't reliably distinguish the three. Escalate for manual / packet-level
+      inspection to determine the specific subtype.
+
+logging:
+  level: "INFO"
+  log_file: "results/pipeline.log"
+
+experiments:
+  feature_sets: ["49", "30", "20", "15"]
+  open_set_modes: [false, true]
+  output_csv: "results/experiment_results.csv"
+  stability_csv: "results/explanation_stability.csv"
+  cross_dataset_csv: "results/cross_dataset_results.csv"
+
+dashboard:
+  # Which trained model artifact the API loads: models_saved/<model.type>/<model.type>_
+  # <feature_set>_closed.pkl (derived by src.utils.config_loader.get_dashboard_paths —
+  # not a separate hardcoded path, so switching `model.type` above and retraining is
+  # the only step needed; there's nothing else here to keep in sync).
+  feature_set: "49"

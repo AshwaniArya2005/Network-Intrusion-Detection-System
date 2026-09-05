@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+
+# Data & models (large / regenerable — commit code, not artifacts)
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+models_saved/*
+!models_saved/.gitkeep
+results/*
+!results/.gitkeep
+
+# Frontend
+dashboard/frontend/node_modules/
+dashboard/frontend/dist/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+.claude/
+*.log

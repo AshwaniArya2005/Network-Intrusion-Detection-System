@@ -1,0 +1,15 @@
+numpy>=2.5
+pandas>=3.0
+scikit-learn>=1.9
+xgboost>=3.4
+shap>=0.52
+scipy>=1.18
+matplotlib>=3.11
+PyYAML>=6.0
+fastapi>=0.141
+uvicorn[standard]>=0.52
+python-multipart>=0.0.20
+joblib>=1.6
+pytest>=8.4
+notebook>=7.5
+pyarrow>=25.0

@@ -1,0 +1,80 @@
+# Feature sets for the Feature-Selection + Explanation Consistency Study (novelty #3).
+#
+# `feature_importance_rank` is the master list of features, ordered from most to
+# least important (domain-informed ranking for UNSW-NB15 network flow features).
+# The 30/20/15 sets are simply the top-N slices of this ranking, so shrinking the
+# feature set always drops the least useful features first.
+#
+# NOTE: the real UNSW-NB15 file this project ships with (the standard Kaggle/UNSW
+# ML-ready train/test split) has 34 usable raw columns, not the 49 sometimes cited
+# in older papers (it omits sttl/dttl/ct_state_ttl and several ct_*_ltm connection-
+# tracking fields). Combined with the 6 engineered features below, the full pool is
+# 40 features. The "49" tier name is kept only so configs/config.yaml's
+# `feature_selection.active_set` and the 4-tier study design don't need renaming —
+# requesting the "49" tier simply returns all 40 available features (Python list
+# slicing past the end of a list is a no-op, not an error).
+#
+# `categorical_features` marks which are categorical (label-encoded in preprocessing)
+# instead of numeric (scaled). `engineered_features` marks the 6 features derived in
+# src/preprocessing.py from the raw flow fields (not present in the raw dataset).
+
+feature_importance_rank:
+  - rate
+  - sload
+  - dload
+  - sbytes
+  - dbytes
+  - smean
+  - dmean
+  - dur
+  - spkts
+  - dpkts
+  - proto
+  - service
+  - state
+  - sjit
+  - djit
+  - tcprtt
+  - synack
+  - ackdat
+  - sinpkt
+  - dinpkt
+  - swin
+  - dwin
+  - total_bytes
+  - total_pkts
+  - byte_ratio
+  - pkt_ratio
+  - avg_pkt_size
+  - duration_log
+  - ct_src_dport_ltm
+  - ct_dst_sport_ltm
+  - sloss
+  - dloss
+  - stcpb
+  - dtcpb
+  - trans_depth
+  - response_body_len
+  - is_sm_ips_ports
+  - ct_flw_http_mthd
+  - is_ftp_login
+  - ct_ftp_cmd
+
+feature_sets:
+  "49": 49
+  "30": 30
+  "20": 20
+  "15": 15
+
+categorical_features:
+  - proto
+  - service
+  - state
+
+engineered_features:
+  - total_bytes
+  - total_pkts
+  - byte_ratio
+  - pkt_ratio
+  - avg_pkt_size
+  - duration_log
