@@ -16,7 +16,7 @@ import pandas as pd
 from pipelines.train_pipeline import load_split_data
 from src.evaluation.metrics import compute_metrics
 from src.models.model_factory import create_model
-from src.utils.config_loader import get_dashboard_paths, load_config, resolve_path
+from src.utils.config_loader import get_dashboard_paths, get_metrics_dir, load_config, resolve_path
 from src.utils.logger import add_file_logging, get_logger
 
 logger = get_logger(__name__)
@@ -50,10 +50,10 @@ def main() -> None:
 
     metrics = evaluate(config, model_path, preprocessor_path, test_df)
 
-    results_dir = resolve_path(config["paths"]["results_dir"])
-    results_dir.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame([metrics]).to_csv(results_dir / "evaluation_results.csv", index=False)
-    logger.info(f"Saved evaluation results to {results_dir / 'evaluation_results.csv'}")
+    metrics_dir = get_metrics_dir(config)
+    metrics_dir.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame([metrics]).to_csv(metrics_dir / "evaluation_results.csv", index=False)
+    logger.info(f"Saved evaluation results to {metrics_dir / 'evaluation_results.csv'}")
 
 
 if __name__ == "__main__":

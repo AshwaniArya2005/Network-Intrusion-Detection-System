@@ -24,7 +24,7 @@ from src.evaluation.plots import plot_confusion_matrix_grouped, plot_roc_curve
 from src.models.model_factory import create_model
 from src.models.open_set_wrapper import OpenSetWrapper
 from src.preprocessing import Preprocessor, add_merged_label, split_known_unknown
-from src.utils.config_loader import get_active_features, load_config, load_feature_sets, resolve_path
+from src.utils.config_loader import get_active_features, get_metrics_dir, load_config, load_feature_sets, resolve_path
 from src.utils.logger import add_file_logging, get_logger
 
 logger = get_logger(__name__)
@@ -158,10 +158,12 @@ def main() -> None:
     plot_roc_curve(predictions_out["y_test"], predictions_out["y_proba"],
                     predictions_out["class_names"], plots_dir / f"roc_curve_{feature_set_name}.png")
 
+    metrics_dir = get_metrics_dir(config)
+    metrics_dir.mkdir(parents=True, exist_ok=True)
     diagnostics = build_overlap_diagnostics(predictions_out["fine_grained_true"], predictions_out["y_pred_labels"],
                                              config["data"]["label_merge_groups"])
     for group_name, table in diagnostics.items():
-        out_csv = results_dir / f"overlap_diagnostic_{feature_set_name}.csv"
+        out_csv = metrics_dir / f"overlap_diagnostic_{feature_set_name}.csv"
         table.to_csv(out_csv)
         logger.info(f"Saved {group_name} overlap diagnostic to {out_csv}:\n{table}")
 

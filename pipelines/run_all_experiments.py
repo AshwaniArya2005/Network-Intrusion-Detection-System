@@ -4,11 +4,12 @@
 
 - Trains XGBoost (or whatever model.type is configured) on all 4 feature sets
   (49/30/20/15), each in closed-set and open-set mode -> 8 models saved to
-  models_saved/, metrics collected into results/experiment_results.csv.
+  models_saved/<model.type>/, metrics collected into
+  results/metrics/<model.type>/experiment_results.csv.
 - Computes SHAP global importance per feature-set model and runs the
-  explanation-stability study -> results/explanation_stability.csv.
+  explanation-stability study -> results/metrics/<model.type>/explanation_stability.csv.
 - Runs the cross-dataset (UNSW <-> CICIDS2017) generalization study ->
-  results/cross_dataset_results.csv.
+  results/metrics/<model.type>/cross_dataset_results.csv.
 """
 from __future__ import annotations
 
@@ -26,7 +27,7 @@ from src.evaluation.metrics import build_overlap_diagnostics
 from src.evaluation.plots import generate_all_plots, plot_confusion_matrix_grouped, plot_roc_curve
 from src.models.model_factory import create_model
 from src.preprocessing import Preprocessor
-from src.utils.config_loader import get_active_features, load_config, load_feature_sets, resolve_path
+from src.utils.config_loader import get_active_features, get_metrics_dir, load_config, load_feature_sets, resolve_path
 from src.utils.logger import add_file_logging, get_logger
 from src.xai.explanation_stability import run_stability_study
 from src.xai.shap_explainer import SHAPExplainer
@@ -43,8 +44,9 @@ CROSS_DATASET_COMMON_FEATURES = [
 
 def run_experiment_grid(config: dict, feature_sets: dict) -> pd.DataFrame:
     train_df, test_df, unknown_df = load_split_data(config)
-    results_dir = resolve_path(config["paths"]["results_dir"])
-    plots_dir = results_dir / "plots" / config["model"]["type"]
+    metrics_dir = get_metrics_dir(config)
+    metrics_dir.mkdir(parents=True, exist_ok=True)
+    plots_dir = resolve_path(config["paths"]["results_dir"]) / "plots" / config["model"]["type"]
     rows = []
     for feature_set_name in config["experiments"]["feature_sets"]:
         for open_set_enabled in config["experiments"]["open_set_modes"]:
@@ -72,11 +74,10 @@ def run_experiment_grid(config: dict, feature_sets: dict) -> pd.DataFrame:
                                                          predictions_out["y_pred_labels"],
                                                          config["data"]["label_merge_groups"])
                 for table in diagnostics.values():
-                    table.to_csv(results_dir / f"overlap_diagnostic_{feature_set_name}.csv")
+                    table.to_csv(metrics_dir / f"overlap_diagnostic_{feature_set_name}.csv")
 
     results_df = pd.DataFrame(rows)
-    out_path = resolve_path(config["experiments"]["output_csv"])
-    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path = metrics_dir / config["experiments"]["output_csv"]
     results_df.to_csv(out_path, index=False)
     logger.info(f"Saved experiment grid results ({len(results_df)} rows) to {out_path}")
     return results_df
@@ -100,7 +101,9 @@ def run_explanation_stability(config: dict, feature_sets: dict) -> pd.DataFrame:
         explainer = SHAPExplainer(model, features, background_samples=config["xai"]["shap_background_samples"])
         importances[f"{model_cfg['type']}_{feature_set_name}"] = explainer.global_importance(X_train)
 
-    stability_df = run_stability_study(importances, output_csv=str(resolve_path(config["experiments"]["stability_csv"])))
+    metrics_dir = get_metrics_dir(config)
+    metrics_dir.mkdir(parents=True, exist_ok=True)
+    stability_df = run_stability_study(importances, output_csv=str(metrics_dir / config["experiments"]["stability_csv"]))
     logger.info(f"Explanation stability study complete:\n{stability_df}")
     return stability_df
 
@@ -118,8 +121,9 @@ def run_cross_dataset(config: dict) -> pd.DataFrame:
         unsw_df, cic_df, CROSS_DATASET_COMMON_FEATURES,
         config["model"]["type"], config["model"]["params"],
     )
-    out_path = resolve_path(config["experiments"]["cross_dataset_csv"])
-    out_path.parent.mkdir(parents=True, exist_ok=True)
+    metrics_dir = get_metrics_dir(config)
+    metrics_dir.mkdir(parents=True, exist_ok=True)
+    out_path = metrics_dir / config["experiments"]["cross_dataset_csv"]
     cross_df.to_csv(out_path, index=False)
     logger.info(f"Saved cross-dataset results to {out_path}")
     return cross_df
@@ -144,8 +148,8 @@ def main() -> None:
         experiment_df=experiment_df, stability_df=stability_df, cross_dataset_df=cross_dataset_df,
     )
 
-    logger.info(f"All experiments complete. See results/ for CSV outputs, {plots_dir} for charts, "
-                f"and models_saved/ for artifacts.")
+    logger.info(f"All experiments complete. See {get_metrics_dir(config)} for CSV outputs, "
+                f"{plots_dir} for charts, and models_saved/ for artifacts.")
 
 
 if __name__ == "__main__":

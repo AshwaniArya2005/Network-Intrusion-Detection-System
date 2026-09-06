@@ -96,9 +96,12 @@ logging:
 experiments:
   feature_sets: ["49", "30", "20", "15"]
   open_set_modes: [false, true]
-  output_csv: "results/experiment_results.csv"
-  stability_csv: "results/explanation_stability.csv"
-  cross_dataset_csv: "results/cross_dataset_results.csv"
+  # Filenames only -- written under results/metrics/<model.type>/ (see
+  # src.utils.config_loader.get_metrics_dir), so switching model.type never
+  # overwrites another model's numbers, same reasoning as get_dashboard_paths.
+  output_csv: "experiment_results.csv"
+  stability_csv: "explanation_stability.csv"
+  cross_dataset_csv: "cross_dataset_results.csv"
 
 dashboard:
   # Which trained model artifact the API loads: models_saved/<model.type>/<model.type>_

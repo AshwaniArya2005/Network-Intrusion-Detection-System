@@ -57,3 +57,13 @@ def get_dashboard_paths(config: dict[str, Any]) -> tuple[Path, Path]:
     model_path = model_dir / f"{model_type}_{feature_set}_closed.pkl"
     preprocessor_path = model_dir / f"preprocessor_{feature_set}.pkl"
     return model_path, preprocessor_path
+
+
+def get_metrics_dir(config: dict[str, Any]) -> Path:
+    """Directory for a model type's CSV outputs: results/metrics/<model.type>/ —
+    mirrors get_dashboard_paths' reasoning and results/plots/<model.type>/: every
+    experiment/evaluation/diagnostic CSV is namespaced by model.type, so training a
+    different model never silently overwrites another model's reported numbers.
+    Created on demand by the caller (mkdir(parents=True, exist_ok=True)).
+    """
+    return resolve_path(config["paths"]["results_dir"]) / "metrics" / config["model"]["type"]
