@@ -1,0 +1,7 @@
+strategy,n_features,train,test,accuracy,precision,recall,f1
+common_all,14,UNSW,CIC,0.5839,0.6182,0.6845,0.5565
+common_all,14,CIC,UNSW,0.3624,0.6354,0.5011,0.268
+unsw_only,10,UNSW,CIC,0.5496,0.5848,0.6323,0.5204
+unsw_only,10,CIC,UNSW,0.3483,0.3744,0.4665,0.2862
+stable,8,UNSW,CIC,0.4386,0.5698,0.593,0.4324
+stable,8,CIC,UNSW,0.36,0.4211,0.4733,0.3074

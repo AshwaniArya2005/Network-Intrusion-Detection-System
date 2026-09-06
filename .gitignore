@@ -7,15 +7,19 @@ venv/
 .pytest_cache/
 .mypy_cache/
 
-# Data & models (large / regenerable — commit code, not artifacts)
+# Data & trained models (large / regenerable — commit code, not artifacts)
 data/raw/*
 !data/raw/.gitkeep
 data/processed/*
 !data/processed/.gitkeep
 models_saved/*
 !models_saved/.gitkeep
-results/*
-!results/.gitkeep
+
+# results/ IS committed (small CSVs + plots, so metrics/charts show up on GitHub) —
+# only the rolling run log is excluded below via the generic *.log rule.
+# results/diagnostics/ is ad-hoc investigation scratch work (not produced by any
+# pipeline script), not part of the reported results — excluded on purpose.
+results/diagnostics/
 
 # Frontend
 dashboard/frontend/node_modules/

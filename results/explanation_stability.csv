@@ -1,0 +1,7 @@
+config_a,config_b,n_common_features,rank_correlation,cosine_similarity,topk_overlap
+xgboost_49,xgboost_30,30,0.9871,0.9966,0.8182
+xgboost_49,xgboost_20,20,0.9248,0.9374,1.0
+xgboost_49,xgboost_15,15,0.9036,0.9369,0.6667
+xgboost_30,xgboost_20,20,0.9624,0.9422,1.0
+xgboost_30,xgboost_15,15,0.9179,0.9412,0.6667
+xgboost_20,xgboost_15,15,0.9821,0.9968,0.8182
