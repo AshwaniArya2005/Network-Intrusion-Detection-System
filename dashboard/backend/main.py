@@ -20,11 +20,11 @@ add_file_logging(str(resolve_path(load_config()["logging"]["log_file"])))
 
 app = FastAPI(title="XAI Network IDS API", version="1.0.0")
 
-# Dev-friendly CORS for the Vite dashboard (default port 5173). Tighten
-# allow_origins before deploying this anywhere beyond localhost.
+# Dev-friendly CORS: any localhost port, so the Vite dashboard can run on whichever
+# port is free. Tighten before deploying this anywhere beyond localhost.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:\d+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
