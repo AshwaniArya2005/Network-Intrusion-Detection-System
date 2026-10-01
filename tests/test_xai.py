@@ -118,3 +118,21 @@ def test_narrative_generator_unknown_case(fitted):
 
     assert "unrecognized" in text.lower()
     assert "Escalate to analyst." in text
+
+
+def test_batched_local_explanations_match_single_row(fitted):
+    model, pre, X, y = fitted
+    explainer = SHAPExplainer(model, FEATURES, background_samples=50)
+    pred = model.predict(X[:4])
+    batch = explainer.local_explanations(X[:4], pred)
+    assert batch.shape == (4, len(FEATURES))
+    for i in range(4):
+        single = explainer.local_explanation(X[i:i + 1], int(pred[i]))
+        assert batch.iloc[i].to_numpy() == pytest.approx(single.to_numpy(), abs=1e-5)
+
+
+def test_global_importance_sample_size_is_separate_from_background(fitted):
+    model, pre, X, y = fitted
+    explainer = SHAPExplainer(model, FEATURES, background_samples=20)
+    assert explainer.compute_shap_values(X)[0].shape[0] == 20
+    assert explainer.compute_shap_values(X, max_samples=100)[0].shape[0] == 100

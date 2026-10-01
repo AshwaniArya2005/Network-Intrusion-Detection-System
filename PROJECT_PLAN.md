@@ -1,0 +1,149 @@
+# XIDS Capstone — Project Plan (updated to match the repository)
+
+> This revises the earlier plan so that its findings, numbers and open items match what the code and
+> `results/` currently show. Numbers are XGBoost, 40 features, official UNSW-NB15 train/test split,
+> duplicates removed, single seed unless stated. Reproduce with `python pipelines/run_all_experiments.py`.
+> Items that cannot be derived from the repository (team progress, review dates) are left as they were and marked.
+
+## Overview
+
+XIDS (Explainable AI-Based Network Intrusion Detection System) classifies network flows into normal and
+attack categories and generates a plain-language, SHAP-based explanation for every prediction instead of a
+black-box label.
+
+The core problem: existing intrusion detection systems report strong accuracy but give analysts no
+interpretable reasoning. XIDS closes that gap, and it also surfaces a real limitation of the data: some UNSW-NB15
+attack categories are indistinguishable at the flow-feature level, which shaped the taxonomy. This revision is
+equally candid about what did *not* work (zero-day detection, cross-dataset transfer, feature selection).
+
+**Team:** Ashwani, Anjali, Anshu, Ashika, Samiksha Tiwari
+
+## Objectives and Research Novelties
+
+1. **Open-Set / Zero-Day Attack Detection** — confidence-based thresholding on the max softmax probability.
+   *Outcome: works only weakly (about a quarter of zero-day flows detected at ~6% false alarms).*
+2. **Human-Centered Actionable Explanations** — SHAP-driven plain-language narratives per prediction, checked
+   against real data. *Outcome: implemented; two bugs found and fixed through real-data checks (below).*
+3. **Feature-Selection + Explanation Consistency Study** — does shrinking the feature set change accuracy and the
+   stability of the explanations? *Outcome: accuracy barely changes; explanations stay stable.*
+4. **Cross-Dataset Transfer (UNSW-NB15 → CICIDS2017)** — originally "with stable features". *Outcome: negative —
+   the models do not transfer, and no feature-selection strategy helps.*
+
+## Datasets
+
+- **UNSW-NB15** — primary dataset for closed-set classification, taxonomy analysis and feature-tier experiments.
+  The copy in `data/raw` has 34 of the 42 official feature columns (both the train and test files lack `sttl, dttl,
+  ct_state_ttl, ct_srv_src, ct_dst_ltm, ct_src_ltm, ct_srv_dst, ct_dst_src_ltm`). About **44% of its rows are exact
+  duplicates** (257,673 → 145,222), which are now removed before splitting.
+- **CICIDS2017** — used only for the cross-dataset study (stratified-subsampled to 200k rows).
+
+## System Architecture
+
+Preprocessing → Classification engine → (Explainability module + Open-set detection) → Dashboard
+(FastAPI backend + React/Vite frontend). The repo is config-driven; the classification engine is swappable across
+model types without touching other modules (`src/models/model_factory.py`). Evaluation uses one shared function
+for the experiment grid and for re-evaluating saved models.
+
+## Model Comparison Plan
+
+| Model | Owner | Status in the repository |
+|---|---|---|
+| XGBoost | Ashwani | Done. Macro F1 **0.685** (accuracy 0.742) on the official test split; 0.760 / 0.836 on a pooled random split. The earlier "0.97 macro ROC-AUC" is not reproduced (ROC curves are plotted, AUC is not in the result CSVs). |
+| Logistic Regression | Samiksha Tiwari | Supported via `model.type: logistic_regression`; no comparison results in the repo (the earlier 64% F1 is not reproduced here). |
+| Random Forest | Anjali | Supported via `model.type: random_forest`; no results in the repo. |
+| LightGBM | Anshu | Not implemented; worked example in `ONBOARDING.md`. |
+| MLP | Ashika | Not implemented; `MLPClassifier` would work through `SklearnModel` but SHAP falls back to the slow KernelExplainer. |
+
+## Key Findings
+
+**Data hygiene changed the headline numbers.** Removing exact duplicates and using the official train/test split
+lowers macro F1 from ~0.78 to **0.685**. The attack-vs-normal false-positive rate is **0.276** on the official
+split vs. 0.112 on a pooled random split (FPR at 90 / 95 / 99% detection: 0.167 / 0.264 / 0.374); most of the gap is
+train/test shift plus dedup (dedup removes recurring easy rows and reshapes the class mix: Generic 18,871 → 1,257
+test rows, DoS 4,089 → 1,504), not the model.
+
+**Taxonomy.** Analysis, Backdoor and DoS cannot be reliably separated from the flow features: **72–80% of their rows
+have an exact feature-vector twin in another class**. (The earlier justification — identical medians, extra features
+absent — was incomplete: the official release does have the 8 missing columns, and restoring them does *not* remove the
+overlap: twin share Analysis 72.0 → 72.0%, Backdoor 78.9 → 76.7%, DoS 79.7 → 79.5%.) They are merged into
+`Overlap-Group-1`; recall into the group is 0.83 (Analysis), 0.94 (Backdoor), 0.50 (DoS). Exploits is the class
+sharing the most vectors with the group (78% of the group's rows have an Exploits twin). Label schemes compared
+(`current`, `none` 8-class, `wide` = merge + Exploits, `hierarchical`): `wide` has the best fine-grained recall (0.83)
+but lumps 56% of attack rows into one class; `hierarchical` has the lowest false-positive rate (0.208) and the lowest
+detection (0.925). Best-possible accuracy rises mechanically with coarser labels (0.905 / 0.912 / 0.969), so it measures
+what a merge discards, not which merge is right. The choice of scheme is a team decision.
+
+**Feature tiers.** Tier size (40 → 15) changes macro F1 by only about 0.015 (0.672–0.687). Against 10 random subsets per
+tier, the mutual-information ranking is significantly better only at 30 features (0.687 vs 0.677 ± 0.004); at 20 it is
+indistinguishable from random (0.6717 vs 0.6722) and at 15 it is within the spread (0.675 vs 0.659 ± 0.024). The worst-N
+features are much worse (0.466 at 15), so which features matter is real, but the ranking does not reliably pick
+better-than-random sets. Removing redundant (correlated) features from the ranking did not help.
+
+**Explanation stability.** SHAP importance rank correlation across tiers is 0.83–0.99 (mean 0.92); retraining the same
+feature set with a different seed gives 0.98–0.99, which is the noise floor.
+
+**Explainability validation (real data).** Two bugs found and fixed: categorical features (proto, service, state)
+produced nonsensical "extremely high" narratives from an undefined z-score; and the dashboard z-scored
+already-standardised values a second time, making nearly every flow read "typical". Both now have regression tests.
+
+**Cross-dataset transfer.** Trained on UNSW and tested on CIC the models are *below chance* (macro F1 0.38–0.43, balanced
+accuracy 0.41–0.47); trained on CIC and tested on UNSW they predict almost no attacks (degenerate). Within-dataset
+references are 0.90 (UNSW) and 0.97 (CIC). The two datasets are different populations (largest Kolmogorov–Smirnov
+distances: `smean` 0.72, `sbytes` 0.69, `total_pkts` 0.64). The earlier claims — "stable" features underperform
+UNSW→CIC but are strongest CIC→UNSW — came from unfixed experiments (separately scaled datasets, an unweighted
+constant-prediction model) and are withdrawn: no strategy ranking is supportable.
+
+**Open-set detection.** With the threshold chosen on known validation data (target 5% false "Unknown"; threshold ≈ 0.49)
+the system detects about **25%** of the held-out zero-day classes (Worms, Shellcode) at **~6.4%** false "Unknown" on
+known test traffic; AUROC 0.80 (0.75–0.80 across tiers). The earlier "67–75% detection at 26–28% false alarms" was the
+0.65 threshold tuned against the reported zero-day samples; that point is still one point of the sweep (67% / 26%), but
+it is not an honest operating point. Where the false alarms concentrate (previously Overlap-Group-1) was not re-checked.
+
+## Validation and Rigor Methodology
+
+- Duplicate removal before splitting; official train/test split; validation set used only to choose the open-set threshold
+- Scaler fitted on the training dataset only (cross-dataset study)
+- Random-feature-set and worst-N baselines (10 draws per tier) with a significance statement; same-set/different-seed noise floor
+- Per-class precision/recall, attack-vs-normal view at several operating points, fine-grained recall under every label scheme
+- Exact-twin and best-possible-accuracy analysis of class overlap (`scripts/overlap_analysis.py`)
+- Real-data explainability spot checks (`scripts/check_explainability.py`) plus 140 automated tests
+
+## Remaining Work / Open Items
+
+- [ ] Run the model comparison (Logistic Regression, Random Forest) through `run_all_experiments.py`; implement LightGBM and MLP
+- [ ] Multi-seed runs with error bars for the headline numbers (everything outside the random-subset draws is single-seed)
+- [ ] Open-set: per-class or calibrated thresholds; check where false alarms concentrate; weak detection (~25%) is the main open problem
+- [ ] Decide the label scheme (`current` vs `wide` vs `hierarchical`) using `results/metrics/xgboost/label_scheme_summary.md`
+- [ ] Obtain the official UNSW-NB15 files with all 42 features and rerun (the pipeline switches to a 48-feature pool automatically); the official test file was not compared with the local one
+- [ ] Cross-dataset: the negative result stands unless a shared-feature set that actually overlaps in distribution is found
+- [ ] Dashboard: run end to end against the latest artifacts (implemented and API-tested, not re-run in the browser)
+- [x] Migrate XGBoost artifacts to native serialization (`.json`); stale pickles removed
+- [x] Deep-dive on the Overlap-Group-1 ↔ Exploits boundary (exact/near-twin analysis, `wide` scheme)
+
+## Timeline / Phased Plan
+
+*(Not derivable from the repository — carried over unchanged.)*
+Review 1: data preprocessing, baseline XGBoost, taxonomy validation — Completed
+Review 2: multi-model comparison, explainability validation, open-set threshold tuning — In progress
+Review 3: dashboard integration, cross-dataset analysis, final evaluation + report — Planned
+
+## Team Roles
+
+| Member | Area |
+| --- | --- |
+| Ashwani | Core pipeline, XGBoost, taxonomy redesign, explainability, open-set detection |
+| Anjali | Random Forest |
+| Anshu | LightGBM |
+| Ashika | MLP |
+| Samiksha Tiwari | Logistic Regression |
+
+## References
+
+1. Moustafa, N., & Slay, J. (2015). UNSW-NB15: A comprehensive data set for network intrusion detection systems. *MilCIS*, IEEE.
+2. Moustafa, N., & Slay, J. (2016). The evaluation of Network Anomaly Detection Systems. *Information Security Journal*, 25(1-3), 18-31.
+3. Sharafaldin, I., Lashkari, A. H., & Ghorbani, A. A. (2018). Toward Generating a New Intrusion Detection Dataset and Intrusion Traffic Characterization. *ICISSP*, 1, 108-116.
+4. Lundberg, S. M., & Lee, S.-I. (2017). A Unified Approach to Interpreting Model Predictions. *NeurIPS*, 30.
+5. Chen, T., & Guestrin, C. (2016). XGBoost: A Scalable Tree Boosting System. *KDD*, 785-794.
+6. Ke, G., et al. (2017). LightGBM: A Highly Efficient Gradient Boosting Decision Tree. *NeurIPS*, 30.
+7. Breiman, L. (2001). Random Forests. *Machine Learning*, 45(1), 5-32.
+8. [UNSW-NB15 class-overlap literature — verify exact citation before final submission]

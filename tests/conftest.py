@@ -10,7 +10,13 @@ from src.models.model_factory import create_model
 MODEL_TYPES = ["xgboost", "random_forest", "logistic_regression"]
 N_FEATURES = 8
 N_CLASSES = 3
-FAST_PARAMS = {"n_estimators": 20, "max_depth": 3, "random_state": 0, "max_iter": 200}
+FAST_PARAMS = {"n_estimators": 20, "max_depth": 3, "random_state": 0}
+
+
+def params_for(model_type: str) -> dict:
+    """FAST_PARAMS plus params only the given model accepts (max_iter is sklearn-LR-only;
+    XGBoost warns about unused parameters)."""
+    return dict(FAST_PARAMS, **({"max_iter": 200} if model_type == "logistic_regression" else {}))
 
 
 @pytest.fixture(scope="session")
@@ -33,4 +39,4 @@ def model_type(request):
 @pytest.fixture(scope="session")
 def fitted_model(model_type, data):
     X, y = data
-    return create_model(model_type, dict(FAST_PARAMS)).fit(X, y)
+    return create_model(model_type, params_for(model_type)).fit(X, y)

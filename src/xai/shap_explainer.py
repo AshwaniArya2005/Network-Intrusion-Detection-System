@@ -8,6 +8,7 @@ import pandas as pd
 import shap
 
 from src.models.base_model import BaseModel
+from src.models.hierarchical_model import HierarchicalModel
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -49,6 +50,11 @@ class SHAPExplainer:
         self.feature_names = feature_names
         self._background_samples = background_samples
         self._explainer = None  # built lazily on first use, once we have X for background data
+        # A hierarchical model is explained stage by stage: stage 1 (binary attack score) for
+        # Normal, stage 2 (family) for each attack class; class indexes are mapped, never mixed.
+        self._stages = ((SHAPExplainer(model.stage1, feature_names, background_samples),
+                         SHAPExplainer(model.stage2, feature_names, background_samples))
+                        if isinstance(model, HierarchicalModel) else None)
 
     def _get_explainer(self, X: np.ndarray):
         if self._explainer is not None:
@@ -78,40 +84,80 @@ class SHAPExplainer:
                         "KernelExplainer (works for any model, but is much slower).")
         return self._explainer
 
-    def compute_shap_values(self, X: np.ndarray) -> list[np.ndarray]:
-        """Return per-class SHAP value matrices for X, each shaped (n_samples, n_features)."""
-        if len(X) > self._background_samples:
-            idx = np.random.default_rng(42).choice(len(X), self._background_samples, replace=False)
+    def compute_shap_values(self, X: np.ndarray, max_samples: int | None = None) -> list[np.ndarray]:
+        """Return per-class SHAP value matrices for X, each shaped (n_samples, n_features).
+        X is randomly subsampled to `max_samples` rows (default: the background size)."""
+        max_samples = max_samples or self._background_samples
+        if len(X) > max_samples:
+            idx = np.random.default_rng(42).choice(len(X), max_samples, replace=False)
             X = X[idx]
+        if self._stages is not None:
+            return self._hierarchical_shap_values(X)
         explainer = self._get_explainer(X)
         raw = explainer.shap_values(X)
         n_classes = self.model.predict_proba(X[:1]).shape[1]
         return _normalize_shap_output(raw, n_classes)
 
-    def global_importance(self, X: np.ndarray) -> pd.Series:
+    def global_importance(self, X: np.ndarray, max_samples: int | None = None) -> pd.Series:
         """Mean absolute SHAP value per feature, averaged across all classes — a
-        global ranking of which features drive the model's decisions overall."""
-        per_class = self.compute_shap_values(X)
+        global ranking of which features drive the model's decisions overall. Computed
+        on a random sample of `max_samples` rows (default: the background size; pass
+        config xai.importance_samples for a stable ranking)."""
+        per_class = self.compute_shap_values(X, max_samples)
         stacked = np.stack([np.abs(c).mean(axis=0) for c in per_class], axis=0)
         importance = stacked.mean(axis=0)
         return pd.Series(importance, index=self.feature_names).sort_values(ascending=False)
 
-    def local_explanation(self, x_row: np.ndarray, predicted_class_idx: int) -> pd.Series:
-        """SHAP values for a single sample, for the class it was predicted as.
-        x_row must be shape (1, n_features).
+    def _hierarchical_shap_values(self, X: np.ndarray) -> list[np.ndarray]:
+        """Per composed class (label-encoder index): stage-1 SHAP of "normal" for Normal, stage-2
+        SHAP of the family for each attack class (zeros for classes the model never saw)."""
+        stage1, stage2 = self._stages
+        model = self.model
+        s1 = stage1.compute_shap_values(X, len(X))
+        s2 = stage2.compute_shap_values(X, len(X))
+        out = [np.zeros_like(s1[0]) for _ in range(model.n_classes)]
+        out[model.normal_index] = s1[0]
+        for family, cls in enumerate(model.attack_classes):
+            out[int(cls)] = s2[family]
+        return out
+
+    def _hierarchical_local(self, X: np.ndarray, class_idx) -> pd.DataFrame:
+        stage1, stage2 = self._stages
+        model = self.model
+        idx = np.asarray(class_idx, dtype=int)
+        is_normal = idx == model.normal_index
+        unknown = ~is_normal & ~np.isin(idx, model.attack_classes)
+        if unknown.any():
+            raise ValueError(f"Class indexes {sorted(set(idx[unknown]))} are not known to the hierarchical model")
+        out = np.zeros((len(X), len(self.feature_names)))
+        if is_normal.any():
+            out[is_normal] = stage1.local_explanations(X[is_normal], np.zeros(is_normal.sum(), dtype=int)).to_numpy()
+        if (~is_normal).any():
+            family = np.searchsorted(model.attack_classes, idx[~is_normal])  # encoder index -> stage-2 index
+            out[~is_normal] = stage2.local_explanations(X[~is_normal], family).to_numpy()
+        return pd.DataFrame(out, columns=self.feature_names)
+
+    def local_explanations(self, X: np.ndarray, class_idx) -> pd.DataFrame:
+        """SHAP values for each row of X, for that row's class in `class_idx` — one
+        batched explainer call. Shape (n_samples, n_features).
 
         For non-tree models: if this is the very first call (explainer not built yet),
         the Linear/KernelExplainer background is built from whatever X is passed here —
-        a single row makes a poor background (a warning is logged when this happens).
+        a tiny batch makes a poor background (a warning is logged when this happens).
         Call compute_shap_values()/global_importance() once with a proper batch (e.g.
         X_train) during setup first if you're using a non-tree model."""
-        explainer = self._get_explainer(x_row)
-        raw = explainer.shap_values(x_row)
-        n_classes = self.model.predict_proba(x_row).shape[1]
-        per_class = _normalize_shap_output(raw, n_classes)
-        class_idx = min(predicted_class_idx, len(per_class) - 1)
-        values = per_class[class_idx][0]
-        return pd.Series(values, index=self.feature_names)
+        if self._stages is not None:
+            return self._hierarchical_local(X, class_idx)
+        explainer = self._get_explainer(X)
+        n_classes = self.model.predict_proba(X[:1]).shape[1]
+        per_class = _normalize_shap_output(explainer.shap_values(X), n_classes)
+        rows = [per_class[min(int(c), len(per_class) - 1)][i] for i, c in enumerate(class_idx)]
+        return pd.DataFrame(np.vstack(rows), columns=self.feature_names)
+
+    def local_explanation(self, x_row: np.ndarray, predicted_class_idx: int) -> pd.Series:
+        """SHAP values for a single sample (x_row shape (1, n_features)), for the class
+        it was predicted as. See local_explanations() for the non-tree-model caveat."""
+        return self.local_explanations(x_row, [predicted_class_idx]).iloc[0]
 
     @staticmethod
     def top_k(shap_row: pd.Series, k: int = 5) -> pd.Series:

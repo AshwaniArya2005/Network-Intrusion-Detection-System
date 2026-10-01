@@ -23,12 +23,27 @@ explanations, the open-set wrapper, and the dashboard all pick your model up
 automatically. This was verified, not assumed: see the "what was actually
 broken" section below.
 
+## Where the team's models stand
+
+| Model | State in this repo |
+|---|---|
+| XGBoost | reference model; full experiment suite run (see README "Key findings") |
+| Random Forest, Logistic Regression | supported via `model.type` (`src/models/sklearn_model.py`); **no comparison results have been run yet** |
+| LightGBM | not implemented; the worked example at the end of this file is the starting point |
+| MLP | not implemented; `MLPClassifier` works through `SklearnModel`, but SHAP falls back to the slow `KernelExplainer` |
+
+To get a comparable result for your model: set `model.type`, run `python pipelines/run_all_experiments.py`,
+and read `results/metrics/<model.type>/` (outputs are namespaced by model type, so they never overwrite
+another model's). The feature ranking (`results/feature_ranking_mutual_info.csv`) is model-independent mutual
+information, so all models are compared on the same feature sets. Note that every result in the README is
+XGBoost-specific, and `model.params` is shared across tiers (no per-tier re-tuning).
+
 ## Files you will touch
 
 | File | What you do |
 |---|---|
 | `src/models/your_model.py` (new) | Implement `BaseModel` for your classifier |
-| `src/models/model_factory.py` | Add one `elif model_type == "your_model": return YourModel(params)` |
+| `src/models/model_factory.py` | Add one `elif model_type == "your_model": return YourModel(params)` in `create_model` |
 | `configs/config.yaml` | `model.type: "your_model"`, your hyperparameters under `model.params` |
 
 ## Files you will NOT need to touch
@@ -62,12 +77,19 @@ type into the wrong wrapper class). Fixed by deriving both paths from
 (`src.utils.config_loader.get_dashboard_paths`) — there's now nothing to
 duplicate or forget to update.
 
+(A model type can also be wrapped as a two-stage `HierarchicalModel` when `data.label_scheme` is
+`hierarchical`; `src.models.model_factory.create_scheme_model` is the one place that decides, and
+`SHAPExplainer` explains such a model stage by stage.)
+
 Serialization is already correctly abstracted per model type: `XGBoostModel`
 uses XGBoost's native `save_model`/`load_model` (JSON, not pickle — portable
 across xgboost versions); `SklearnModel` (Random Forest, Logistic Regression,
 and your new sklearn-API model) uses `joblib`, which is standard for sklearn
 estimators. `BaseModel.save(path)`/`load(path)` takes a generic path string in
-both cases — each subclass decides internally how to use it. You don't need to
+both cases — each subclass decides internally how to use it. Artifact names follow
+the model: XGBoost saves `.json` (and refuses any other suffix rather than silently
+renaming it), every other model saves `.pkl`; `src.utils.config_loader.artifact_suffix`
+is the one place that mapping lives — add your model there if it isn't a joblib pickle. You don't need to
 do anything for this; `joblib.dump`/`joblib.load` in `SklearnModel` already
 works for any sklearn-compatible estimator, LightGBM's sklearn wrapper included.
 
@@ -120,6 +142,9 @@ free. The save/load-roundtrip and open-set-wrapper tests use `create_model("xgbo
 as a concrete stand-in to test generic wrapper behavior (not testing anything
 XGBoost-specific) — you don't need to duplicate these for a new model type
 unless you want extra confidence in your own serialization path.
+Beyond these, the suite now has pipeline tests (a synthetic end-to-end run for every label scheme), dashboard
+API tests, cross-dataset, feature-selection, overlap-analysis and hierarchical-model tests (140 in total);
+`pytest tests -q` should stay green when you add your model.
 `tests/test_xai.py`'s SHAP tests were XGBoost-only before this audit; the
 underlying `SHAPExplainer` is now verified model-agnostic (see section 3), so
 these don't need duplication either, but nothing stops you from adding a
@@ -129,9 +154,9 @@ parametrized variant if you want CI coverage for your specific model's SHAP path
 This file. The two real gaps found (SHAP explainer hardcoded to trees;
 dashboard path duplicated instead of derived) were fixed, not just documented —
 see `src/xai/shap_explainer.py` and `src/utils/config_loader.get_dashboard_paths`.
-The existing XGBoost pipeline was re-verified after both fixes: same predictions,
-same F1 (0.7781), same SHAP values and narratives on a fixed set of real test
-rows, byte-for-byte identical to before the refactor.
+At the time of those fixes the XGBoost pipeline was checked before/after: same predictions,
+same F1 (0.7781 — a historical figure from the old pooled split before duplicates were removed; current numbers are in results/metrics/), same SHAP values and narratives on a fixed set of real test
+rows, byte-for-byte identical to before the refactor (a one-off check of that refactor, not a statement about the current pipeline or its results).
 
 ## A concrete example
 

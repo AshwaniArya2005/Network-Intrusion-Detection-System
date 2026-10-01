@@ -38,7 +38,7 @@ def test_model_save_and_load_roundtrip(xy, tmp_path):
     model.fit(X, y)
     preds_before = model.predict(X)
 
-    save_path = tmp_path / "model.pkl"
+    save_path = tmp_path / "model.json"
     model.save(str(save_path))
 
     reloaded = create_model("xgboost")

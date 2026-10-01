@@ -16,7 +16,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from src.preprocessing import Preprocessor, add_merged_label, split_known_unknown
-from src.utils.config_loader import get_active_features, load_config, load_feature_sets, resolve_path
+from src.utils.config_loader import get_active_features, get_label_scheme, load_config, load_feature_sets, resolve_path
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -32,7 +32,7 @@ def main() -> None:
         raise FileNotFoundError(f"{unsw_csv} not found — run data/scripts/load_data.py first.")
 
     df = pd.read_csv(unsw_csv)
-    df = add_merged_label(df, config["data"]["label_merge_groups"],
+    df = add_merged_label(df, get_label_scheme(config)[1],
                            source_column=config["data"]["fine_grained_target_column"], target_column=config["data"]["target_column"])
     known_df, unknown_df = split_known_unknown(df, config["data"]["unknown_attack_categories"], config["data"]["target_column"])
 

@@ -8,7 +8,8 @@ from sklearn.utils.class_weight import compute_sample_weight
 from src.models.base_model import BaseModel
 from src.models.model_factory import create_model
 from src.models.open_set_wrapper import OpenSetWrapper
-from tests.conftest import FAST_PARAMS, N_CLASSES, N_FEATURES
+from src.utils.config_loader import artifact_suffix
+from tests.conftest import N_CLASSES, N_FEATURES, params_for
 
 
 def test_factory_rejects_unknown_type():
@@ -54,15 +55,15 @@ def test_feature_importance(fitted_model):
 
 def test_save_load_roundtrip(fitted_model, model_type, data, tmp_path):
     X, _ = data
-    path = str(tmp_path / "model.pkl")
+    path = str(tmp_path / f"model{artifact_suffix(model_type)}")
     fitted_model.save(path)
-    restored = create_model(model_type, dict(FAST_PARAMS)).load(path)
+    restored = create_model(model_type, params_for(model_type)).load(path)
     np.testing.assert_allclose(restored.predict_proba(X), fitted_model.predict_proba(X), atol=1e-6)
 
 
 def test_fit_accepts_sample_weight(model_type, data):
     X, y = data
-    model = create_model(model_type, dict(FAST_PARAMS))
+    model = create_model(model_type, params_for(model_type))
     assert model.fit(X, y, sample_weight=compute_sample_weight("balanced", y)) is model
     assert model.predict(X).shape == (len(X),)
 
@@ -89,3 +90,11 @@ def test_open_set_flags_exactly_low_confidence(fitted_model, data):
     np.testing.assert_array_equal(out.is_unknown, out.confidence < 0.7)
     np.testing.assert_allclose(out.confidence, fitted_model.predict_proba(X).max(axis=1))
     np.testing.assert_array_equal(out.open_set_label[~out.is_unknown], out.closed_set_label[~out.is_unknown])
+
+
+def test_xgboost_rejects_non_json_artifact_path(tmp_path):
+    """XGBoostModel used to silently rewrite .pkl to .json; now the path must be .json."""
+    model = create_model("xgboost", {"n_estimators": 2}).fit(np.random.rand(30, 3), np.arange(30) % 2)
+    with pytest.raises(ValueError):
+        model.save(str(tmp_path / "model.pkl"))
+    assert artifact_suffix("xgboost") == ".json" and artifact_suffix("random_forest") == ".pkl"

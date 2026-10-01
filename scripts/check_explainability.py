@@ -34,7 +34,8 @@ logger = get_logger(__name__)
 def main() -> None:
     config = load_config()
     feature_sets = load_feature_sets()
-    train_df, test_df, unknown_df = load_split_data(config)
+    splits = load_split_data(config)
+    test_df = splits.test
 
     feature_set_name = config["dashboard"]["feature_set"]
     features = get_active_features(config, feature_sets, feature_set_name)

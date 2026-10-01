@@ -24,7 +24,8 @@ ATTACK_CATEGORIES = [
 
 # Raw UNSW-NB15 numeric/categorical columns used by this project (id, ip, port,
 # and timestamp columns are dropped as they are per-flow identifiers, not
-# generalizable features).
+# generalizable features). The official training/testing set has all of these; this
+# project's data/raw copy lacks 8 (see EXTRA_OFFICIAL_COLUMNS) and loads with the rest.
 UNSW_RAW_COLUMNS = [
     "dur", "proto", "service", "state", "spkts", "dpkts", "sbytes", "dbytes", "rate",
     "sttl", "dttl", "sload", "dload", "sloss", "dloss", "sinpkt", "dinpkt", "sjit", "djit",
@@ -33,6 +34,10 @@ UNSW_RAW_COLUMNS = [
     "ct_src_dport_ltm", "ct_dst_sport_ltm", "ct_dst_src_ltm", "is_ftp_login", "ct_ftp_cmd",
     "ct_flw_http_mthd", "ct_src_ltm", "ct_srv_dst", "is_sm_ips_ports",
 ]
+
+# Official columns missing from the local data/raw copy; when all are present the 48-feature
+# `feature_pool_full` is used (configs/feature_sets.yaml).
+EXTRA_OFFICIAL_COLUMNS = ["sttl", "dttl", "ct_state_ttl", "ct_srv_src", "ct_dst_ltm", "ct_src_ltm", "ct_srv_dst", "ct_dst_src_ltm"]
 
 PROTOCOLS = ["tcp", "udp", "arp", "ospf", "icmp"]
 SERVICES = ["-", "http", "ftp", "smtp", "ssh", "dns", "ftp-data", "pop3", "dhcp"]
@@ -136,29 +141,46 @@ def make_synthetic_cic(n_rows: int = 3000, seed: int = 7) -> pd.DataFrame:
     return df
 
 
-def load_unsw(train_path: str | Path, test_path: str | Path | None = None, seed: int = 42, synthetic_rows: int = 4000) -> pd.DataFrame:
-    """Load UNSW-NB15 train (+ optional test) CSVs. Falls back to synthetic data if missing."""
+def _class_split_counts(df: pd.DataFrame) -> pd.DataFrame:
+    return df.groupby(["attack_cat", "split"]).size().unstack(fill_value=0).reindex(columns=["train", "test"], fill_value=0)
+
+
+def load_unsw(train_path: str | Path, test_path: str | Path | None = None, seed: int = 42, synthetic_rows: int = 4000,
+              drop_duplicates: bool = True) -> pd.DataFrame:
+    """Load UNSW-NB15 train (+ optional test) CSVs. Falls back to synthetic data if missing.
+
+    Adds a `split` column ("train" / "test" = which official file a row came from;
+    synthetic rows are all "train"). Exact duplicate rows are dropped (logged; `drop_duplicates=False` keeps them), keeping
+    the first occurrence so a row present in both files stays in train and cannot leak
+    into the official test split.
+    """
     train_path = Path(train_path)
-    frames = []
     if train_path.exists():
         logger.info(f"Loading UNSW-NB15 training data from {train_path}")
-        frames.append(pd.read_csv(train_path))
+        frames = [pd.read_csv(train_path).assign(split="train")]
         if test_path is not None and Path(test_path).exists():
             logger.info(f"Loading UNSW-NB15 test data from {test_path}")
-            frames.append(pd.read_csv(test_path))
+            frames.append(pd.read_csv(test_path).assign(split="test"))
         df = pd.concat(frames, ignore_index=True)
     else:
         logger.warning(f"UNSW-NB15 file not found at {train_path}; using synthetic fallback data.")
-        df = make_synthetic_unsw(n_rows=synthetic_rows, seed=seed)
+        df = make_synthetic_unsw(n_rows=synthetic_rows, seed=seed).assign(split="train")
 
     df.columns = [c.strip().lower() for c in df.columns]
-    keep = [c for c in UNSW_RAW_COLUMNS if c in df.columns] + ["attack_cat", "label"]
+    keep = [c for c in UNSW_RAW_COLUMNS if c in df.columns] + ["attack_cat", "label", "split"]
     df = df[[c for c in keep if c in df.columns]].copy()
     df["attack_cat"] = df["attack_cat"].fillna("Normal").astype(str).str.strip()
     df.loc[df["attack_cat"].str.lower() == "normal", "attack_cat"] = "Normal"
     if "label" not in df.columns:
         df["label"] = (df["attack_cat"] != "Normal").astype(int)
-    return df.reset_index(drop=True)
+
+    n_before = len(df)
+    counts_before = _class_split_counts(df)
+    if drop_duplicates:
+        df = df.drop_duplicates(subset=[c for c in df.columns if c != "split"], keep="first").reset_index(drop=True)
+    logger.info(f"Dropped {n_before - len(df)} exact duplicate UNSW-NB15 rows ({n_before} -> {len(df)})")
+    df.attrs["counts_before_dedup"] = counts_before  # per attack_cat x official file, for split_summary.csv
+    return df
 
 
 # Renames CIC's raw column names into the same semantic namespace UNSW uses, so
@@ -176,6 +198,17 @@ CIC_TO_COMMON = {
 }
 
 
+def stratified_subsample(df: pd.DataFrame, max_rows: int, column: str = "attack_cat", seed: int = 7) -> pd.DataFrame:
+    """Fixed-seed subsample to ~max_rows keeping each `column` class's share (at least one
+    row per class); logs the reduction. No-op when df is already small enough."""
+    if len(df) <= max_rows:
+        return df
+    frac = max_rows / len(df)
+    out = pd.concat([g.sample(n=max(1, round(len(g) * frac)), random_state=seed) for _, g in df.groupby(column)])
+    logger.info(f"Stratified subsample on '{column}': {len(df)} -> {len(out)} rows (seed={seed})")
+    return out.reset_index(drop=True)
+
+
 def load_cic(cic_path: str | Path, seed: int = 7, synthetic_rows: int = 3000) -> pd.DataFrame:
     """Load a CICIDS2017 CSV and remap it onto the common feature namespace shared with UNSW."""
     cic_path = Path(cic_path)
@@ -189,6 +222,9 @@ def load_cic(cic_path: str | Path, seed: int = 7, synthetic_rows: int = 3000) ->
     df.columns = [c.strip().lower() for c in df.columns]
     df = df.rename(columns=CIC_TO_COMMON)
     df["attack_cat"] = df["attack_cat"].astype(str).str.strip()
+    # CIC's Flow Duration is in microseconds; UNSW's dur is in seconds. Convert so the
+    # shared `dur` feature (and duration_log) has the same unit in both datasets.
+    df["dur"] = pd.to_numeric(df["dur"], errors="coerce") / 1e6
     # The publicly distributed CICIDS2017 CSVs have a known encoding defect: the en-dash
     # in labels like "Web Attack – Brute Force" was corrupted to U+FFFD before release.
     # Normalize it to a plain hyphen so it doesn't render as a replacement-character glyph.

@@ -23,7 +23,7 @@ def health() -> dict:
 
 @router.post("/predict")
 async def predict(file: UploadFile) -> dict:
-    if not file.filename.lower().endswith(".csv"):
+    if not (file.filename or "").lower().endswith(".csv"):
         raise HTTPException(status_code=400, detail="Only .csv files are supported.")
 
     raw = await file.read()
@@ -40,9 +40,18 @@ async def predict(file: UploadFile) -> dict:
 
     try:
         service = get_prediction_service()
-        predictions = service.predict(df)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    max_rows = service.config["dashboard"]["max_rows"]
+    if len(df) > max_rows:
+        raise HTTPException(status_code=400, detail=f"Too many rows ({len(df)}); max {max_rows} per request.")
+    missing = [c for c in service.preprocessor.required_columns if c not in df.columns]
+    if missing:
+        raise HTTPException(status_code=400, detail=f"CSV is missing required columns: {missing}")
+
+    try:
+        predictions = service.predict(df)
     except Exception as exc:
         logger.exception("Prediction failed")
         raise HTTPException(status_code=500, detail=f"Prediction failed: {exc}") from exc

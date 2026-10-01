@@ -1,24 +1,122 @@
 # Feature sets for the Feature-Selection + Explanation Consistency Study (novelty #3).
 #
-# `feature_importance_rank` is the master list of features, ordered from most to
-# least important (domain-informed ranking for UNSW-NB15 network flow features).
-# The 30/20/15 sets are simply the top-N slices of this ranking, so shrinking the
-# feature set always drops the least useful features first.
+# `feature_pool` is the full set of candidate features. It is NOT a ranking: the
+# importance ranking is computed from the training split (mutual information with the
+# target) by src/feature_selection.compute_feature_ranking and written to
+# results/feature_ranking_mutual_info.csv by run_all_experiments; the 30/20/15 sets are the
+# top-N of the ranking chosen by feature_selection.ranking_source (src/utils/config_loader.get_active_features).
+# The pool's list order carries no meaning (feature_curated_rank below is the hand-written
+# order); with no ranking file, get_active_features raises instead of guessing.
 #
-# NOTE: the real UNSW-NB15 file this project ships with (the standard Kaggle/UNSW
-# ML-ready train/test split) has 34 usable raw columns, not the 49 sometimes cited
-# in older papers (it omits sttl/dttl/ct_state_ttl and several ct_*_ltm connection-
-# tracking fields). Combined with the 6 engineered features below, the full pool is
-# 40 features. The "49" tier name is kept only so configs/config.yaml's
-# `feature_selection.active_set` and the 4-tier study design don't need renaming —
-# requesting the "49" tier simply returns all 40 available features (Python list
-# slicing past the end of a list is a no-op, not an error).
+# The official UNSW-NB15 training/testing set has 42 raw feature columns. The copy in this
+# project's data/raw lacks 8 of them (sttl, dttl, ct_state_ttl, ct_srv_src, ct_dst_ltm,
+# ct_src_ltm, ct_srv_dst, ct_dst_src_ltm), leaving 34 raw columns; with the 6 engineered
+# features below that is the 40-feature `feature_pool`. When the loaded data has all 8
+# columns, `feature_pool_full` (42 raw + 6 engineered = 48) is used instead, automatically
+# (src.utils.config_loader.choose_pool); the pool name is logged and recorded in results and
+# in each saved preprocessor. A tier name always equals its n_features ("48" only exists
+# with the full pool; experiments.feature_sets_full lists that run's tiers).
 #
 # `categorical_features` marks which are categorical (label-encoded in preprocessing)
 # instead of numeric (scaled). `engineered_features` marks the 6 features derived in
 # src/preprocessing.py from the raw flow fields (not present in the raw dataset).
 
-feature_importance_rank:
+feature_pool:
+  - rate
+  - sload
+  - dload
+  - sbytes
+  - dbytes
+  - smean
+  - dmean
+  - dur
+  - spkts
+  - dpkts
+  - proto
+  - service
+  - state
+  - sjit
+  - djit
+  - tcprtt
+  - synack
+  - ackdat
+  - sinpkt
+  - dinpkt
+  - swin
+  - dwin
+  - total_bytes
+  - total_pkts
+  - byte_ratio
+  - pkt_ratio
+  - avg_pkt_size
+  - duration_log
+  - ct_src_dport_ltm
+  - ct_dst_sport_ltm
+  - sloss
+  - dloss
+  - stcpb
+  - dtcpb
+  - trans_depth
+  - response_body_len
+  - is_sm_ips_ports
+  - ct_flw_http_mthd
+  - is_ftp_login
+  - ct_ftp_cmd
+
+# Used automatically when all 8 extra official columns are present in the data.
+feature_pool_full:
+  - rate
+  - sload
+  - dload
+  - sbytes
+  - dbytes
+  - smean
+  - dmean
+  - dur
+  - spkts
+  - dpkts
+  - proto
+  - service
+  - state
+  - sjit
+  - djit
+  - tcprtt
+  - synack
+  - ackdat
+  - sinpkt
+  - dinpkt
+  - swin
+  - dwin
+  - total_bytes
+  - total_pkts
+  - byte_ratio
+  - pkt_ratio
+  - avg_pkt_size
+  - duration_log
+  - ct_src_dport_ltm
+  - ct_dst_sport_ltm
+  - sloss
+  - dloss
+  - stcpb
+  - dtcpb
+  - trans_depth
+  - response_body_len
+  - is_sm_ips_ports
+  - ct_flw_http_mthd
+  - is_ftp_login
+  - ct_ftp_cmd
+  - sttl
+  - dttl
+  - ct_state_ttl
+  - ct_srv_src
+  - ct_dst_ltm
+  - ct_src_ltm
+  - ct_srv_dst
+  - ct_dst_src_ltm
+
+# The original hand-written importance order (commit b03ad6f), used when
+# feature_selection.ranking_source is "curated" (reproduces the curated-vs-worst/noise-floor tests).
+feature_curated_rank:
   - rate
   - sload
   - dload
@@ -61,7 +159,8 @@ feature_importance_rank:
   - ct_ftp_cmd
 
 feature_sets:
-  "49": 49
+  "48": 48
+  "40": 40
   "30": 30
   "20": 20
   "15": 15

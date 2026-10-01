@@ -17,6 +17,13 @@ from src.utils.logger import get_logger
 logger = get_logger(__name__)
 
 
+def select_threshold(known_val_confidence: np.ndarray, target_false_unknown_rate: float) -> float:
+    """Confidence threshold that flags at most `target_false_unknown_rate` of KNOWN
+    validation flows as Unknown. Uses known data only — the reported zero-day
+    classes must never influence this choice."""
+    return float(np.quantile(known_val_confidence, target_false_unknown_rate))
+
+
 @dataclass
 class OpenSetPrediction:
     closed_set_label: np.ndarray    # original argmax prediction (encoded class index)

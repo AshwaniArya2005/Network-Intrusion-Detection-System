@@ -11,12 +11,44 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.utils.class_weight import compute_sample_weight
 
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 CATEGORICAL_FEATURES = {"proto", "service", "state"}
+ENGINEERED_FEATURES = {"total_bytes", "total_pkts", "byte_ratio", "pkt_ratio", "avg_pkt_size", "duration_log"}
+
+# Raw flow columns each engineered feature is computed from.
+ENGINEERED_INPUTS = {
+    "total_bytes": ["sbytes", "dbytes"],
+    "byte_ratio": ["sbytes", "dbytes"],
+    "total_pkts": ["spkts", "dpkts"],
+    "pkt_ratio": ["spkts", "dpkts"],
+    "avg_pkt_size": ["sbytes", "dbytes", "spkts", "dpkts"],
+    "duration_log": ["dur"],
+}
+BASE_COLUMNS = ["sbytes", "dbytes", "spkts", "dpkts", "dur"]
+
+# byte_ratio / pkt_ratio / avg_pkt_size are undefined when their denominator is 0. Real
+# ratios are >= 0, so -1 is a distinct "undefined" sentinel: a flow with no reply
+# (dbytes == 0, byte_ratio = -1) must not look like a flow that sent no data
+# (sbytes == 0 with a reply, byte_ratio = 0).
+UNDEFINED_RATIO = -1.0
+
+
+def balanced_sample_weight(y: np.ndarray) -> np.ndarray:
+    """Square-rooted "balanced" class weights, used by every model fit in this project.
+
+    UNSW-NB15's attack categories are heavily imbalanced (e.g. Normal=56k rows vs.
+    Analysis=2k). Full inverse-frequency weighting (Analysis at ~28x Normal) proved
+    too aggressive in practice — it pushed recall up but tanked precision by leaking
+    majority-class traffic into minority predictions. A hard cap on the ratio was
+    tried too and scored worse on every metric (F1 0.60 vs 0.61, weaker zero-day
+    detection) — square-rooting the weights was the best of the three in practice.
+    """
+    return compute_sample_weight("balanced", y) ** 0.5
 
 
 def _clean_numeric(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
@@ -27,12 +59,17 @@ def _clean_numeric(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
     return numeric.replace([np.inf, -np.inf], np.nan).fillna(0.0)
 
 
-def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
+def engineer_features(df: pd.DataFrame, allow_missing: bool = False) -> pd.DataFrame:
     """Add the 6 derived features referenced in configs/feature_sets.yaml.
 
-    Computed defensively: any missing base column is treated as 0 so this works
-    on both the full UNSW schema and the smaller common CIC feature set.
+    Raises ValueError if a base column (sbytes/dbytes/spkts/dpkts/dur) is missing, since
+    silently treating it as 0 yields different features; pass allow_missing=True only when
+    the caller has already validated the columns it needs (Preprocessor does). Ratios with
+    a zero denominator are set to UNDEFINED_RATIO (-1), not 0 — see its comment.
     """
+    missing = [c for c in BASE_COLUMNS if c not in df.columns]
+    if missing and not allow_missing:
+        raise ValueError(f"engineer_features needs columns {missing}")
     df = df.copy()
     sbytes = df.get("sbytes", pd.Series(0.0, index=df.index))
     dbytes = df.get("dbytes", pd.Series(0.0, index=df.index))
@@ -51,7 +88,7 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
     df["duration_log"] = np.log1p(dur.clip(lower=0))
 
     for col in ["byte_ratio", "pkt_ratio", "avg_pkt_size"]:
-        df[col] = df[col].replace([np.inf, -np.inf], np.nan).fillna(0.0)
+        df[col] = df[col].replace([np.inf, -np.inf], np.nan).fillna(UNDEFINED_RATIO)
     return df
 
 
@@ -68,12 +105,19 @@ class Preprocessor:
         self.label_encoders: dict[str, LabelEncoder] = {}
         self.target_encoder = LabelEncoder()
         self._fitted = False
+        self.metadata: dict = {}   # provenance (feature set, ranking source, ...) set by the training pipeline
+
+    def _check_columns(self, df: pd.DataFrame, need_target: bool = False) -> None:
+        missing = [c for c in self.required_columns + ([self.target_column] if need_target else []) if c not in df.columns]
+        if missing:
+            raise ValueError(f"Input is missing required columns: {missing}")
 
     def fit(self, df: pd.DataFrame) -> "Preprocessor":
-        df = engineer_features(df)
+        self._check_columns(df, need_target=True)
+        df = engineer_features(df, allow_missing=True)
         for col in self.categorical_features:
             le = LabelEncoder()
-            values = df[col].astype(str).fillna("unknown")
+            values = df[col].fillna("unknown").astype(str)
             le.fit(list(values) + ["__unseen__"])
             self.label_encoders[col] = le
 
@@ -86,15 +130,27 @@ class Preprocessor:
                     f"{len(self.target_encoder.classes_)} target classes")
         return self
 
-    def transform(self, df: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
+    @property
+    def required_columns(self) -> list[str]:
+        """Raw input columns a caller must supply: the raw features plus the base columns
+        every requested engineered feature is derived from."""
+        needed = [f for f in self.feature_list if f not in ENGINEERED_FEATURES]
+        for f in self.feature_list:
+            needed += ENGINEERED_INPUTS.get(f, [])
+        return list(dict.fromkeys(needed))
+
+    def transform_features(self, df: pd.DataFrame) -> np.ndarray:
+        """Feature matrix only — for rows whose target labels are unknown to this
+        preprocessor (e.g. held-out zero-day categories) or absent."""
         if not self._fitted:
             raise RuntimeError("Preprocessor.fit() must be called before transform().")
-        df = engineer_features(df)
+        self._check_columns(df)
+        df = engineer_features(df, allow_missing=True)
 
         parts = []
         for col in self.categorical_features:
             le = self.label_encoders[col]
-            values = df[col].astype(str).fillna("unknown")
+            values = df[col].fillna("unknown").astype(str)
             values = values.where(values.isin(le.classes_), "__unseen__")
             parts.append(pd.Series(le.transform(values), index=df.index, name=col))
 
@@ -102,19 +158,20 @@ class Preprocessor:
         scaled = pd.DataFrame(self.scaler.transform(numeric_df), columns=self.numeric_features, index=df.index)
         parts.append(scaled)
 
-        X = pd.concat(parts, axis=1)[self.feature_list].values
+        return pd.concat(parts, axis=1)[self.feature_list].values
 
+    def transform(self, df: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
+        """(X, y). Raises ValueError if the target column holds a label unseen during fit —
+        use transform_features() for rows that are meant to carry unknown labels."""
+        X = self.transform_features(df)
         if self.target_column in df.columns:
-            # Any target value unseen during fit (e.g. a held-out zero-day category
-            # leaking into a transform call) falls back to the encoder's first known
-            # class so .transform() never raises on unseen labels.
-            fallback = self.target_encoder.classes_[0]
             str_targets = df[self.target_column].astype(str)
-            known_targets = str_targets.where(str_targets.isin(self.target_encoder.classes_), fallback)
-            y = self.target_encoder.transform(known_targets)
+            unseen = sorted(set(str_targets) - set(self.target_encoder.classes_))
+            if unseen:
+                raise ValueError(f"Target labels not seen during fit: {unseen}")
+            y = self.target_encoder.transform(str_targets)
         else:
             y = np.array([])
-
         return X, y
 
     def get_feature_names(self) -> list[str]:
@@ -142,7 +199,7 @@ def add_merged_label(df: pd.DataFrame, merge_groups: dict[str, list[str]],
                       source_column: str = "attack_cat", target_column: str = "label_merged") -> pd.DataFrame:
     """Add a coarser label column by merging specific source categories into named groups
     (e.g. classes that are statistically indistinguishable in this feature set — see
-    configs/config.yaml `data.label_merge_groups`). `source_column` is left untouched;
+    a `data.label_schemes.<name>.merge_groups` entry in configs/config.yaml). `source_column` is left untouched;
     categories not mentioned in any group pass through to `target_column` unchanged.
     """
     df = df.copy()

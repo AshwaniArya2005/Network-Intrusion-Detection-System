@@ -47,19 +47,21 @@ class XGBoostModel(BaseModel):
     def get_feature_importance(self) -> np.ndarray:
         return self._model.feature_importances_
 
+    @staticmethod
+    def _check_json(path: str) -> str:
+        if Path(path).suffix != ".json":
+            raise ValueError(f"XGBoostModel artifacts are native JSON; use a .json path, got {path!r}")
+        return path
+
     def save(self, path: str) -> None:
         # XGBoost's native format (not pickle) — portable across xgboost versions and
-        # doesn't execute arbitrary code on load. The caller's path (still ".pkl" by
-        # convention from train_pipeline.py) is remapped to ".json" so no other file
-        # needs to change to pick this up.
-        json_path = str(Path(path).with_suffix(".json"))
-        self._model.save_model(json_path)
-        logger.info(f"Saved XGBoost model to {json_path}")
+        # doesn't execute arbitrary code on load.
+        self._model.save_model(self._check_json(path))
+        logger.info(f"Saved XGBoost model to {path}")
 
     def load(self, path: str) -> "XGBoostModel":
-        json_path = str(Path(path).with_suffix(".json"))
         self._model = xgb.XGBClassifier()
-        self._model.load_model(json_path)
+        self._model.load_model(self._check_json(path))
         return self
 
     @property

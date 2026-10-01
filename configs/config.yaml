@@ -15,6 +15,7 @@ paths:
   unsw_train: "data/raw/unsw_nb15_train.csv"
   unsw_test: "data/raw/unsw_nb15_test.csv"
   cic_file: "data/raw/cicids2017_combined.csv"
+  feature_ranking: "results/feature_ranking_{source}.csv"   # one file per feature_selection.ranking_source
 
 data:
   label_column: "label"                        # binary: 0 = normal, 1 = attack
@@ -23,26 +24,59 @@ data:
   normal_category: "Normal"
   # Categories withheld from training entirely to simulate zero-day / open-set attacks.
   unknown_attack_categories: ["Worms", "Shellcode"]
-  test_size: 0.2
+  # true: train on unsw_nb15_train.csv, test on unsw_nb15_test.csv (the official split;
+  # exact duplicates are dropped first, train copies win). false: pool both files and
+  # split randomly with `test_size`. Synthetic fallback data always splits randomly.
+  use_official_split: true
+  test_size: 0.2   # random-split mode only
+  val_size: 0.15   # fraction of the training rows held out to choose the open-set threshold
   synthetic_fallback_rows: 4000  # used only if raw dataset files are missing
+  cic_max_rows: 200000           # CICIDS2017 is stratified-subsampled to this many rows for the cross-dataset study
 
-  # Analysis/Backdoor/DoS share IDENTICAL median values across dur/rate/sload/dload/
-  # sbytes/dbytes/spkts/dpkts/smean/dmean in this dataset release (confirmed by direct
-  # inspection, not assumed) — the flow-level features simply don't encode a distinction
-  # between them here. Connection-tracking fields that might otherwise help (sttl, dttl,
-  # ct_state_ttl, ct_srv_src, ct_srv_dst, ct_dst_ltm, ct_src_ltm, ct_dst_src_ltm) are
-  # either absent from this dataset release entirely, or (ct_src_dport_ltm,
-  # ct_dst_sport_ltm, is_sm_ips_ports) already in the feature set without resolving it.
-  # So rather than force the classifier to guess a distinction the features can't support,
-  # these three are merged into one label for the primary classification task. The
-  # fine-grained column is preserved (`fine_grained_target_column` above) — see
-  # results/overlap_diagnostic_<feature_set>.csv for how this bucket maps back to the
-  # original three categories.
-  label_merge_groups:
-    "Overlap-Group-1": ["Analysis", "Backdoor", "DoS"]
+  # Original fine-grained classes whose recall is reported as `fine_recall_<class>`: the share of
+  # their test rows predicted as the label that contains them under the active scheme, so a
+  # merge cannot hide them.
+  report_fine_recall: ["Analysis", "Backdoor", "DoS", "Exploits", "Fuzzers", "Generic", "Reconnaissance", "Normal"]
+
+  # Label scheme for the primary classification target: a named entry of `label_schemes`.
+  # Pick another with `data.label_scheme` (outputs of a non-"current" scheme carry its name
+  # in their filenames and never overwrite the default's).
+  #
+  # Why "current" merges Analysis/Backdoor/DoS: most of their rows have an exact feature twin
+  # in another class (72-80% of Analysis/Backdoor/DoS rows in the 34-feature data), so no
+  # classifier on these columns can separate them reliably; medians alone would not show
+  # that, exact twins do. The official UNSW-NB15 release also has sttl, dttl, ct_state_ttl,
+  # ct_srv_src, ct_dst_ltm, ct_src_ltm, ct_srv_dst and ct_dst_src_ltm, which the data/raw copy
+  # of this project lacks; restoring them does NOT remove the overlap (twin share with another
+  # class, 34 -> 42 features: Analysis 72.0 -> 72.0%, Backdoor 78.9 -> 76.7%, DoS 79.7 -> 79.5%;
+  # they mainly help Fuzzers 21.1 -> 11.4% and Reconnaissance 35.4 -> 18.0%). Within the merged
+  # group, Exploits is the class that shares feature vectors most (78% of group rows have an
+  # exact twin in Exploits, 77% in Fuzzers, 72% in Reconnaissance, 33% in Generic, 0.1% in
+  # Normal) -- hence the "wide" scheme. Coarser labels raise the best-possible accuracy
+  # mechanically (8 classes 0.905, current merge 0.912, wide 0.969), so that number measures
+  # the information a merge discards, not which merge is right. See scripts/overlap_analysis.py.
+  # The fine-grained column is preserved (`fine_grained_target_column` above).
+  label_scheme: "current"
+  label_schemes:
+    current:
+      merge_groups:
+        "Overlap-Group-1": ["Analysis", "Backdoor", "DoS"]
+    none:                      # 8 known classes, nothing merged
+      merge_groups: {}
+    wide:                      # current merge plus Exploits
+      merge_groups:
+        "Overlap-Group-2": ["Analysis", "Backdoor", "DoS", "Exploits"]
+    hierarchical:              # stage 1 attack vs. normal, stage 2 attack family (8 classes out)
+      merge_groups: {}
+      hierarchical: true
 
 feature_selection:
-  active_set: "49"   # one of: "49", "30", "20", "15" — see configs/feature_sets.yaml
+  active_set: "40"   # one of: "40", "30", "20", "15" — see configs/feature_sets.yaml
+  # "mutual_info": rank the pool by mutual information on the training split (generated);
+  # "curated": the hand-written order in feature_sets.yaml (feature_curated_rank).
+  ranking_source: "mutual_info"
+  ranking_max_rows: 20000   # training rows used for the mutual-information ranking
+  redundancy_threshold: null   # e.g. 0.8: push features correlated above this with a better-ranked one down
 
 model:
   type: "xgboost"     # swap target: "xgboost" | "random_forest" | "logistic_regression"
@@ -60,14 +94,17 @@ model:
 
 open_set:
   enabled: true
-  # 0.65 chosen by sweeping 0.3-0.7 against zero-day detection rate vs. false "Unknown"
-  # alarm rate after the model.params/sample-weight tuning made predictions more
-  # confident overall (0.6 alone under-detected zero-days at this model's new calibration).
+  # The threshold is chosen per model on KNOWN validation data (never on the reported
+  # zero-day samples): the max-softmax-confidence quantile that flags at most
+  # `target_false_unknown_rate` of known validation flows as "Unknown".
+  target_false_unknown_rate: 0.05
+  # Fallback only, used by the dashboard when a model has no saved open_set_*.json.
   confidence_threshold: 0.65
   unknown_label: "Unknown"
 
 xai:
-  shap_background_samples: 100
+  shap_background_samples: 100   # background rows for non-tree explainers
+  importance_samples: 2000       # rows used for global SHAP importance (stability study, cross-dataset)
   top_k_features: 5
 
 narrative:
@@ -88,13 +125,19 @@ narrative:
       Flagged as DoS, Backdoor, or Analysis-type behavior — this dataset's flow-level
       features can't reliably distinguish the three. Escalate for manual / packet-level
       inspection to determine the specific subtype.
+    "Overlap-Group-2": >-
+      Flagged as Exploits, DoS, Backdoor, or Analysis-type behavior — these four share
+      flow-level feature vectors in this dataset, so the classifier can't tell them apart.
+      Isolate the host, then escalate for packet-level inspection to find the exact subtype.
 
 logging:
   level: "INFO"
   log_file: "results/pipeline.log"
 
 experiments:
-  feature_sets: ["49", "30", "20", "15"]
+  feature_sets: ["40", "30", "20", "15"]
+  # Tiers used instead when the 8 extra official columns are present (feature_pool_full, 48 features):
+  feature_sets_full: ["48", "40", "30", "20", "15"]
   open_set_modes: [false, true]
   # Filenames only -- written under results/metrics/<model.type>/ (see
   # src.utils.config_loader.get_metrics_dir), so switching model.type never
@@ -102,10 +145,23 @@ experiments:
   output_csv: "experiment_results.csv"
   stability_csv: "explanation_stability.csv"
   cross_dataset_csv: "cross_dataset_results.csv"
+  baselines_csv: "feature_selection_baselines.csv"   # ranked / random draws / worst-N (closed-set metrics)
+  baselines_summary_csv: "feature_selection_baselines_summary.csv"
+  pooled_split_csv: "pooled_split_results.csv"
+  split_summary_csv: "split_summary.csv"
+  # false: only the active_set tier (feature_selection.active_set) gets open_set_sweep_<tier>.csv and
+  # overlap_diagnostic_<tier>.csv; true: every tier does.
+  save_per_tier_diagnostics: false
+  run_nonredundant: false     # also run the grid with redundancy_threshold below, into *_nonredundant files
+  nonredundant_threshold: 0.8
+  random_baseline_draws: 10   # independent random feature subsets per tier
+  report_pooled_split: true   # also report metrics on a pooled random split (pooled_split_results.csv)
+  stability_seeds: [43, 44]   # extra seeds for the same-feature-set stability reference
 
 dashboard:
   # Which trained model artifact the API loads: models_saved/<model.type>/<model.type>_
-  # <feature_set>_closed.pkl (derived by src.utils.config_loader.get_dashboard_paths —
+  # <feature_set>_closed.<ext> (derived by src.utils.config_loader.get_dashboard_paths —
   # not a separate hardcoded path, so switching `model.type` above and retraining is
   # the only step needed; there's nothing else here to keep in sync).
-  feature_set: "49"
+  feature_set: "40"
+  max_rows: 500   # /predict rejects uploads with more rows (SHAP + narrative per row)

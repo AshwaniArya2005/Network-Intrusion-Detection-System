@@ -1,5 +1,5 @@
 """Explanation Stability study (novelty #3): how consistent are SHAP explanations
-across different feature-set sizes (49 vs 30 vs 20 vs 15) or different models?
+across different feature-set sizes (40 vs 30 vs 20 vs 15) or different models?
 
 Metrics computed pairwise, restricted to the features common to both configs:
   - rank_correlation: Spearman correlation of importance ranks
@@ -47,7 +47,7 @@ def compare_importances(importance_a: pd.Series, importance_b: pd.Series, top_k:
 def run_stability_study(importances_by_config: dict[str, pd.Series], output_csv: str | None = None) -> pd.DataFrame:
     """Pairwise-compare every config's SHAP importance vector against every other's.
 
-    `importances_by_config` keys identify a configuration (e.g. "xgboost_49",
+    `importances_by_config` keys identify a configuration (e.g. "xgboost_40",
     "xgboost_30"); values are pd.Series[feature_name -> importance].
     """
     rows = []

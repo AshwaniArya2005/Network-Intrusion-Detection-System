@@ -1,0 +1,4 @@
+true_fine_grained,Exploits,Fuzzers,Generic,Normal,Overlap-Group-1,Reconnaissance
+Analysis,0.1455,0.0,0.0,0.0279,0.8266,0.0
+Backdoor,0.0448,0.0037,0.0,0.0112,0.9403,0.0
+DoS,0.391,0.0605,0.0073,0.0193,0.504,0.018

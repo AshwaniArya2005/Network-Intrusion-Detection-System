@@ -2,15 +2,16 @@
 into predictions + SHAP explanations + human-readable narratives."""
 from __future__ import annotations
 
+import json
 from functools import lru_cache
 
 import joblib
 import numpy as np
 import pandas as pd
 
-from src.models.model_factory import create_model
+from src.models.model_factory import create_scheme_model
 from src.models.open_set_wrapper import OpenSetWrapper
-from src.utils.config_loader import get_active_features, get_dashboard_paths, load_config, load_feature_sets
+from src.utils.config_loader import get_dashboard_paths, get_label_scheme, load_config, scheme_tag
 from src.utils.logger import get_logger
 from src.xai.narrative_generator import NarrativeGenerator
 from src.xai.shap_explainer import SHAPExplainer
@@ -24,12 +25,13 @@ class PredictionService:
 
     def __init__(self, config: dict | None = None):
         self.config = config or load_config()
-        feature_sets = load_feature_sets()
         self.feature_set_name = self.config["dashboard"]["feature_set"]
-        self.features = get_active_features(self.config, feature_sets, self.feature_set_name)
 
         model_path, preprocessor_path = get_dashboard_paths(self.config)
-        if not preprocessor_path.exists() or not model_path.exists():
+        hierarchical = get_label_scheme(self.config)[2]
+        # A hierarchical model is saved as a directory (the model path without its suffix).
+        artifact = model_path.with_suffix("") if hierarchical else model_path
+        if not preprocessor_path.exists() or not artifact.exists():
             raise FileNotFoundError(
                 f"Dashboard model/preprocessor not found ({model_path}, {preprocessor_path}). "
                 f"Run `python pipelines/run_all_experiments.py` (or train_pipeline.py) first."
@@ -38,18 +40,30 @@ class PredictionService:
         # joblib.load executes arbitrary code on untrusted input; only ever load
         # artifacts this project trained and wrote to models_saved/ itself.
         self.preprocessor = joblib.load(preprocessor_path)
-        self.model = create_model(self.config["model"]["type"], self.config["model"]["params"])
+        normal_index = list(self.preprocessor.target_encoder.classes_).index(self.config["data"]["normal_category"])
+        self.model = create_scheme_model(self.config["model"]["type"], self.config["model"]["params"],
+                                         hierarchical, normal_index)
         self.model.load(str(model_path))
+        # The exact features the model was trained on (not a re-derived list that could drift).
+        self.features = self.preprocessor.feature_list
 
         self.open_set_enabled = self.config["open_set"]["enabled"]
-        self.wrapper = OpenSetWrapper(self.model, self.config["open_set"]["confidence_threshold"]) if self.open_set_enabled else None
+        # Use the threshold chosen on validation data at training time; the config value
+        # is only a fallback for models trained before thresholds were saved.
+        threshold_path = model_path.parent / f"open_set_{self.feature_set_name}{scheme_tag(self.config)}.json"
+        threshold = (json.loads(threshold_path.read_text())["confidence_threshold"] if threshold_path.exists()
+                     else self.config["open_set"]["confidence_threshold"])
+        self.wrapper = OpenSetWrapper(self.model, threshold) if self.open_set_enabled else None
 
         self.explainer = SHAPExplainer(self.model, self.features, background_samples=self.config["xai"]["shap_background_samples"])
         self.narrative_gen = NarrativeGenerator(self.config["narrative"]["suggested_actions"])
 
+        # Preprocessor.transform already standardises numeric features, so the values the
+        # narrative sees ARE z-scores: mean 0 / std 1. (Passing the raw training mean/std
+        # here would z-score twice.)
         numeric_features = self.preprocessor.numeric_features
-        self.feature_means = pd.Series(self.preprocessor.scaler.mean_, index=numeric_features)
-        self.feature_stds = pd.Series(self.preprocessor.scaler.scale_, index=numeric_features)
+        self.feature_means = pd.Series(0.0, index=numeric_features)
+        self.feature_stds = pd.Series(1.0, index=numeric_features)
         logger.info(f"PredictionService ready: model={self.config['model']['type']} "
                     f"feature_set={self.feature_set_name} open_set={self.open_set_enabled}")
 
@@ -66,9 +80,11 @@ class PredictionService:
         if self.wrapper is not None:
             is_unknown = self.wrapper.predict(X).is_unknown
 
+        shap_matrix = self.explainer.local_explanations(X, pred_idx)  # one batched call
+
         results = []
         for i in range(len(X)):
-            shap_row = self.explainer.local_explanation(X[i:i + 1], int(pred_idx[i]))
+            shap_row = shap_matrix.iloc[i]
             feature_values = pd.Series(X[i], index=self.features)
             label = "Unknown" if is_unknown[i] else str(pred_labels[i])
 

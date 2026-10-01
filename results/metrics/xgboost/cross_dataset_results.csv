@@ -1,7 +1,9 @@
-strategy,n_features,train,test,accuracy,precision,recall,f1
-common_all,14,UNSW,CIC,0.5839,0.6182,0.6845,0.5565
-common_all,14,CIC,UNSW,0.3624,0.6354,0.5011,0.268
-unsw_only,10,UNSW,CIC,0.5496,0.5848,0.6323,0.5204
-unsw_only,10,CIC,UNSW,0.3483,0.3744,0.4665,0.2862
-stable,8,UNSW,CIC,0.4386,0.5698,0.593,0.4324
-stable,8,CIC,UNSW,0.36,0.4211,0.4733,0.3074
+strategy,n_features,train,test,accuracy,precision,recall,f1,balanced_accuracy,predicted_attack_share,degenerate
+within_dataset,14,UNSW,UNSW,0.9012,0.8997,0.9015,0.9005,0.9015,0.4621,False
+within_dataset,14,CIC,CIC,0.9826,0.9651,0.9812,0.9729,0.9812,0.2061,False
+common_all,14,UNSW,CIC,0.4269,0.4412,0.4073,0.3785,0.4073,0.5239,False
+source_only,10,UNSW,CIC,0.4744,0.4759,0.462,0.4223,0.462,0.5024,False
+stable,7,UNSW,CIC,0.4821,0.4811,0.4702,0.4291,0.4702,0.4984,False
+common_all,14,CIC,UNSW,,,,,,0.0,True
+source_only,10,CIC,UNSW,,,,,,0.0002,True
+stable,7,CIC,UNSW,,,,,,0.001,True

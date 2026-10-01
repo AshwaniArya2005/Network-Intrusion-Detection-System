@@ -62,7 +62,7 @@ def plot_feature_set_metrics(df: pd.DataFrame, out_dir: Path) -> None:
     4 metrics are identical between closed/open-set since the wrapper only relabels
     low-confidence predictions, it doesn't change the underlying classifier)."""
     closed = df[df["open_set"] == False].sort_values("n_features")  # noqa: E712
-    order = closed["feature_set"].tolist()
+    order = closed["feature_set"].astype(str).tolist()  # str: numeric tiers read back from CSV would plot off-screen
 
     fig, ax = _new_axes()
     for metric, color in zip(["accuracy", "precision", "recall", "f1"], [BLUE, ORANGE, AQUA, YELLOW]):
@@ -102,8 +102,42 @@ def plot_open_set_detection(df: pd.DataFrame, out_dir: Path) -> None:
     _save(fig, out_dir / "open_set_detection.png")
 
 
+def plot_open_set_sweep(metrics_dir: Path, experiment_df: pd.DataFrame, out_dir: Path, legacy_threshold: float = 0.65,
+                        tag: str = "") -> None:
+    """Zero-day detection rate vs. false-"Unknown" rate across thresholds (one curve per
+    feature set, from open_set_sweep_<set>.csv), with each set's chosen operating point
+    (validation-selected threshold) and the old fixed `legacy_threshold` point marked."""
+    open_rows = experiment_df[experiment_df["open_set"] == True]  # noqa: E712
+    if open_rows.empty or "open_set_threshold" not in open_rows:
+        return
+    fig, ax = _new_axes(figsize=(7, 6))
+    ax.grid(axis="x", color=GRIDLINE, linewidth=1, zorder=0)
+    for i, (_, row) in enumerate(open_rows.iterrows()):
+        path = Path(metrics_dir) / f"open_set_sweep_{row['feature_set']}{tag}.csv"
+        if not path.exists():
+            continue
+        sweep = pd.read_csv(path)
+        color = CATEGORICAL_8[i % len(CATEGORICAL_8)]
+        ax.plot(sweep["false_alarm_rate"], sweep["detection_rate"], color=color, linewidth=2, label=f"{row['feature_set']} features")
+        chosen = sweep.loc[(sweep["threshold"] - row["open_set_threshold"]).abs().idxmin()]
+        ax.scatter([chosen["false_alarm_rate"]], [chosen["detection_rate"]], color=color, s=60, zorder=3, marker="o")
+        legacy = sweep[sweep["threshold"].round(2) == round(legacy_threshold, 2)]
+        if not legacy.empty:
+            ax.scatter(legacy["false_alarm_rate"], legacy["detection_rate"], color=color, s=60, zorder=3, marker="s", facecolors="none")
+    ax.set_xlabel("False \"Unknown\" rate on known test traffic", color=INK_SECONDARY)
+    ax.set_ylabel("Zero-day detection rate", color=INK_SECONDARY)
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1.02)
+    ax.set_title(f"Open-set operating curve (dot: chosen threshold, square: {legacy_threshold})", fontsize=11, fontweight="bold")
+    ax.legend(frameon=False, labelcolor=INK_SECONDARY)
+    _save(fig, out_dir / f"open_set_sweep{tag}.png")
+
+
 def plot_explanation_stability(df: pd.DataFrame, out_dir: Path) -> None:
     """rank_correlation / cosine_similarity / topk_overlap for each feature-set-pair comparison."""
+    # Same-set/different-seed reference rows (comparison column) live in the CSV, not this chart.
+    if "comparison" in df:
+        df = df[df["comparison"] == "nested_feature_sets"]
     if df.empty:
         return
     # config_a/config_b are always "<model.type>_<feature_set>" (see run_all_experiments.py's
@@ -130,7 +164,10 @@ def plot_explanation_stability(df: pd.DataFrame, out_dir: Path) -> None:
 
 
 def plot_cross_dataset(df: pd.DataFrame, out_dir: Path) -> None:
-    """Accuracy/F1 for each (strategy, train->test direction) combination."""
+    """Accuracy/F1 for each (strategy, train->test direction) combination. Degenerate
+    (constant-prediction) rows are left out: they don't rank anything."""
+    if "degenerate" in df:
+        df = df[~df["degenerate"]]
     if df.empty:
         return
     labels = [f"{s}\n{t}→{te}" for s, t, te in zip(df["strategy"], df["train"], df["test"])]
@@ -188,7 +225,7 @@ def _render_confusion_matrix(cm_norm: "np.ndarray", labels: list[str], title: st
     _save(fig, out_path)
 
 
-def plot_confusion_matrix(y_test, y_pred, class_names, out_path: Path) -> None:
+def plot_confusion_matrix(y_test, y_pred, class_names, out_path: Path, title: str = "Confusion matrix") -> None:
     """Row-normalized (recall-per-class) confusion matrix — a sequential blue heatmap,
     since this encodes one magnitude (fraction of each true class), not identity."""
     from sklearn.metrics import confusion_matrix as _confusion_matrix
@@ -196,11 +233,12 @@ def plot_confusion_matrix(y_test, y_pred, class_names, out_path: Path) -> None:
     n = len(class_names)
     cm = _confusion_matrix(y_test, y_pred, labels=range(n))
     cm_norm = (cm / cm.sum(axis=1, keepdims=True).clip(min=1)).astype(float)
-    _render_confusion_matrix(cm_norm, list(class_names), "Confusion matrix", out_path)
+    _render_confusion_matrix(cm_norm, list(class_names), title, out_path)
 
 
 def plot_confusion_matrix_grouped(y_test, y_pred, class_names, out_path: Path,
-                                   normal_label: str = "Normal", front_groups: tuple[str, ...] = ("Overlap-Group-1",)) -> None:
+                                   normal_label: str = "Normal", front_groups: tuple[str, ...] = ("Overlap-Group-1",),
+                                   title: str | None = None) -> None:
     """Confusion matrix reordered into visual blocks — Normal | merged overlap group(s) |
     the remaining separable attack classes — with a heavy divider between blocks. Use this
     instead of plot_confusion_matrix whenever the target includes a label-merge group, so
@@ -223,8 +261,19 @@ def plot_confusion_matrix_grouped(y_test, y_pred, class_names, out_path: Path,
     # One divider after each singleton front block (Normal, then each merge group) —
     # the remaining classes stay ungrouped since they're already individually separable.
     boundaries = list(range(1, len(front) + 1))
-    title = f"Confusion matrix (grouped: {' | '.join(front)} | separable attacks)"
+    title = title or f"Confusion matrix (grouped: {' | '.join(front)} | other attacks)"
     _render_confusion_matrix(cm_norm, order, title, out_path, block_boundaries=boundaries)
+
+
+def plot_confusion_matrix_for_scheme(y_test, y_pred, class_names, out_path: Path, scheme_name: str,
+                                     merge_groups: dict, normal_label: str = "Normal") -> None:
+    """Confusion matrix laid out for the active label scheme: blocks Normal | each merged group |
+    other attacks when the scheme merges classes, the plain matrix when it merges none."""
+    if merge_groups:
+        plot_confusion_matrix_grouped(y_test, y_pred, class_names, out_path, normal_label, tuple(merge_groups),
+                                      title=f"Confusion matrix, scheme '{scheme_name}' (Normal | {' | '.join(merge_groups)} | other attacks)")
+    else:
+        plot_confusion_matrix(y_test, y_pred, class_names, out_path, title=f"Confusion matrix, scheme '{scheme_name}'")
 
 
 def plot_roc_curve(y_test, y_proba, class_names, out_path: Path) -> None:
@@ -265,13 +314,15 @@ def plot_roc_curve(y_test, y_proba, class_names, out_path: Path) -> None:
 def generate_all_plots(model_type: str, results_dir: Path,
                         experiment_df: pd.DataFrame | None = None,
                         stability_df: pd.DataFrame | None = None,
-                        cross_dataset_df: pd.DataFrame | None = None) -> Path:
+                        cross_dataset_df: pd.DataFrame | None = None, scheme: str = "current") -> Path:
     """Render every available result CSV to results/plots/<model_type>/*.png. Any
     dataframe left as None is skipped (e.g. when only a single model was trained)."""
-    out_dir = Path(results_dir) / "plots" / model_type
+    out_dir = Path(results_dir) / "plots" / model_type / ("" if scheme == "current" else scheme)  # per-scheme subdir
+    tag = "" if scheme == "current" else f"_{scheme}"
     if experiment_df is not None and not experiment_df.empty:
         plot_feature_set_metrics(experiment_df, out_dir)
         plot_open_set_detection(experiment_df, out_dir)
+        plot_open_set_sweep(Path(results_dir) / "metrics" / model_type, experiment_df, out_dir, tag=tag)
     if stability_df is not None and not stability_df.empty:
         plot_explanation_stability(stability_df, out_dir)
     if cross_dataset_df is not None and not cross_dataset_df.empty:

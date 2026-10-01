@@ -12,8 +12,10 @@ from __future__ import annotations
 from typing import Any
 
 from src.models.base_model import BaseModel
+from src.models.hierarchical_model import HierarchicalModel
 from src.models.sklearn_model import logistic_regression, random_forest
 from src.models.xgboost_model import XGBoostModel
+from src.utils.config_loader import artifact_suffix
 
 
 def create_model(model_type: str, params: dict[str, Any] | None = None) -> BaseModel:
@@ -30,3 +32,14 @@ def create_model(model_type: str, params: dict[str, Any] | None = None) -> BaseM
             f"Unknown model.type '{model_type}'. Add it to src/models/model_factory.py "
             f"(known types: xgboost, random_forest, logistic_regression)."
         )
+
+
+def create_scheme_model(model_type: str, params: dict[str, Any] | None, hierarchical: bool, normal_index: int | None = None) -> BaseModel:
+    """The model for the active label scheme: a plain `create_model` classifier, or — when the
+    scheme is hierarchical (configs/config.yaml `data.label_schemes`) — a two-stage
+    HierarchicalModel of that model type (needs the encoded index of the Normal class)."""
+    if not hierarchical:
+        return create_model(model_type, params)
+    if normal_index is None:
+        raise ValueError("A hierarchical model needs normal_index (the encoded Normal class).")
+    return HierarchicalModel(lambda: create_model(model_type, params), normal_index, artifact_suffix(model_type))
