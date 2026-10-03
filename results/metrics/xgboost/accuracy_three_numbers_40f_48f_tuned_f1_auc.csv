@@ -1,0 +1,7 @@
+pool,hyperparameters,raw_columns,ceiling,official_mean,official_std,pooled_random_mean,pooled_random_std,official_minus_ceiling,pooled_minus_ceiling
+40f,default,34,0.9117,0.7427,0.0009,0.8305,0.0009,-0.169,-0.0812
+40f,tuned_f1,34,0.9117,0.7514,0.0019,,,-0.1603,
+40f,tuned_auc,34,0.9117,0.7647,0.001,,,-0.147,
+48f,default,42,0.9212,0.7401,0.002,0.8493,0.001,-0.1811,-0.0719
+48f,tuned_f1,42,0.9212,0.7591,0.0012,,,-0.1621,
+48f,tuned_auc,42,0.9212,0.7591,0.0012,,,-0.1621,

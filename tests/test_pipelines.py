@@ -495,3 +495,20 @@ def test_run_bootstrap_writes_ci_and_paired_difference_files(config, feature_set
     d = rae.get_metrics_dir(config)
     assert (d / "bootstrap_ci_40f_48f.csv").exists() and (d / "bootstrap_paired_diff_40f_48f.csv").exists()
     assert set(cis["model"]) == {"40f", "48f"} and set(diffs["comparison"]) == {"48f - 40f"}
+
+
+def test_accuracy_three_numbers_combines_headline_runs_and_the_ceiling(config, feature_sets):
+    from pipelines.run_headline_seeds import run_headline_seeds
+    from scripts.accuracy_table import accuracy_rows, render
+    config["experiments"]["headline_seeds"] = [1, 2]
+    seeds_df, _ = run_headline_seeds(config, feature_sets)
+    df = accuracy_rows(config, feature_sets, ["base", "full"], tuned=[])
+    assert list(df["pool"]) == ["40f", "48f"] and set(df["hyperparameters"]) == {"default"}
+    by = df.set_index("pool")
+    assert by.loc["48f", "ceiling"] >= by.loc["40f", "ceiling"]                  # more columns can only split more vectors apart
+    for label, pool in (("40f", "base"), ("48f", "full")):
+        official = seeds_df[(seeds_df["pool"] == pool) & (seeds_df["split"] == "official")]["accuracy"]
+        assert abs(by.loc[label, "official_mean"] - round(official.mean(), 4)) < 1e-9
+        assert by.loc[label, "ceiling"] >= by.loc[label, "official_mean"] - 1e-9  # no classifier beats the ceiling (in expectation)
+        assert abs(by.loc[label, "official_minus_ceiling"] - round(by.loc[label, "official_mean"] - by.loc[label, "ceiling"], 4)) < 1e-4
+    assert "ceiling" in render(df) and "+/-" in render(df)
