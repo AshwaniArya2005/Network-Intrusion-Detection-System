@@ -98,6 +98,24 @@ model:
     n_jobs: -1
     eval_metric: "mlogloss"
 
+# Capped random search (pipelines/tune_xgboost.py): every trial is fitted on the training split with early stopping on the
+# VALIDATION split's mlogloss, and scored on validation only (macro F1 and attack-vs-normal AUC); the official test file and
+# the held-out zero-day rows are never used. The same n_trials sampled configurations are used for both objectives.
+tuning:
+  n_trials: 40
+  seed: 42
+  early_stopping_rounds: 30
+  max_estimators: 1000
+  space:
+    max_depth: {int: [3, 10]}
+    learning_rate: {loguniform: [0.03, 0.3]}
+    min_child_weight: {choice: [1, 3, 5, 10, 20]}
+    subsample: {uniform: [0.6, 1.0]}
+    colsample_bytree: {uniform: [0.5, 1.0]}
+    reg_lambda: {loguniform: [0.5, 20.0]}
+    reg_alpha: {choice: [0, 0.1, 1, 5]}
+    class_weight_power: {uniform: [0.0, 1.0]}   # exponent of the balanced class weights (default model: 0.5)
+
 evaluation:
   ece_bins: 15   # equal-width confidence bins of the expected calibration error
 

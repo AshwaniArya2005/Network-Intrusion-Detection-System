@@ -1,6 +1,7 @@
 """Headline metrics over several seeds, for both feature pools and both split protocols:
 
     python pipelines/run_headline_seeds.py [--pools base full] [--seeds 42 43 44 45 46]
+                                           [--tuned f1|auc] [--protocols official pooled_random]
 
 For every (pool, split protocol, seed) it trains the configured model on the whole pool (40 or 48
 features, scheme `current`) and evaluates it with the shared evaluate_model, so every metric
@@ -12,6 +13,10 @@ test file is fixed. Writes under results/metrics/<model.type>/:
   headline_seeds.csv        one row per (pool, split, seed), plus `normal_to_<class>` shares of Normal test flows
   headline_summary.csv      per (pool, split, metric): mean, std (ddof=1), min, max over seeds
   headline_summary.md       the key metrics as "mean +/- std", pools and protocols side by side
+
+`--tuned f1|auc` uses the hyperparameters selected on validation by pipelines/tune_xgboost.py (tuned_params_<N>f.json)
+instead of config.yaml's defaults; any non-default selection of tuned / protocols writes under its own file names
+(headline_tuned_f1_official_seeds.csv, headline_full_no_ttl_seeds.csv, ...), so earlier results are never overwritten.
 """
 from __future__ import annotations
 
@@ -25,7 +30,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import pandas as pd
 
 from pipelines.train_pipeline import load_split_data, train_and_evaluate
-from src.utils.config_loader import choose_pool, get_metrics_dir, load_config, load_feature_sets, resolve_path
+from pipelines.tune_xgboost import load_tuned
+from src.utils.config_loader import choose_pool, get_metrics_dir, load_config, load_feature_sets, pool_label, resolve_path
 from src.utils.logger import add_file_logging, get_logger
 
 logger = get_logger(__name__)
@@ -37,12 +43,25 @@ KEY_METRICS = ["accuracy", "f1", "detection_rate", "false_positive_rate", "recal
 NOT_AGGREGATED = {"seed", "n_features", "n_train", "n_val", "n_test"}
 
 
-def run_headline_seeds(config: dict, feature_sets: dict, pools=("base", "full"), seeds=None) -> tuple[pd.DataFrame, pd.DataFrame]:
+DEFAULT_POOLS = ("base", "full")
+
+
+def output_stem(tuned: str | None, protocols: tuple[str, ...], pools: tuple[str, ...] = DEFAULT_POOLS) -> str:
+    """File-name stem of a run's outputs: plain `headline` for the default run (both pools, both protocols, default
+    hyperparameters), else tagged by what differs, so a different run never overwrites an earlier result."""
+    parts = (["headline"] + ([f"tuned_{tuned}"] if tuned else []) + (list(protocols) if len(protocols) < len(PROTOCOLS) else [])
+             + (list(pools) if tuple(pools) != DEFAULT_POOLS else []))
+    return "_".join(parts)
+
+
+def run_headline_seeds(config: dict, feature_sets: dict, pools=DEFAULT_POOLS, seeds=None, tuned: str | None = None,
+                       protocols: tuple[str, ...] | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
     seeds = list(seeds or config["experiments"]["headline_seeds"])
+    protocols = tuple(protocols or [name for name, _ in PROTOCOLS])
     normal = config["data"]["normal_category"]
     rows = []
     for pool in pools:
-        for protocol, official in PROTOCOLS:
+        for protocol, official in [p for p in PROTOCOLS if p[0] in protocols]:
             for seed in seeds:
                 cfg = copy.deepcopy(config)
                 cfg["feature_selection"]["pool"] = pool
@@ -50,6 +69,10 @@ def run_headline_seeds(config: dict, feature_sets: dict, pools=("base", "full"),
                 cfg["model"]["params"]["random_state"] = seed
                 splits = load_split_data(cfg, use_official_split=official)
                 cfg, sets = choose_pool(cfg, feature_sets, splits.train.columns)
+                if tuned:  # hyperparameters selected on validation (pipelines/tune_xgboost.py)
+                    params, power = load_tuned(cfg, pool_label(sets), tuned)
+                    cfg["model"]["params"].update(params)
+                    cfg["model"]["class_weight_power"] = power
                 predictions = {}
                 features = list(sets["feature_pool"])  # the whole pool: no ranking needed, nothing written to results/
                 result = train_and_evaluate(cfg, sets, str(len(features)), True, splits, save_artifacts=False,
@@ -69,9 +92,10 @@ def run_headline_seeds(config: dict, feature_sets: dict, pools=("base", "full"),
 
     metrics_dir = get_metrics_dir(config)
     metrics_dir.mkdir(parents=True, exist_ok=True)
-    seeds_df.to_csv(metrics_dir / "headline_seeds.csv", index=False)
-    summary.to_csv(metrics_dir / "headline_summary.csv", index=False)
-    (metrics_dir / "headline_summary.md").write_text(render_summary(summary, seeds), encoding="utf-8")
+    stem = output_stem(tuned, protocols, tuple(pools))
+    seeds_df.to_csv(metrics_dir / f"{stem}_seeds.csv", index=False)
+    summary.to_csv(metrics_dir / f"{stem}_summary.csv", index=False)
+    (metrics_dir / f"{stem}_summary.md").write_text(render_summary(summary, seeds), encoding="utf-8")
     return seeds_df, summary
 
 
@@ -90,13 +114,16 @@ def render_summary(summary: pd.DataFrame, seeds: list[int]) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--pools", nargs="*", choices=["base", "full"], default=["base", "full"])
+    parser.add_argument("--pools", nargs="*", default=["base", "full"], help="base, full, or an experiments.pool_variants name")
     parser.add_argument("--seeds", nargs="*", type=int)
+    parser.add_argument("--tuned", choices=["f1", "auc"], help="use the validation-selected hyperparameters of this objective")
+    parser.add_argument("--protocols", nargs="*", choices=[name for name, _ in PROTOCOLS])
     args = parser.parse_args()
     config = load_config()
     add_file_logging(str(resolve_path(config["logging"]["log_file"])))
-    _, summary = run_headline_seeds(config, load_feature_sets(), args.pools, args.seeds)
-    print((get_metrics_dir(config) / "headline_summary.md").read_text(encoding="utf-8"))
+    run_headline_seeds(config, load_feature_sets(), args.pools, args.seeds, args.tuned, args.protocols)
+    stem = output_stem(args.tuned, tuple(args.protocols or [n for n, _ in PROTOCOLS]), tuple(args.pools))
+    print((get_metrics_dir(config) / f"{stem}_summary.md").read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

@@ -387,3 +387,66 @@ def test_class_weight_power_changes_the_weights():
     assert np.allclose(balanced_sample_weight(y, 0.0), 1.0)                       # unweighted
     w1, w05 = balanced_sample_weight(y, 1.0), balanced_sample_weight(y)           # default power is 0.5
     assert np.allclose(w05, w1 ** 0.5) and w1[-1] / w1[0] == 9.0                  # fully balanced: 90/10
+
+
+def test_sample_params_is_seeded_and_stays_inside_the_space(config):
+    from pipelines.tune_xgboost import sample_params
+    space = config["tuning"]["space"]
+    a = [sample_params(space, np.random.default_rng(7)) for _ in range(2)]
+    assert a[0] == a[1]  # same seed, same draw
+    rng = np.random.default_rng(0)
+    for _ in range(200):
+        p = sample_params(space, rng)
+        assert 3 <= p["max_depth"] <= 10 and 0.03 <= p["learning_rate"] <= 0.3 and 0.0 <= p["class_weight_power"] <= 1.0
+        assert p["min_child_weight"] in space["min_child_weight"]["choice"] and p["reg_alpha"] in space["reg_alpha"]["choice"]
+        assert 0.6 <= p["subsample"] <= 1.0 and 0.5 <= p["colsample_bytree"] <= 1.0 and 0.5 <= p["reg_lambda"] <= 20.0
+
+
+def test_tune_pool_uses_validation_only_and_writes_search_and_selection(config, feature_sets):
+    import json
+    from pipelines.tune_xgboost import OBJECTIVES, load_tuned, tune_pool
+    config["tuning"].update(n_trials=3, max_estimators=30, early_stopping_rounds=5)
+    config["feature_selection"]["pool"] = "base"
+    trials = tune_pool(config, feature_sets, "base")
+    d = rae.get_metrics_dir(config)
+    assert len(trials) == 4 and trials["is_default"].sum() == 1  # 3 budgeted trials + the default reference
+    assert (d / "hyperparameter_search_40f.csv").exists()
+    saved = json.loads((d / "tuned_params_40f.json").read_text())
+    search = trials[~trials["is_default"]]
+    for obj, col in OBJECTIVES.items():
+        assert saved[obj]["trial"] == int(search.loc[search[col].idxmax(), "trial"])      # best by that validation metric
+        params, power = load_tuned(config, "40f", obj)
+        assert params["n_estimators"] == int(search.loc[search[col].idxmax(), "best_iteration"]) + 1
+        assert 0.0 <= power <= 1.0
+    assert saved["n_trials"] == 3 and "validation mlogloss" in saved["early_stopping"]
+
+
+def test_headline_runner_can_use_tuned_parameters_and_tags_its_files(config, feature_sets):
+    from pipelines.run_headline_seeds import output_stem, run_headline_seeds
+    from pipelines.tune_xgboost import tune_pool
+    config["tuning"].update(n_trials=2, max_estimators=20, early_stopping_rounds=5)
+    config["experiments"]["headline_seeds"] = [1]
+    tune_pool(config, feature_sets, "base")
+    seeds_df, _ = run_headline_seeds(config, feature_sets, pools=("base",), tuned="f1", protocols=("official",))
+    assert len(seeds_df) == 1 and output_stem("f1", ("official",)) == "headline_tuned_f1_official"  # both pools: no pool tag
+    assert output_stem(None, ("official", "pooled_random")) == "headline" and output_stem(None, ("official", "pooled_random"), ("full_no_ttl",)) == "headline_full_no_ttl"
+    d = rae.get_metrics_dir(config)
+    assert (d / "headline_tuned_f1_official_base_seeds.csv").exists() and not (d / "headline_seeds.csv").exists()
+
+
+def test_tuned_vs_default_table_reports_the_difference_to_the_default(config, feature_sets):
+    from pipelines.run_headline_seeds import run_headline_seeds
+    from pipelines.tune_xgboost import tune_pool
+    from scripts.compare_tuned import render, tuned_vs_default
+    config["tuning"].update(n_trials=2, max_estimators=20, early_stopping_rounds=5)
+    config["experiments"]["headline_seeds"] = [1, 2]
+    for pool in ("base", "full"):
+        tune_pool(config, feature_sets, pool)
+    run_headline_seeds(config, feature_sets)                                                  # default, both pools
+    for objective in ("f1", "auc"):
+        run_headline_seeds(config, feature_sets, tuned=objective, protocols=("official",))   # tuned, both pools
+    df = tuned_vs_default(rae.get_metrics_dir(config), ["base", "full"], ["f1", "auc"])
+    assert list(df["hyperparameters"]) == ["default", "tuned_f1", "tuned_auc"] * 2
+    base = df[df["pool"] == "base"].set_index("hyperparameters")
+    assert abs(base.loc["tuned_f1", "accuracy_vs_default"] - round(base.loc["tuned_f1", "accuracy_mean"] - base.loc["default", "accuracy_mean"], 4)) < 1e-9
+    assert "tuned_f1" in render(df) and "(" in render(df)
