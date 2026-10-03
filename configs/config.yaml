@@ -97,6 +97,9 @@ model:
     n_jobs: -1
     eval_metric: "mlogloss"
 
+evaluation:
+  ece_bins: 15   # equal-width confidence bins of the expected calibration error
+
 open_set:
   enabled: true
   # The threshold is chosen per model on KNOWN validation data (never on the reported
@@ -161,6 +164,7 @@ experiments:
   nonredundant_threshold: 0.8
   random_baseline_draws: 10   # independent random feature subsets per tier
   report_pooled_split: true   # also report metrics on a pooled random split (pooled_split_results.csv)
+  headline_seeds: [42, 43, 44, 45, 46]   # pipelines/run_headline_seeds.py: mean +/- std of the headline metrics
   stability_seeds: [43, 44]   # extra seeds for the same-feature-set stability reference
 
 dashboard:

@@ -301,3 +301,48 @@ def test_train_and_evaluate_writes_the_confusion_csvs(config, feature_sets, spli
     share = pd.read_csv(d / f"confusion_matrix_15_{splits.name}_rownorm.csv", index_col=0)
     assert counts.to_numpy().sum() == len(splits.test) and list(counts.index) == list(counts.columns)
     assert abs(share.loc["Normal"].sum() - 1) < 1e-3
+
+
+def test_probabilistic_metrics_by_hand():
+    from src.evaluation.metrics import brier_score, expected_calibration_error, probabilistic_metrics
+    classes = ["Fuzzers", "Normal", "Worms"]  # Worms has no test rows
+    y = np.array([0, 0, 1, 1])
+    proba = np.array([[0.9, 0.1, 0.0], [0.2, 0.8, 0.0], [0.1, 0.9, 0.0], [0.6, 0.4, 0.0]])
+    out = probabilistic_metrics(y, proba, classes, ece_bins=10)
+    # Fuzzers vs rest: scores .9 .2 .1 .6, positives are rows 0,1 -> 3 of 4 (pos, neg) pairs ranked right
+    assert out["roc_auc_Fuzzers"] == 0.75 and out["roc_auc_Normal"] == 0.75
+    assert np.isnan(out["roc_auc_Worms"]) and np.isnan(out["pr_auc_Worms"])
+    assert out["roc_auc_macro"] == 0.75  # NaN class skipped
+    # AP of Fuzzers: ranking by score = rows 0 (pos), 3 (neg), 1 (pos), 2 (neg) -> (1/1 + 2/3) / 2
+    assert out["pr_auc_Fuzzers"] == round((1 + 2 / 3) / 2, 4)
+    # attack-vs-normal: "attack" = class != Normal(=1): rows 0,1 attack; score 1-P(Normal) = .9,.2 vs .1,.6 -> AUC .75
+    assert out["roc_auc_attack_vs_normal"] == 0.75
+    # Brier per row (squared distance to the one-hot label): .02, 1.28, .02, .72 -> mean .51
+    assert abs(brier_score(y, proba) - 0.51) < 1e-9 and out["brier"] == 0.51
+    # one bin: predictions are 0,1,1,0 -> 2 of 4 correct; mean confidence (.9+.8+.9+.6)/4 = .8 -> |.5 - .8| = .3
+    assert abs(expected_calibration_error(y, proba, n_bins=1) - 0.3) < 1e-9
+    perfect = np.eye(3)[[0, 1, 1]]
+    assert expected_calibration_error(np.array([0, 1, 1]), perfect) == 0.0 and brier_score(np.array([0, 1, 1]), perfect) == 0.0
+
+
+def test_ece_matches_a_hand_computed_value():
+    from src.evaluation.metrics import expected_calibration_error
+    # two bins: confidences .6,.6 (1 of 2 correct: gap .1) and .9,.9 (both correct: gap .1) -> ECE = .5*.1 + .5*.1
+    proba = np.array([[0.6, 0.4], [0.6, 0.4], [0.1, 0.9], [0.1, 0.9]])
+    y = np.array([0, 1, 1, 1])
+    assert abs(expected_calibration_error(y, proba, n_bins=10) - 0.1) < 1e-9
+
+
+def test_run_headline_seeds_reports_mean_and_std_per_pool_and_protocol(config, feature_sets):
+    from pipelines.run_headline_seeds import run_headline_seeds
+    config["experiments"]["headline_seeds"] = [1, 2]
+    seeds_df, summary = run_headline_seeds(config, feature_sets, pools=("base", "full"))
+    assert len(seeds_df) == 2 * 2 * 2  # pools x protocols x seeds
+    assert set(seeds_df["pool"]) == {"base", "full"} and set(seeds_df["split"]) == {"official", "pooled_random"}
+    assert {"roc_auc_macro", "pr_auc_macro", "ece", "brier", "normal_to_Fuzzers"} <= set(seeds_df.columns)
+    acc = summary[(summary["metric"] == "accuracy") & (summary["pool"] == "base")].iloc[0]
+    vals = seeds_df.loc[(seeds_df["pool"] == "base") & (seeds_df["split"] == acc["split"]), "accuracy"]
+    assert abs(acc["mean"] - round(vals.mean(), 4)) < 1e-9 and acc["n_seeds"] == 2
+    d = rae.get_metrics_dir(config)
+    assert (d / "headline_seeds.csv").exists() and "mean +/-" not in (d / "headline_summary.csv").read_text()
+    assert "+/-" in (d / "headline_summary.md").read_text()

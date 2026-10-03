@@ -23,7 +23,7 @@ from sklearn.model_selection import train_test_split
 from src.data_loader import _class_split_counts, load_unsw
 from src.evaluation.metrics import (
     binary_detection_metrics, build_overlap_diagnostics, compute_metrics, confusion_matrix_tables, fpr_at_detection,
-    group_recall_from_diagnostics, per_class_metrics, threshold_sweep, unknown_auroc, unknown_detection_rate,
+    group_recall_from_diagnostics, per_class_metrics, probabilistic_metrics, threshold_sweep, unknown_auroc, unknown_detection_rate,
 )
 from src.evaluation.plots import plot_confusion_matrix_for_scheme, plot_roc_curve
 from src.feature_selection import compute_feature_ranking, data_signature, ranking_is_current, write_feature_ranking
@@ -155,8 +155,8 @@ def write_tier_diagnostics(config: dict, feature_set_name: str) -> bool:
 def evaluate_model(model, preprocessor: Preprocessor, test_df: pd.DataFrame, config: dict) -> tuple[dict, dict]:
     """The one evaluation used for every reported test metric (training pipeline, experiment
     grid and evaluate_pipeline.py). Returns (metrics, predictions): macro metrics on the scheme's
-    target, per-class precision/recall/F1, attack-vs-normal detection / false-positive rate and the
-    FPR at 90/95/99% detection, `fine_recall_<class>` (+ macro) of the ORIGINAL classes under the
+    target, per-class precision/recall/F1, attack-vs-normal detection / false-positive rate, the
+    FPR at 90/95/99% detection, per-class and macro ROC-AUC / PR-AUC, ECE and Brier, `fine_recall_<class>` (+ macro) of the ORIGINAL classes under the
     active scheme, and `group_size_share` (share of attack rows inside a merged group)."""
     data_cfg = config["data"]
     _, merge_groups, _ = get_label_scheme(config)
@@ -175,6 +175,7 @@ def evaluate_model(model, preprocessor: Preprocessor, test_df: pd.DataFrame, con
     metrics.update(per_class_metrics(y_test, y_pred, classes))
     metrics.update(binary_detection_metrics(true_labels, y_pred_labels, normal))
     metrics.update(fpr_at_detection(true_labels, y_proba, classes, normal))
+    metrics.update(probabilistic_metrics(y_test, y_proba, classes, normal, config["evaluation"]["ece_bins"]))
     metrics.update(group_recall_from_diagnostics(build_overlap_diagnostics(fine, y_pred_labels, merge_groups)))
     # Recall of the ORIGINAL classes under the active scheme (their true class's label, which
     # for a merged class is the group name), so a merge cannot hide them.
