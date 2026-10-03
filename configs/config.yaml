@@ -76,6 +76,7 @@ feature_selection:
   # rows); "full" requires the extra columns. The full pool's outputs carry the suffix "_48f" (rankings,
   # CSVs, models), so the two pools' results sit side by side and never overwrite each other.
   pool: "auto"
+  exclude: []   # feature names removed from the chosen pool (they reach no ranking, model or SHAP output); see experiments.pool_variants
   active_set: "40"   # one of: "40", "30", "20", "15" — see configs/feature_sets.yaml
   # "mutual_info": rank the pool by mutual information on the training split (generated);
   # "curated": the hand-written order in feature_sets.yaml (feature_curated_rank).
@@ -183,6 +184,10 @@ experiments:
   nonredundant_threshold: 0.8
   random_baseline_draws: 10   # independent random feature subsets per tier
   report_pooled_split: true   # also report metrics on a pooled random split (pooled_split_results.csv)
+  # Named pools usable as `--pools <name>` next to base / full: a pool minus excluded features. full_no_ttl asks whether the
+  # five other extra official columns help once the three TTL columns (the shifted ones, see the Normal-to-Fuzzers diagnostic) are gone.
+  pool_variants:
+    full_no_ttl: {pool: full, exclude: [sttl, dttl, ct_state_ttl]}
   headline_seeds: [42, 43, 44, 45, 46]   # pipelines/run_headline_seeds.py: mean +/- std of the headline metrics
   stability_seeds: [43, 44]   # extra seeds for the same-feature-set stability reference
 

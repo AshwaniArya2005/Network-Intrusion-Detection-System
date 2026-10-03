@@ -17,7 +17,6 @@ Evaluate a selection on the official split over seeds with
 from __future__ import annotations
 
 import argparse
-import copy
 import json
 import sys
 import time
@@ -32,7 +31,7 @@ from sklearn.metrics import f1_score, roc_auc_score
 
 from pipelines.train_pipeline import load_split_data
 from src.preprocessing import Preprocessor, balanced_sample_weight
-from src.utils.config_loader import choose_pool, get_metrics_dir, load_config, load_feature_sets, pool_label, resolve_path
+from src.utils.config_loader import apply_pool_variant, choose_pool, get_metrics_dir, load_config, load_feature_sets, pool_label, resolve_path
 from src.utils.logger import add_file_logging, get_logger
 
 logger = get_logger(__name__)
@@ -84,8 +83,7 @@ def select_best(trials: pd.DataFrame) -> dict[str, pd.Series]:
 
 
 def tune_pool(config: dict, feature_sets: dict, pool: str) -> pd.DataFrame:
-    cfg = copy.deepcopy(config)
-    cfg["feature_selection"]["pool"] = pool
+    cfg = apply_pool_variant(config, pool)
     tuning, seed = cfg["tuning"], cfg["tuning"]["seed"]
     splits = load_split_data(cfg, use_official_split=True)
     cfg, sets = choose_pool(cfg, feature_sets, splits.train.columns)

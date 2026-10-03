@@ -381,14 +381,6 @@ def test_operating_points_are_chosen_on_validation_and_reported_on_both(config, 
         assert abs(r["fpr_gap"] - (r["test_fpr"] - r["val_fpr"])) < 1e-3
 
 
-def test_class_weight_power_changes_the_weights():
-    from src.preprocessing import balanced_sample_weight
-    y = np.array([0] * 90 + [1] * 10)
-    assert np.allclose(balanced_sample_weight(y, 0.0), 1.0)                       # unweighted
-    w1, w05 = balanced_sample_weight(y, 1.0), balanced_sample_weight(y)           # default power is 0.5
-    assert np.allclose(w05, w1 ** 0.5) and w1[-1] / w1[0] == 9.0                  # fully balanced: 90/10
-
-
 def test_sample_params_is_seeded_and_stays_inside_the_space(config):
     from pipelines.tune_xgboost import sample_params
     space = config["tuning"]["space"]
@@ -400,6 +392,14 @@ def test_sample_params_is_seeded_and_stays_inside_the_space(config):
         assert 3 <= p["max_depth"] <= 10 and 0.03 <= p["learning_rate"] <= 0.3 and 0.0 <= p["class_weight_power"] <= 1.0
         assert p["min_child_weight"] in space["min_child_weight"]["choice"] and p["reg_alpha"] in space["reg_alpha"]["choice"]
         assert 0.6 <= p["subsample"] <= 1.0 and 0.5 <= p["colsample_bytree"] <= 1.0 and 0.5 <= p["reg_lambda"] <= 20.0
+
+
+def test_class_weight_power_changes_the_weights():
+    from src.preprocessing import balanced_sample_weight
+    y = np.array([0] * 90 + [1] * 10)
+    assert np.allclose(balanced_sample_weight(y, 0.0), 1.0)                       # unweighted
+    w1, w05 = balanced_sample_weight(y, 1.0), balanced_sample_weight(y)           # default power is 0.5
+    assert np.allclose(w05, w1 ** 0.5) and w1[-1] / w1[0] == 9.0                  # fully balanced: 90/10
 
 
 def test_tune_pool_uses_validation_only_and_writes_search_and_selection(config, feature_sets):
@@ -497,6 +497,49 @@ def test_run_bootstrap_writes_ci_and_paired_difference_files(config, feature_set
     assert set(cis["model"]) == {"40f", "48f"} and set(diffs["comparison"]) == {"48f - 40f"}
 
 
+def test_exclude_removes_features_from_pool_ranking_model_and_shap(config, feature_sets):
+    from src.utils.config_loader import apply_pool_variant, choose_pool, ranking_path, scheme_tag
+    ttl = ["sttl", "dttl", "ct_state_ttl"]
+    config["experiments"]["pool_variants"] = {"no_ttl": {"pool": "full", "exclude": ttl}}
+    cfg = apply_pool_variant(config, "no_ttl")
+    splits = load_split_data(cfg)
+    cfg, sets = choose_pool(cfg, feature_sets, splits.train.columns)
+    # the pool: 48 - 3, tagged, with its own tier list
+    assert len(sets["feature_pool"]) == 45 and not set(ttl) & set(sets["feature_pool"])
+    assert scheme_tag(cfg) == "_45f" and cfg["experiments"]["feature_sets"][0] == "45"
+    # the ranking never contains them
+    generate_feature_ranking(cfg, sets, splits.train)
+    ranking = pd.read_csv(ranking_path(cfg))["feature"].tolist()
+    assert len(ranking) == 45 and not set(ttl) & set(ranking) and ranking_path(cfg).name.endswith("_45f.csv")
+    # nor the model's feature list or saved preprocessor
+    pre_cols = rae.Preprocessor(feature_list=get_active_features(cfg, sets, "45"), target_column=cfg["data"]["target_column"]).fit(splits.train).feature_list
+    assert len(pre_cols) == 45 and not set(ttl) & set(pre_cols)
+    result = train_and_evaluate(cfg, sets, "45", False, splits, save_artifacts=True)
+    saved = joblib.load(rae.resolve_path(cfg["paths"]["models_dir"]) / "xgboost" / "preprocessor_45_45f.pkl")
+    assert result["n_features"] == 45 and not set(ttl) & set(saved.metadata["features"])
+    # nor the SHAP output
+    importance = rae._fit_importance(cfg, get_active_features(cfg, sets, "45"), splits.train)
+    assert len(importance) == 45 and not set(ttl) & set(importance.index)
+    # the 48-pool and plain 40-pool are unaffected
+    assert len(choose_pool(apply_pool_variant(config, "full"), feature_sets, splits.train.columns)[1]["feature_pool"]) == 48
+    assert len(choose_pool(apply_pool_variant(config, "base"), feature_sets, splits.train.columns)[1]["feature_pool"]) == 40
+
+
+def test_exclude_rejects_names_outside_the_pool_and_unknown_variants(config, feature_sets):
+    from src.utils.config_loader import apply_pool_variant, choose_pool
+    splits = load_split_data(config)
+    bad = apply_pool_variant(config, "full")
+    bad["feature_selection"]["exclude"] = ["not_a_feature"]
+    with pytest.raises(ValueError, match="not in the full pool"):
+        choose_pool(bad, feature_sets, splits.train.columns)
+    base_with_ttl = apply_pool_variant(config, "base")
+    base_with_ttl["feature_selection"]["exclude"] = ["sttl"]  # sttl exists only in the full pool
+    with pytest.raises(ValueError, match="not in the base pool"):
+        choose_pool(base_with_ttl, feature_sets, splits.train.columns)
+    with pytest.raises(KeyError, match="Unknown pool"):
+        apply_pool_variant(config, "nope")
+
+
 def test_accuracy_three_numbers_combines_headline_runs_and_the_ceiling(config, feature_sets):
     from pipelines.run_headline_seeds import run_headline_seeds
     from scripts.accuracy_table import accuracy_rows, render
@@ -512,3 +555,17 @@ def test_accuracy_three_numbers_combines_headline_runs_and_the_ceiling(config, f
         assert by.loc[label, "ceiling"] >= by.loc[label, "official_mean"] - 1e-9  # no classifier beats the ceiling (in expectation)
         assert abs(by.loc[label, "official_minus_ceiling"] - round(by.loc[label, "official_mean"] - by.loc[label, "ceiling"], 4)) < 1e-4
     assert "ceiling" in render(df) and "+/-" in render(df)
+
+
+def test_pool_variant_runs_never_overwrite_the_default_headline_files_and_compare_side_by_side(config, feature_sets):
+    from pipelines.run_headline_seeds import run_headline_seeds
+    from scripts.compare_pools import compare
+    config["experiments"]["headline_seeds"] = [1]
+    config["experiments"]["pool_variants"] = {"no_ttl": {"pool": "full", "exclude": ["sttl", "dttl", "ct_state_ttl"]}}
+    run_headline_seeds(config, feature_sets)                                    # base + full: headline_*.csv
+    variant, _ = run_headline_seeds(config, feature_sets, pools=("no_ttl",))   # headline_no_ttl_*.csv
+    d = rae.get_metrics_dir(config)
+    assert set(pd.read_csv(d / "headline_seeds.csv")["pool"]) == {"base", "full"}      # untouched by the variant run
+    assert set(variant["pool"]) == {"no_ttl"} and variant["n_features"].eq(45).all()
+    table = compare(d, {"base": "40f", "full": "48f", "no_ttl": "45f"}, "official")
+    assert list(table.columns) == ["40f", "48f", "45f"] and "accuracy" in table.index and table.notna().all().all()

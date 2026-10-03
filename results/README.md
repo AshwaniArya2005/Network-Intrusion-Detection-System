@@ -8,6 +8,12 @@ Committed CSV metrics (`metrics/<model.type>/`), charts (`plots/<model.type>/`) 
 - `_wide`, `_none`, `_pooled`: label scheme / pooled random split variants (see `config.yaml`).
 - `confusion_matrix_<tier>_<official|pooled_random>[_rownorm].csv`: test confusion matrix, rows = true class.
 - `normal_fuzzers_diagnostic/`: why Normal flows are called Fuzzers on the official split (`scripts/diagnose_normal_fuzzers.py`).
+- `headline_*`: 5-seed headline metrics (mean +/- std); `headline_tuned_<f1|auc>_official_*` use validation-tuned hyperparameters;
+  `headline_full_no_ttl_*` is the 45-feature ablation (48 minus `sttl`, `dttl`, `ct_state_ttl`).
+- `operating_point_*`: attack-vs-normal thresholds chosen on validation and their official-test cost (the validation-vs-test gap).
+- `hyperparameter_search_<N>f.csv`, `tuned_params_<N>f.json`, `tuned_vs_default.*`: the capped validation search and its test effect.
+- `bootstrap_ci_<pools>.csv`, `bootstrap_paired_diff_<pools>.csv`: 95% intervals over official test rows and paired pool differences.
+- `accuracy_three_numbers_*`: official split, pooled split and best-possible ceiling together; `pool_comparison_*`: pools side by side.
 - `overlap/`: exact/near-twin and best-possible-accuracy analysis (`scripts/overlap_analysis.py`).
 
 ## Data version

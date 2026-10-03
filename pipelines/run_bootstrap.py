@@ -13,7 +13,6 @@ Writes under results/metrics/<model.type>/ (names carry the pools, e.g. _40f_48f
 from __future__ import annotations
 
 import argparse
-import copy
 import itertools
 import sys
 from pathlib import Path
@@ -24,7 +23,7 @@ import numpy as np
 
 from pipelines.train_pipeline import load_split_data, train_and_evaluate
 from src.evaluation.bootstrap import bootstrap, intervals, paired_differences
-from src.utils.config_loader import choose_pool, get_metrics_dir, load_config, load_feature_sets, pool_label, resolve_path
+from src.utils.config_loader import apply_pool_variant, choose_pool, get_metrics_dir, load_config, load_feature_sets, pool_label, resolve_path
 from src.utils.logger import add_file_logging, get_logger
 
 logger = get_logger(__name__)
@@ -33,8 +32,7 @@ logger = get_logger(__name__)
 def run_bootstrap(config: dict, feature_sets: dict, pools=("base", "full"), n_boot: int = 1000, seed: int = 42):
     models, labels, classes = {}, [], None
     for pool in pools:
-        cfg = copy.deepcopy(config)
-        cfg["feature_selection"]["pool"] = pool
+        cfg = apply_pool_variant(config, pool)
         cfg["project"]["seed"] = seed
         cfg["model"]["params"]["random_state"] = seed
         splits = load_split_data(cfg, use_official_split=True)

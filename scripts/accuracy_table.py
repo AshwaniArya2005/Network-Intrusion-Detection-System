@@ -14,7 +14,6 @@ accuracy_three_numbers_<pools>[_tuned_<objectives>].csv / .md next to them (pool
 from __future__ import annotations
 
 import argparse
-import copy
 import sys
 from pathlib import Path
 
@@ -26,16 +25,14 @@ from pipelines.run_headline_seeds import DEFAULT_POOLS, PROTOCOLS, output_stem
 from scripts.overlap_analysis import build_label_columns
 from src.data_loader import UNSW_RAW_COLUMNS, load_unsw
 from src.evaluation.overlap import best_possible_accuracy
-from src.utils.config_loader import choose_pool, get_metrics_dir, load_config, load_feature_sets, pool_label, resolve_path
+from src.utils.config_loader import apply_pool_variant, choose_pool, get_metrics_dir, load_config, load_feature_sets, pool_label, resolve_path
 
 ALL_PROTOCOLS = tuple(name for name, _ in PROTOCOLS)
 
 
 def ceiling(config: dict, feature_sets: dict, pool: str, raw: pd.DataFrame, label_col: str) -> tuple[str, float, int]:
     """(pool label, best-possible accuracy, number of raw columns) of a pool on the known-class rows `raw`."""
-    cfg = copy.deepcopy(config)
-    cfg["feature_selection"]["pool"] = pool
-    cfg, sets = choose_pool(cfg, feature_sets, raw.columns)
+    cfg, sets = choose_pool(apply_pool_variant(config, pool), feature_sets, raw.columns)
     raw_features = [c for c in UNSW_RAW_COLUMNS if c in raw.columns and c in sets["feature_pool"]]
     return pool_label(sets), round(best_possible_accuracy(raw, raw_features, label_col), 4), len(raw_features)
 

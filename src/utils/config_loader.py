@@ -47,7 +47,7 @@ def _ranked_pool(config: dict[str, Any], feature_sets: dict[str, Any]) -> list[s
     """Features ordered most -> least important for `feature_selection.ranking_source`:
     "curated" is the hand-written feature_curated_rank; "mutual_info" is the data-derived
     ranking file written by run_all_experiments (or train_pipeline.py --write-ranking).
-    Raises if that file is missing or doesn't match the pool â€” never falls back silently."""
+    Raises if that file is missing or doesn't match the pool — never falls back silently."""
     pool = set(feature_sets["feature_pool"])
     if config["feature_selection"]["ranking_source"] == "curated":
         ranked = list(feature_sets["feature_curated_rank"])
@@ -113,10 +113,12 @@ def choose_pool(config: dict[str, Any], feature_sets: dict[str, Any], columns) -
     """Pick the feature pool for the loaded data per `feature_selection.pool`: "auto" uses
     `feature_pool_full` when every extra official column it adds is present in `columns`, else
     `feature_pool`; "base" forces the 40-feature pool (even if the columns exist, for a like-for-like
-    comparison); "full" requires the columns. Returns (config, feature_sets) copies with the pool
-    (and, for the full pool, the tier list `experiments.feature_sets_full`) applied,
-    `feature_sets["pool_name"]` set to "full" or "base" and `feature_selection.pool_tag` ("_48f" for
-    full, which scheme_tag adds to every output name); the choice is logged."""
+    comparison); "full" requires the columns. `feature_selection.exclude` then removes the named features
+    from that pool, so they reach neither the ranking, the models nor the SHAP output. Returns (config,
+    feature_sets) copies with the pool (and, for the full pool, the tier list `experiments.feature_sets_full`;
+    with exclusions the tiers are the new pool size plus the smaller ones) applied, `feature_sets["pool_name"]`
+    set to "full" or "base" and `feature_selection.pool_tag` ("_<N>f" for the full pool or any excluded pool,
+    which scheme_tag adds to every output name; "" for the plain 40-feature pool); the choice is logged."""
     config, feature_sets = copy.deepcopy(config), copy.deepcopy(feature_sets)
     full = feature_sets.get("feature_pool_full")
     raw_extra = set(full or []) - set(feature_sets["feature_pool"])  # the extra official columns
@@ -128,13 +130,38 @@ def choose_pool(config: dict[str, Any], feature_sets: dict[str, Any], columns) -
         raise ValueError(f"feature_selection.pool is 'full' but the data lacks official columns: {missing}")
     use_full = want == "full" or (want == "auto" and full is not None and not missing)
     feature_sets["pool_name"] = "full" if use_full else "base"
-    config["feature_selection"]["pool_tag"] = "_48f" if use_full else ""
     if use_full:
         feature_sets["feature_pool"] = list(full)
         config["experiments"]["feature_sets"] = list(config["experiments"]["feature_sets_full"])
-    logger.info(f"Feature pool: '{feature_sets['pool_name']}' ({len(feature_sets['feature_pool'])} features)"
+    exclude = list(config["feature_selection"].get("exclude") or [])
+    if exclude:
+        not_in_pool = sorted(set(exclude) - set(feature_sets["feature_pool"]))
+        if not_in_pool:
+            raise ValueError(f"feature_selection.exclude names features that are not in the {feature_sets['pool_name']} pool: {not_in_pool}")
+        feature_sets["feature_pool"] = [f for f in feature_sets["feature_pool"] if f not in exclude]
+        size = len(feature_sets["feature_pool"])
+        feature_sets["feature_sets"][str(size)] = size
+        config["experiments"]["feature_sets"] = [str(size)] + [t for t in config["experiments"]["feature_sets"] if int(t) < size]
+    config["feature_selection"]["pool_tag"] = f"_{len(feature_sets['feature_pool'])}f" if use_full or exclude else ""
+    logger.info(f"Feature pool: '{feature_sets['pool_name']}' ({len(feature_sets['feature_pool'])} features"
+                + (f", excluding {exclude}" if exclude else "") + ")"
                 + (f"; missing official columns: {missing}" if missing and not use_full else ""))
     return config, feature_sets
+
+
+def apply_pool_variant(config: dict[str, Any], name: str) -> dict[str, Any]:
+    """A copy of `config` set to the named pool: "base" / "full", or a key of `experiments.pool_variants`
+    (a base/full pool minus `exclude` features, e.g. the TTL ablation)."""
+    config = copy.deepcopy(config)
+    variants = config["experiments"].get("pool_variants") or {}
+    if name in ("base", "full"):
+        spec = {"pool": name}
+    elif name in variants:
+        spec = variants[name]
+    else:
+        raise KeyError(f"Unknown pool {name!r} (base, full, or one of experiments.pool_variants: {sorted(variants)})")
+    config["feature_selection"].update(pool=spec["pool"], exclude=list(spec.get("exclude") or []))
+    return config
 
 
 def pool_label(feature_sets: dict[str, Any]) -> str:
@@ -159,7 +186,7 @@ def artifact_suffix(model_type: str) -> str:
 
 def get_dashboard_paths(config: dict[str, Any]) -> tuple[Path, Path]:
     """Derive the dashboard's model + preprocessor paths from `model.type` and
-    `dashboard.feature_set` â€” the single source of truth is `model.type`, not a
+    `dashboard.feature_set` — the single source of truth is `model.type`, not a
     separately hardcoded path. Switching `model.type` in config.yaml and retraining
     is then enough on its own; there's no second path to remember to update, and no
     risk of the dashboard silently loading a stale model saved by a different model type.
@@ -174,7 +201,7 @@ def get_dashboard_paths(config: dict[str, Any]) -> tuple[Path, Path]:
 
 
 def get_metrics_dir(config: dict[str, Any]) -> Path:
-    """Directory for a model type's CSV outputs: results/metrics/<model.type>/ â€”
+    """Directory for a model type's CSV outputs: results/metrics/<model.type>/ —
     mirrors get_dashboard_paths' reasoning and results/plots/<model.type>/: every
     experiment/evaluation/diagnostic CSV is namespaced by model.type, so training a
     different model never silently overwrites another model's reported numbers.
