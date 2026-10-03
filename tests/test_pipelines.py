@@ -450,3 +450,48 @@ def test_tuned_vs_default_table_reports_the_difference_to_the_default(config, fe
     base = df[df["pool"] == "base"].set_index("hyperparameters")
     assert abs(base.loc["tuned_f1", "accuracy_vs_default"] - round(base.loc["tuned_f1", "accuracy_mean"] - base.loc["default", "accuracy_mean"], 4)) < 1e-9
     assert "tuned_f1" in render(df) and "(" in render(df)
+
+
+def test_confusion_metrics_match_sklearn_and_hand_values():
+    from sklearn.metrics import accuracy_score, f1_score
+    from src.evaluation.bootstrap import confusion_metrics
+    rng = np.random.default_rng(3)
+    y = rng.integers(0, 4, 500)
+    pred = np.where(rng.random(500) < 0.7, y, rng.integers(0, 4, 500))
+    cm = np.bincount(y * 4 + pred, minlength=16).reshape(4, 4)
+    m = confusion_metrics(cm, normal=1, fuzzers=2)
+    assert abs(m["accuracy"] - accuracy_score(y, pred)) < 1e-12 and abs(m["f1"] - f1_score(y, pred, average="macro")) < 1e-12
+    normal = y == 1
+    assert abs(m["false_positive_rate"] - (pred[normal] != 1).mean()) < 1e-12
+    assert abs(m["detection_rate"] - (pred[~normal] != 1).mean()) < 1e-12
+    assert abs(m["normal_to_Fuzzers"] - (pred[normal] == 2).mean()) < 1e-12
+
+
+def test_bootstrap_is_paired_seeded_and_brackets_the_estimate():
+    from src.evaluation.bootstrap import bootstrap, intervals, paired_differences
+    rng = np.random.default_rng(1)
+    y = rng.integers(0, 3, 400)
+    good = np.where(rng.random(400) < 0.9, y, rng.integers(0, 3, 400))
+    bad = np.where(rng.random(400) < 0.5, y, rng.integers(0, 3, 400))
+    flags = rng.random(60) < 0.4
+    models = {"a": dict(y_true=y, y_pred=good, unknown_flags=flags), "b": dict(y_true=y, y_pred=bad, unknown_flags=flags),
+              "a2": dict(y_true=y, y_pred=good, unknown_flags=flags)}
+    point, draws = bootstrap(models, 3, normal=0, fuzzers=1, n_boot=300, seed=5)
+    again = bootstrap(models, 3, normal=0, fuzzers=1, n_boot=300, seed=5)[1]
+    assert draws["a"].equals(again["a"])                                  # fixed seed -> identical draws
+    ci = intervals(point, draws).query("model == 'a' and metric == 'accuracy'").iloc[0]
+    assert ci["ci_low"] <= ci["estimate"] <= ci["ci_high"] and ci["ci_high"] - ci["ci_low"] < 0.08
+    diff = paired_differences(point, draws, [("a", "b"), ("a", "a2")])
+    acc = diff[diff["metric"] == "accuracy"].set_index("comparison")
+    assert acc.loc["b - a", "difference"] < 0 and bool(acc.loc["b - a", "excludes_zero"])    # clearly worse, interval excludes 0
+    assert acc.loc["a2 - a", "difference"] == 0 and acc.loc["a2 - a", "ci_low"] == acc.loc["a2 - a", "ci_high"] == 0  # identical models: paired diff is exactly 0
+    with pytest.raises(ValueError):
+        bootstrap({"a": models["a"], "c": dict(y_true=y[::-1], y_pred=good, unknown_flags=flags)}, 3, 0, 1, n_boot=2)
+
+
+def test_run_bootstrap_writes_ci_and_paired_difference_files(config, feature_sets):
+    from pipelines.run_bootstrap import run_bootstrap
+    cis, diffs = run_bootstrap(config, feature_sets, pools=("base", "full"), n_boot=20, seed=1)
+    d = rae.get_metrics_dir(config)
+    assert (d / "bootstrap_ci_40f_48f.csv").exists() and (d / "bootstrap_paired_diff_40f_48f.csv").exists()
+    assert set(cis["model"]) == {"40f", "48f"} and set(diffs["comparison"]) == {"48f - 40f"}
