@@ -1,4 +1,4 @@
-"""Main training pipeline — fully config-driven. Run from the project root:
+"""Main training pipeline â€” fully config-driven. Run from the project root:
 
     python pipelines/train_pipeline.py
 
@@ -237,7 +237,8 @@ def train_and_evaluate(
     X_val, y_val = preprocessor.transform(splits.val)
 
     normal_index = list(preprocessor.target_encoder.classes_).index(data_cfg["normal_category"])
-    model = create_scheme_model(model_cfg["type"], model_cfg["params"], hierarchical, normal_index)
+    model = create_scheme_model(model_cfg["type"], model_cfg["params"], hierarchical, normal_index,
+                                model_cfg.get("stage1_params"), model_cfg.get("stage1_class_weight_power", 0.5))
     # A hierarchical model balances each stage itself (binary stage 1, family stage 2).
     model.fit(X_train, y_train, sample_weight=None if hierarchical else balanced_sample_weight(
         y_train, model_cfg.get("class_weight_power", 0.5)))
@@ -296,8 +297,8 @@ def train_and_evaluate(
 
     if save_artifacts:
         # Grouped by model type (models_saved/xgboost/, models_saved/random_forest/, ...)
-        # so every artifact for a given model — all feature sets, closed/open-set,
-        # preprocessors — lives together instead of a flat, hard-to-scan directory.
+        # so every artifact for a given model â€” all feature sets, closed/open-set,
+        # preprocessors â€” lives together instead of a flat, hard-to-scan directory.
         # XGBoost artifacts are .json (native format), everything else .pkl.
         model_dir = resolve_path(config["paths"]["models_dir"]) / model_cfg["type"]
         model_dir.mkdir(parents=True, exist_ok=True)

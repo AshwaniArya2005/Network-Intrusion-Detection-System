@@ -25,11 +25,16 @@ from src.preprocessing import balanced_sample_weight
 
 
 class HierarchicalModel(BaseModel):
-    def __init__(self, make_model: Callable[[], BaseModel], normal_index: int, artifact_suffix: str = ".json"):
+    def __init__(self, make_model: Callable[[], BaseModel], normal_index: int, artifact_suffix: str = ".json",
+                 make_stage1: Callable[[], BaseModel] | None = None, stage1_power: float = 0.5):
+        """`make_stage1` (default `make_model`) builds the binary attack-vs-normal stage, so it can carry its own
+        hyperparameters; `stage1_power` is the exponent of its balanced class weights."""
         self._make = make_model
+        self._make_stage1 = make_stage1 or make_model
+        self.stage1_power = stage1_power
         self.normal_index = normal_index
         self.artifact_suffix = artifact_suffix
-        self.stage1 = make_model()
+        self.stage1 = self._make_stage1()
         self.stage2 = make_model()
         self.attack_classes: np.ndarray = np.array([], dtype=int)
         self.n_classes = 0
@@ -41,7 +46,7 @@ class HierarchicalModel(BaseModel):
         self.n_classes = int(y.max()) + 1
         self.attack_classes = np.unique(y[is_attack])
         y_family = np.searchsorted(self.attack_classes, y[is_attack])
-        w1 = sample_weight if sample_weight is not None else balanced_sample_weight(is_attack.astype(int))
+        w1 = sample_weight if sample_weight is not None else balanced_sample_weight(is_attack.astype(int), self.stage1_power)
         w2 = sample_weight[is_attack] if sample_weight is not None else balanced_sample_weight(y_family)
         self.stage1.fit(X, is_attack.astype(int), sample_weight=w1)
         self.stage2.fit(X[is_attack], y_family, sample_weight=w2)
@@ -77,7 +82,7 @@ class HierarchicalModel(BaseModel):
         self.attack_classes = np.array(meta["attack_classes"], dtype=int)
         self.n_classes = meta["n_classes"]
         self.artifact_suffix = meta["artifact_suffix"]
-        self.stage1 = self._make().load(str(directory / f"stage1{self.artifact_suffix}"))
+        self.stage1 = self._make_stage1().load(str(directory / f"stage1{self.artifact_suffix}"))
         self.stage2 = self._make().load(str(directory / f"stage2{self.artifact_suffix}"))
         return self
 

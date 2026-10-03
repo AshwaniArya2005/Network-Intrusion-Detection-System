@@ -68,7 +68,7 @@ def run_trial(params: dict, base_params: dict, tuning: dict, data: tuple, seed: 
     power = params.get("class_weight_power", 0.5)
     fit_params = {k: v for k, v in dict(base_params, **params).items() if k != "class_weight_power"}
     fit_params.update(n_estimators=tuning["max_estimators"], early_stopping_rounds=tuning["early_stopping_rounds"],
-                      eval_metric="mlogloss", random_state=seed)
+                      eval_metric="mlogloss" if len(np.unique(y_train)) > 2 else "logloss", random_state=seed)
     start = time.time()
     model = xgb.XGBClassifier(**fit_params)
     model.fit(X_train, y_train, sample_weight=balanced_sample_weight(y_train, power), eval_set=[(X_val, y_val)], verbose=False)
@@ -82,7 +82,10 @@ def select_best(trials: pd.DataFrame) -> dict[str, pd.Series]:
     return {obj: search.loc[search[col].idxmax()] for obj, col in OBJECTIVES.items()}
 
 
-def tune_pool(config: dict, feature_sets: dict, pool: str) -> pd.DataFrame:
+def tune_pool(config: dict, feature_sets: dict, pool: str, stage1: bool = False) -> pd.DataFrame:
+    """Random search for `pool`. With `stage1` the labels are attack (1) vs Normal (0): the search for the binary first
+    stage of the hierarchical model (same space and budget; the 2-class macro F1 and attack AUC are scored on validation);
+    its files are named hyperparameter_search_stage1_<N>f.csv / tuned_params_stage1_<N>f.json."""
     cfg = apply_pool_variant(config, pool)
     tuning, seed = cfg["tuning"], cfg["tuning"]["seed"]
     splits = load_split_data(cfg, use_official_split=True)
@@ -91,6 +94,8 @@ def tune_pool(config: dict, feature_sets: dict, pool: str) -> pd.DataFrame:
     pre = Preprocessor(feature_list=features, target_column=cfg["data"]["target_column"]).fit(splits.train)
     (X_train, y_train), (X_val, y_val) = pre.transform(splits.train), pre.transform(splits.val)
     normal_index = list(pre.target_encoder.classes_).index(cfg["data"]["normal_category"])
+    if stage1:  # attack = 1, Normal = 0, so score_validation's Normal index is 0
+        y_train, y_val, normal_index = (y_train != normal_index).astype(int), (y_val != normal_index).astype(int), 0
     data = (X_train, y_train, X_val, y_val, normal_index)
     base = {k: v for k, v in cfg["model"]["params"].items() if k not in ("n_estimators", "random_state", "eval_metric")}
 
@@ -108,7 +113,8 @@ def tune_pool(config: dict, feature_sets: dict, pool: str) -> pd.DataFrame:
     metrics_dir = get_metrics_dir(cfg)
     metrics_dir.mkdir(parents=True, exist_ok=True)
     label = pool_label(sets)
-    trials.to_csv(metrics_dir / f"hyperparameter_search_{label}.csv", index=False)
+    prefix = "stage1_" if stage1 else ""
+    trials.to_csv(metrics_dir / f"hyperparameter_search_{prefix}{label}.csv", index=False)
     keys = [k for k in tuning["space"] if k != "class_weight_power"]
     best = select_best(trials)
     out = {"pool": pool, "n_features": len(features), "n_trials": tuning["n_trials"], "seed": seed,
@@ -118,13 +124,14 @@ def tune_pool(config: dict, feature_sets: dict, pool: str) -> pd.DataFrame:
         out[obj] = {"params": {**{k: row[k] for k in keys}, "n_estimators": int(row["best_iteration"]) + 1},
                     "class_weight_power": float(row["class_weight_power"]),
                     "val_macro_f1": float(row["val_macro_f1"]), "val_attack_auc": float(row["val_attack_auc"]), "trial": int(row["trial"])}
-    (metrics_dir / f"tuned_params_{label}.json").write_text(json.dumps(out, indent=2, default=lambda o: o.item()), encoding="utf-8")
+    (metrics_dir / f"tuned_params_{prefix}{label}.json").write_text(json.dumps(out, indent=2, default=lambda o: o.item()), encoding="utf-8")
     return trials
 
 
-def load_tuned(config: dict, label: str, objective: str) -> tuple[dict, float]:
-    """(model params to merge into config model.params, class_weight_power) of the tuned selection for `objective`."""
-    path = get_metrics_dir(config) / f"tuned_params_{label}.json"
+def load_tuned(config: dict, label: str, objective: str, stage1: bool = False) -> tuple[dict, float]:
+    """(model params to merge into config model.params, class_weight_power) of the tuned selection for `objective`
+    (the stage-1 search with `stage1`)."""
+    path = get_metrics_dir(config) / f"tuned_params_{'stage1_' if stage1 else ''}{label}.json"
     chosen = json.loads(path.read_text(encoding="utf-8"))[objective]
     return chosen["params"], chosen["class_weight_power"]
 
@@ -132,13 +139,14 @@ def load_tuned(config: dict, label: str, objective: str) -> tuple[dict, float]:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--pools", nargs="*", default=["base", "full"], help="base, full, or an experiments.pool_variants name")
+    parser.add_argument("--stage1", action="store_true", help="search the binary attack-vs-normal first stage of the hierarchical model")
     args = parser.parse_args()
     config = load_config()
     if config["model"]["type"] != "xgboost":
         raise SystemExit("tune_xgboost.py tunes XGBoost only (model.type: xgboost)")
     add_file_logging(str(resolve_path(config["logging"]["log_file"])))
     for pool in args.pools:
-        trials = tune_pool(config, load_feature_sets(), pool)
+        trials = tune_pool(config, load_feature_sets(), pool, args.stage1)
         print(trials.sort_values("val_macro_f1", ascending=False).head(5).to_string(index=False))
 
 

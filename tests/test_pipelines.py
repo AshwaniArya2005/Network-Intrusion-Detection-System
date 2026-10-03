@@ -609,3 +609,44 @@ def test_shift_steps_run_end_to_end_and_report_every_group(config, feature_sets)
     assert (removed["n_kept"] + removed["n_removed"] == 40).all()
     d = rae.get_metrics_dir(config)
     assert (d / "shift_normal_features_48f.csv").exists() and (d / "shift_nf_groups_40f.csv").exists() and (d / "shift_group_ablation_40f.csv").exists()
+
+
+def test_hierarchical_stage1_can_have_its_own_params_and_weight_exponent(tmp_path):
+    from src.models.hierarchical_model import HierarchicalModel
+    from src.models.model_factory import create_model, create_scheme_model
+    rng = np.random.default_rng(0)
+    y = rng.integers(0, 4, 800)
+    X = rng.normal(size=(800, 6)) + y[:, None] * 0.7
+    base = {"n_estimators": 5, "max_depth": 2, "random_state": 0, "n_jobs": 1}
+    plain = create_scheme_model("xgboost", base, True, normal_index=0).fit(X, y)
+    own = create_scheme_model("xgboost", base, True, normal_index=0, stage1_params={"n_estimators": 40, "max_depth": 4}, stage1_power=1.0).fit(X, y)
+    assert plain.stage1.underlying_model.get_params()["n_estimators"] == 5 == plain.stage2.underlying_model.get_params()["n_estimators"]
+    assert own.stage1.underlying_model.get_params()["n_estimators"] == 40 and own.stage2.underlying_model.get_params()["n_estimators"] == 5
+    assert not np.allclose(plain.predict_proba(X), own.predict_proba(X))
+    assert np.allclose(own.predict_proba(X).sum(axis=1), 1.0, atol=1e-5)
+    own.save(str(tmp_path / "hier.json"))
+    loaded = HierarchicalModel(lambda: create_model("xgboost", base), 0, make_stage1=lambda: create_model("xgboost", dict(base, n_estimators=40, max_depth=4))).load(str(tmp_path / "hier.json"))
+    assert np.allclose(loaded.predict_proba(X), own.predict_proba(X), atol=1e-6)
+
+
+def test_stage1_search_scores_the_binary_task_and_run_methods_labels_access(config, feature_sets):
+    import json
+    from pipelines.run_methods import run_methods
+    from pipelines.tune_xgboost import load_tuned, tune_pool
+    config["tuning"].update(n_trials=2, max_estimators=20, early_stopping_rounds=5)
+    config["experiments"]["headline_seeds"] = [1, 2]
+    trials = tune_pool(config, feature_sets, "base", stage1=True)
+    d = rae.get_metrics_dir(config)
+    assert (d / "hyperparameter_search_stage1_40f.csv").exists() and not (d / "hyperparameter_search_40f.csv").exists()
+    saved = json.loads((d / "tuned_params_stage1_40f.json").read_text())
+    search = trials[~trials["is_default"]]
+    assert saved["f1"]["trial"] == int(search.loc[search["val_macro_f1"].idxmax(), "trial"])      # declared objective: validation macro F1
+    assert load_tuned(config, "40f", "f1", stage1=True)[0]["n_estimators"] >= 1
+    out = run_methods(config, feature_sets, "unit", ["flat_default", "hier_default", "hier_stage1_tuned"], pools=("base",))["40f"]
+    assert set(out["method"]) == {"flat_default", "hier_default", "hier_stage1_tuned"}
+    assert set(out.loc[out["method"] == "hier_default", "access"]) == {"zero-shot"}
+    acc = out[(out["method"] == "flat_default") & (out["metric"] == "accuracy")].iloc[0]
+    assert acc["n_seeds"] == 2 and {"det95_test_fpr", "det95_fpr_gap"} <= set(out["metric"])
+    seeds_df = pd.read_csv(d / "methods_unit_40f_seeds.csv")
+    assert (d / "methods_unit_40f_summary.csv").exists() and len(seeds_df) == 6
+    assert "recall_Analysis" in seeds_df.columns and "recall_Overlap-Group-1" in seeds_df.columns  # 8 classes (hierarchical) and 6 (flat) side by side
