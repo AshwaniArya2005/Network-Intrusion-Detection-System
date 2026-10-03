@@ -1,0 +1,7 @@
+true,Exploits,Fuzzers,Generic,Normal,Overlap-Group-1,Reconnaissance
+Exploits,6485,164,28,61,614,238
+Fuzzers,236,3532,12,576,443,11
+Generic,334,35,2949,7,90,3
+Normal,637,8379,6,23863,942,5
+Overlap-Group-1,644,157,9,25,1592,50
+Reconnaissance,262,20,2,7,253,1925

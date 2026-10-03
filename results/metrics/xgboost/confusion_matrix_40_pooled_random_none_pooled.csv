@@ -1,0 +1,9 @@
+true,Analysis,Backdoor,DoS,Exploits,Fuzzers,Generic,Normal,Reconnaissance
+Analysis,112,198,33,0,2,0,56,5
+Backdoor,194,105,48,9,1,1,4,14
+DoS,181,141,280,380,48,11,30,29
+Exploits,176,174,142,4473,131,36,149,206
+Fuzzers,182,157,29,66,2980,17,751,10
+Generic,22,22,17,73,20,1351,10,5
+Normal,28,0,23,129,1856,13,15080,16
+Reconnaissance,164,137,25,161,12,2,11,1486
