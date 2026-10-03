@@ -777,17 +777,6 @@ def test_split_threshold_never_scores_the_threshold_rows_in_training(config, fea
     assert set(runs["threshold_source"]) == {"held-out half of the adaptation sample"}
 
 
-def test_composition_counts_rows_by_source_file_and_share():
-    from scripts.pooled_reference_composition import composition
-    frame = lambda a, b: pd.DataFrame({"split": ["train"] * a + ["test"] * b})  # noqa: E731
-    table = composition({"pooled": {"train": frame(60, 30), "val": frame(10, 5), "test": frame(30, 15)}, "official": {"train": frame(100, 0), "test": frame(0, 50)}})
-    pooled = table[table["protocol"] == "pooled"].set_index(["part", "source_file"])
-    assert pooled.loc[("train", "test"), "rows"] == 30 and pooled.loc[("train", "test"), "share_of_source_file"] == 0.6      # 30 of the 50 test-file rows
-    assert pooled.loc[("train", "test"), "share_of_part"] == round(30 / 90, 4)
-    off = table[table["protocol"] == "official"].set_index(["part", "source_file"])
-    assert off.loc[("train", "test"), "rows"] == 0 and off.loc[("test", "test"), "share_of_source_file"] == 1.0
-
-
 def test_block_split_leaves_a_gap_between_adaptation_and_evaluation_rows():
     from src.neighbours import block_split
     adapt, evaluation = block_split(200, block_size=20, buffer=3, adapt_share=0.4, seed=1)
@@ -822,6 +811,17 @@ def test_embedding_distance_uses_the_training_scale_and_exact_categoricals():
     assert shares["exact_twin"] == 0.25 and shares["near_twin_0.1"] >= 0.25
 
 
+def test_composition_counts_rows_by_source_file_and_share():
+    from scripts.pooled_reference_composition import composition
+    frame = lambda a, b: pd.DataFrame({"split": ["train"] * a + ["test"] * b})  # noqa: E731
+    table = composition({"pooled": {"train": frame(60, 30), "val": frame(10, 5), "test": frame(30, 15)}, "official": {"train": frame(100, 0), "test": frame(0, 50)}})
+    pooled = table[table["protocol"] == "pooled"].set_index(["part", "source_file"])
+    assert pooled.loc[("train", "test"), "rows"] == 30 and pooled.loc[("train", "test"), "share_of_source_file"] == 0.6      # 30 of the 50 test-file rows
+    assert pooled.loc[("train", "test"), "share_of_part"] == round(30 / 90, 4)
+    off = table[table["protocol"] == "official"].set_index(["part", "source_file"])
+    assert off.loc[("train", "test"), "rows"] == 0 and off.loc[("test", "test"), "share_of_source_file"] == 1.0
+
+
 def test_subset_metrics_by_hand():
     from pipelines.run_leakage_checks import subset_metrics
     # classes: 0 = Normal, 1 = attack. Rows: two Normal (scores .1, .6), two attacks (scores .9, .4)
@@ -832,12 +832,6 @@ def test_subset_metrics_by_hand():
     only_first_three = subset_metrics(proba, y, 0, 0.5, np.array([True, True, True, False]), 10)
     assert only_first_three["det95_test_fpr"] == 0.5 and only_first_three["det95_test_detection"] == 1.0 and only_first_three["n_eval"] == 3
     assert np.isnan(subset_metrics(proba, y, 0, 0.5, np.array([True, True, False, False]), 10)["det95_test_fpr"])   # no attacks in the subset
-
-
-def test_validation_file_names_never_collide_across_block_sizes():
-    from pipelines.run_leakage_checks import validation_filename
-    assert validation_filename("48f", 1000) == "leakage_48f_validation_blocks.csv"
-    assert validation_filename("48f", 200) == "leakage_48f_validation_blocks_b200.csv"
 
 
 def test_leakage_runs_report_twin_shares_subsets_and_block_conditions(config, feature_sets):
@@ -866,22 +860,10 @@ def test_validation_blocks_compare_random_and_block_validation(config, feature_s
     assert blocks.loc["block_validation", "n_train"] < len(ordered_training_rows(config))   # the gap rows leave training as well
 
 
-def test_ct_ablation_pools_exclude_exactly_the_declared_columns():
-    from src.utils.config_loader import apply_pool_variant, choose_pool
-    cfg, fsets = load_config(), load_feature_sets()
-    cols = fsets["feature_pool_full"]
-    window = {"ct_src_dport_ltm", "ct_dst_sport_ltm", "ct_srv_src", "ct_dst_ltm", "ct_src_ltm", "ct_srv_dst", "ct_dst_src_ltm"}
-    a = choose_pool(apply_pool_variant(cfg, "full_no_ct_window"), fsets, cols)[1]["feature_pool"]
-    b = choose_pool(apply_pool_variant(cfg, "full_no_ct_any"), fsets, cols)[1]["feature_pool"]
-    assert len(a) == 41 and set(fsets["feature_pool_full"]) - set(a) == window
-    assert len(b) == 38 and {f for f in fsets["feature_pool_full"] if f.startswith("ct_")} == set(fsets["feature_pool_full"]) - set(b)
-    assert "ct_state_ttl" not in b and "ct_flw_http_mthd" not in b and "ct_ftp_cmd" not in b and "sttl" in b   # every ct_* column goes, the TTL columns stay
-
-
-def test_shift_auc_by_cv_reports_random_and_block_grouped_auc(config, feature_sets):
-    from pipelines.run_leakage_checks import shift_auc_by_cv
-    out = shift_auc_by_cv(config, feature_sets, "base", seed=1, block_size=50)
-    assert 0 <= out["auc_random_cv"] <= 1 and 0 <= out["auc_block_cv"] <= 1 and out["n_train_normal"] > 0 and out["n_test_normal"] > 0
+def test_validation_file_names_never_collide_across_block_sizes():
+    from pipelines.run_leakage_checks import validation_filename
+    assert validation_filename("48f", 1000) == "leakage_48f_validation_blocks.csv"
+    assert validation_filename("48f", 200) == "leakage_48f_validation_blocks_b200.csv"
 
 
 def test_leakage_table_reads_the_original_and_the_check_files_without_inventing_rows(tmp_path):
@@ -905,3 +887,21 @@ def test_leakage_table_reads_the_original_and_the_check_files_without_inventing_
     assert by.loc[(5000, "blocks: adaptation rows from other blocks (neighbourhood-disjoint)"), "det95_test_fpr_mean"] == 0.22
     assert {"few-shot", "zero-shot"} <= set(df["access"]) and all(f"{m}_mean" in df.columns for m in METRICS)
     assert "0.2200 +/- 0.0100" in render(df)
+
+
+def test_ct_ablation_pools_exclude_exactly_the_declared_columns():
+    from src.utils.config_loader import apply_pool_variant, choose_pool
+    cfg, fsets = load_config(), load_feature_sets()
+    cols = fsets["feature_pool_full"]
+    window = {"ct_src_dport_ltm", "ct_dst_sport_ltm", "ct_srv_src", "ct_dst_ltm", "ct_src_ltm", "ct_srv_dst", "ct_dst_src_ltm"}
+    a = choose_pool(apply_pool_variant(cfg, "full_no_ct_window"), fsets, cols)[1]["feature_pool"]
+    b = choose_pool(apply_pool_variant(cfg, "full_no_ct_any"), fsets, cols)[1]["feature_pool"]
+    assert len(a) == 41 and set(fsets["feature_pool_full"]) - set(a) == window
+    assert len(b) == 38 and {f for f in fsets["feature_pool_full"] if f.startswith("ct_")} == set(fsets["feature_pool_full"]) - set(b)
+    assert "ct_state_ttl" not in b and "ct_flw_http_mthd" not in b and "ct_ftp_cmd" not in b and "sttl" in b   # every ct_* column goes, the TTL columns stay
+
+
+def test_shift_auc_by_cv_reports_random_and_block_grouped_auc(config, feature_sets):
+    from pipelines.run_leakage_checks import shift_auc_by_cv
+    out = shift_auc_by_cv(config, feature_sets, "base", seed=1, block_size=50)
+    assert 0 <= out["auc_random_cv"] <= 1 and 0 <= out["auc_block_cv"] <= 1 and out["n_train_normal"] > 0 and out["n_test_normal"] > 0
