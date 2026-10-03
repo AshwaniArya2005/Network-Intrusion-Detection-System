@@ -569,3 +569,43 @@ def test_pool_variant_runs_never_overwrite_the_default_headline_files_and_compar
     assert set(variant["pool"]) == {"no_ttl"} and variant["n_features"].eq(45).all()
     table = compare(d, {"base": "40f", "full": "48f", "no_ttl": "45f"}, "official")
     assert list(table.columns) == ["40f", "48f", "45f"] and "accuracy" in table.index and table.notna().all().all()
+
+
+def test_shift_feature_groups_partition_the_48_feature_pool():
+    cfg, fsets = load_config(), load_feature_sets()
+    names = [f for fs in cfg["shift"]["feature_groups"].values() for f in fs]
+    assert len(names) == len(set(names)) and set(names) == set(fsets["feature_pool_full"])
+
+
+def test_shift_classifier_finds_a_shifted_feature_and_is_chance_without_one():
+    from scripts.characterize_shift import rank_stability, shift_classifier
+    rng = np.random.default_rng(0)
+    make = lambda shift: pd.DataFrame({"a": rng.normal(shift, 1, 700), "b": rng.normal(0, 1, 700), "c": rng.normal(0, 1, 700)})  # noqa: E731
+    auc, importance = shift_classifier(make(0), make(2.5), ["a", "b", "c"], seed=1, shap_rows=200)
+    assert auc > 0.9 and importance.idxmax() == "a" and importance["a"] > 5 * importance["b"]
+    assert abs(shift_classifier(make(0), make(0), ["a", "b", "c"], seed=1)[0] - 0.5) < 0.08
+    # rank agreement by hand
+    v = pd.Series({"x": 4.0, "y": 3.0, "z": 2.0, "w": 1.0})
+    out = rank_stability({"p": v, "q": v * 2, "r": v[::-1].set_axis(v.index)}, top=2)
+    pq, pr = out[(out.a == "p") & (out.b == "q")].iloc[0], out[(out.a == "p") & (out.b == "r")].iloc[0]
+    assert pq["spearman"] == 1.0 and pq["top2_jaccard"] == 1.0
+    assert pr["spearman"] == -1.0 and pr["top2_jaccard"] == 0.0
+
+
+def test_shift_steps_run_end_to_end_and_report_every_group(config, feature_sets):
+    from scripts.characterize_shift import run_a1, run_a2, run_a3
+    config["shift"].update(seeds=[1, 2, 3], shap_rows=100)
+    table, summary = run_a1(config, feature_sets, "full")
+    assert len(table) == 48 and set(table["group"]) == set(config["shift"]["feature_groups"]) and 0.3 < summary["auc_mean"] < 0.7
+    assert summary["n_seeds"] == 3 and -1 <= summary["shap_rank_spearman_across_seeds"] <= 1
+    groups = run_a2(config, feature_sets, "base", top_features=list(table["feature"].head(5)))
+    assert "all_features" in set(groups["feature_set"]) and "top5_shift_ranked" in set(groups["feature_set"])
+    assert "ttl" not in set(groups["feature_set"])                                  # the 40-feature pool has no TTL columns
+    ablation = run_a3(config, feature_sets, "base")
+    assert ablation["removed_group"].iloc[0] == "none_removed" and ablation["shift_auc_vs_all"].iloc[0] == 0
+    assert set(ablation["removed_group"]) == {"none_removed", "volume_size", "rate_load", "timing", "tcp_window_loss",
+                                              "protocol_state", "connection_counts"}
+    removed = ablation.set_index("removed_group")
+    assert (removed["n_kept"] + removed["n_removed"] == 40).all()
+    d = rae.get_metrics_dir(config)
+    assert (d / "shift_normal_features_48f.csv").exists() and (d / "shift_nf_groups_40f.csv").exists() and (d / "shift_group_ablation_40f.csv").exists()

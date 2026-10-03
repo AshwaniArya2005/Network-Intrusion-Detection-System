@@ -117,6 +117,20 @@ tuning:
     reg_alpha: {choice: [0, 0.1, 1, 5]}
     class_weight_power: {uniform: [0.0, 1.0]}   # exponent of the balanced class weights (default model: 0.5)
 
+# Feature groups for the train-vs-test shift study (scripts/characterize_shift.py): they partition the 48-feature pool
+# (the 40-feature pool has no ttl group). Used to ask WHICH kinds of features carry the shift, one group at a time.
+shift:
+  seeds: [42, 43, 44, 45, 46]   # classifier seeds of the Normal-vs-Normal shift classifier (and the ablation's model seeds: first 3)
+  shap_rows: 3000               # rows used for the shift classifier's SHAP importance
+  feature_groups:
+    volume_size: [spkts, dpkts, sbytes, dbytes, smean, dmean, total_bytes, total_pkts, byte_ratio, pkt_ratio, avg_pkt_size, response_body_len]
+    rate_load: [rate, sload, dload]
+    timing: [dur, duration_log, sinpkt, dinpkt, sjit, djit, tcprtt, synack, ackdat]
+    tcp_window_loss: [swin, dwin, stcpb, dtcpb, sloss, dloss]
+    protocol_state: [proto, service, state, trans_depth, is_ftp_login, ct_ftp_cmd, ct_flw_http_mthd, is_sm_ips_ports]
+    ttl: [sttl, dttl, ct_state_ttl]
+    connection_counts: [ct_src_dport_ltm, ct_dst_sport_ltm, ct_srv_src, ct_dst_ltm, ct_src_ltm, ct_srv_dst, ct_dst_src_ltm]
+
 evaluation:
   ece_bins: 15   # equal-width confidence bins of the expected calibration error
 
