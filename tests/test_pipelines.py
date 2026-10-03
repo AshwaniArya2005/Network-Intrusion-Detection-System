@@ -725,21 +725,6 @@ def test_domain_weights_favour_target_like_rows_and_never_read_labels():
     assert unlabelled_shift_ranking(source, shuffled, feats).equals(ranking)
 
 
-def test_adaptation_with_domain_weights_labels_the_combined_access_level(config, feature_sets):
-    from pipelines.run_adaptation import run_adaptation_pool
-    runs = run_adaptation_pool(config, feature_sets, "base", ks=(40,), fractions=(0.3,), runs=2, domain_clip=5)
-    assert set(runs["method"]) == {"retrain_f0.3_domain5"} and set(runs["access"]) == {"few-shot+transductive"} and len(runs) == 2
-    assert (runs["n_adapt"] == 40).all() and runs["accuracy"].between(0, 1).all()
-
-
-def test_split_threshold_never_scores_the_threshold_rows_in_training(config, feature_sets):
-    from pipelines.run_adaptation import run_adaptation_pool
-    runs = run_adaptation_pool(config, feature_sets, "base", ks=(60,), fractions=(0.3,), runs=2, split_threshold=True)
-    assert set(runs["method"]) == {"retrain_split_f0.3"} and set(runs["access"]) == {"few-shot"} and len(runs) == 2
-    assert (runs["n_adapt"] == 60).all() and runs["det95_test_fpr"].between(0, 1).all() and runs["det95_test_detection"].between(0, 1).all()
-    assert set(runs["threshold_source"]) == {"held-out half of the adaptation sample"}
-
-
 def test_transductive_methods_run_with_their_access_label(config, feature_sets):
     from pipelines.run_methods import METHODS, run_methods
     config["experiments"]["headline_seeds"] = [1]
@@ -775,3 +760,18 @@ def test_final_table_assembles_every_method_with_its_access_level(tmp_path):
     assert len(df) == 3 + 2 + 4 * 3 + 2 + 2 + 1 and (df["accuracy_mean"] == 0.5).all()
     text = render(df)
     assert "| retrain_f0.3 |" in text and "| retrain_f0.1 |" not in text and "| domain_weights_clip5 |" in text   # the .md omits the f=0.1 rows
+
+
+def test_adaptation_with_domain_weights_labels_the_combined_access_level(config, feature_sets):
+    from pipelines.run_adaptation import run_adaptation_pool
+    runs = run_adaptation_pool(config, feature_sets, "base", ks=(40,), fractions=(0.3,), runs=2, domain_clip=5)
+    assert set(runs["method"]) == {"retrain_f0.3_domain5"} and set(runs["access"]) == {"few-shot+transductive"} and len(runs) == 2
+    assert (runs["n_adapt"] == 40).all() and runs["accuracy"].between(0, 1).all()
+
+
+def test_split_threshold_never_scores_the_threshold_rows_in_training(config, feature_sets):
+    from pipelines.run_adaptation import run_adaptation_pool
+    runs = run_adaptation_pool(config, feature_sets, "base", ks=(60,), fractions=(0.3,), runs=2, split_threshold=True)
+    assert set(runs["method"]) == {"retrain_split_f0.3"} and set(runs["access"]) == {"few-shot"} and len(runs) == 2
+    assert (runs["n_adapt"] == 60).all() and runs["det95_test_fpr"].between(0, 1).all() and runs["det95_test_detection"].between(0, 1).all()
+    assert set(runs["threshold_source"]) == {"held-out half of the adaptation sample"}
