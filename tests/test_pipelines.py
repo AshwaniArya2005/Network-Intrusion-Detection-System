@@ -775,3 +775,14 @@ def test_split_threshold_never_scores_the_threshold_rows_in_training(config, fea
     assert set(runs["method"]) == {"retrain_split_f0.3"} and set(runs["access"]) == {"few-shot"} and len(runs) == 2
     assert (runs["n_adapt"] == 60).all() and runs["det95_test_fpr"].between(0, 1).all() and runs["det95_test_detection"].between(0, 1).all()
     assert set(runs["threshold_source"]) == {"held-out half of the adaptation sample"}
+
+
+def test_composition_counts_rows_by_source_file_and_share():
+    from scripts.pooled_reference_composition import composition
+    frame = lambda a, b: pd.DataFrame({"split": ["train"] * a + ["test"] * b})  # noqa: E731
+    table = composition({"pooled": {"train": frame(60, 30), "val": frame(10, 5), "test": frame(30, 15)}, "official": {"train": frame(100, 0), "test": frame(0, 50)}})
+    pooled = table[table["protocol"] == "pooled"].set_index(["part", "source_file"])
+    assert pooled.loc[("train", "test"), "rows"] == 30 and pooled.loc[("train", "test"), "share_of_source_file"] == 0.6      # 30 of the 50 test-file rows
+    assert pooled.loc[("train", "test"), "share_of_part"] == round(30 / 90, 4)
+    off = table[table["protocol"] == "official"].set_index(["part", "source_file"])
+    assert off.loc[("train", "test"), "rows"] == 0 and off.loc[("test", "test"), "share_of_source_file"] == 1.0
