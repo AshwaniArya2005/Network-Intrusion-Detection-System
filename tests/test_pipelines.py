@@ -650,3 +650,91 @@ def test_stage1_search_scores_the_binary_task_and_run_methods_labels_access(conf
     seeds_df = pd.read_csv(d / "methods_unit_40f_seeds.csv")
     assert (d / "methods_unit_40f_summary.csv").exists() and len(seeds_df) == 6
     assert "recall_Analysis" in seeds_df.columns and "recall_Overlap-Group-1" in seeds_df.columns  # 8 classes (hierarchical) and 6 (flat) side by side
+
+
+def test_draw_adaptation_sample_is_stratified_reproducible_and_disjoint():
+    from src.adaptation import draw_adaptation_sample
+    df = pd.DataFrame({"cls": ["a"] * 600 + ["b"] * 300 + ["c"] * 90 + ["d"] * 10, "x": np.arange(1000)})
+    adapt, rest = draw_adaptation_sample(df, 100, "cls", seed=3)
+    assert len(adapt) == 100 and len(rest) == 900 and not set(adapt.index) & set(rest.index)
+    counts = adapt["cls"].value_counts()
+    assert counts["a"] == 60 and counts["b"] == 30 and counts["c"] == 9 and counts["d"] == 1       # proportional, every class present
+    again, _ = draw_adaptation_sample(df, 100, "cls", seed=3)
+    assert adapt.index.equals(again.index)                                                           # reproducible
+    assert not adapt.index.equals(draw_adaptation_sample(df, 100, "cls", seed=4)[0].index)           # another draw differs
+    tiny, _ = draw_adaptation_sample(df, 8, "cls", seed=0)
+    assert len(tiny) == 8 and set(tiny["cls"]) == {"a", "b", "c", "d"}                               # the one-per-class floor, still k rows
+    with pytest.raises(ValueError):
+        draw_adaptation_sample(df, 0, "cls", seed=0)
+    with pytest.raises(ValueError):
+        draw_adaptation_sample(df, 1000, "cls", seed=0)
+
+
+def test_adaptation_weights_give_the_adaptation_rows_the_requested_share():
+    from src.adaptation import adaptation_weights
+    w = np.array([1.0, 1.0, 2.0, 4.0, 3.0, 1.0])
+    flag = np.array([False, False, False, False, True, True])
+    out = adaptation_weights(w, flag, 0.5)
+    assert np.allclose(out[:4], w[:4]) and abs(out[flag].sum() - out[~flag].sum()) < 1e-12           # half of the total weight
+    assert abs(out[4] / out[5] - 3.0) < 1e-12                                                          # their relative weights are kept
+    assert abs(adaptation_weights(w, flag, 0.2)[flag].sum() / adaptation_weights(w, flag, 0.2).sum() - 0.2) < 1e-12
+    assert np.array_equal(adaptation_weights(w, np.zeros(6, bool), 0.3), w)
+    with pytest.raises(ValueError):
+        adaptation_weights(w, flag, 1.0)
+
+
+def test_adaptation_rows_leave_the_evaluation_set_and_enter_training(config, feature_sets, splits):
+    from src.adaptation import draw_adaptation_sample, with_adaptation
+    adapt, remaining = draw_adaptation_sample(splits.test, 60, config["data"]["target_column"], seed=1)
+    adapted = with_adaptation(splits, adapt, remaining, 0.3)
+    assert len(adapted.test) == len(splits.test) - 60 and len(adapted.train) == len(splits.train) + 60
+    assert int(adapted.train["adapt_flag"].sum()) == 60 and adapted.adapt_fraction == 0.3 and splits.adapt_fraction is None
+    result = train_and_evaluate(config, feature_sets, "15", False, adapted, save_artifacts=False)
+    assert result["n_test"] == len(splits.test) - 60 and result["n_train"] == len(splits.train) + 60
+
+
+def test_run_adaptation_pool_scores_zero_shot_and_adapted_methods_on_the_same_remaining_rows(config, feature_sets):
+    from pipelines.run_adaptation import run_adaptation_pool, summarise
+    runs = run_adaptation_pool(config, feature_sets, "base", ks=(40,), fractions=(0.3,), runs=2)
+    assert set(runs["method"]) == {"zero_shot", "thr_adapt", "retrain_f0.3"} and len(runs) == 6
+    assert set(runs.loc[runs["method"] == "zero_shot", "access"]) == {"zero-shot"} and set(runs.loc[runs["method"] != "zero_shot", "access"]) == {"few-shot"}
+    for _, g in runs.groupby("run"):
+        assert g["n_eval"].nunique() == 1 and (g["n_adapt"] == 40).all()                              # the same remaining rows for every method
+    zero, thr = (runs[runs["method"] == m].sort_values("run") for m in ("zero_shot", "thr_adapt"))
+    assert np.allclose(zero["accuracy"], thr["accuracy"])                                              # threshold adaptation leaves the argmax model unchanged
+    assert summarise(runs).query("method == 'zero_shot' and metric == 'accuracy'")["n_runs"].iloc[0] == 2
+
+
+def test_domain_weights_favour_target_like_rows_and_never_read_labels():
+    from src.adaptation import domain_importance_weights, unlabelled_shift_ranking
+    rng = np.random.default_rng(0)
+    frame = lambda mu, n: pd.DataFrame({"dur": np.abs(rng.normal(mu, 1, n)), "sbytes": np.abs(rng.normal(0, 1, n)), "dbytes": rng.random(n),  # noqa: E731
+                                        "spkts": rng.integers(1, 9, n).astype(float), "dpkts": rng.integers(1, 9, n).astype(float),
+                                        "attack_cat": rng.choice(["Normal", "Fuzzers"], n), "label": rng.integers(0, 2, n)})
+    source, target = frame(0, 1500), frame(2.0, 1500)
+    feats = ["dur", "sbytes", "dbytes"]
+    w = domain_importance_weights(source, target, feats, clip=5, seed=1)
+    assert len(w) == len(source) and abs(w.mean() - 1) < 1e-9 and w.min() >= 0
+    assert np.corrcoef(w, source["dur"])[0, 1] > 0.3                      # rows that look like the target (large dur) weigh more
+    shuffled = target.assign(attack_cat=rng.permutation(target["attack_cat"].to_numpy()), label=rng.permutation(target["label"].to_numpy()))
+    assert np.allclose(w, domain_importance_weights(source, shuffled, feats, clip=5, seed=1))   # target labels play no part
+    unclipped_max = domain_importance_weights(source, target, feats, clip=1000, seed=1).max()
+    assert w.max() < unclipped_max                                         # clipping bites
+    ranking = unlabelled_shift_ranking(source, target, feats)
+    assert ranking.index[0] == "dur" and ranking["dur"] > 0.5 and ranking["sbytes"] < 0.1
+    assert unlabelled_shift_ranking(source, shuffled, feats).equals(ranking)
+
+
+def test_adaptation_with_domain_weights_labels_the_combined_access_level(config, feature_sets):
+    from pipelines.run_adaptation import run_adaptation_pool
+    runs = run_adaptation_pool(config, feature_sets, "base", ks=(40,), fractions=(0.3,), runs=2, domain_clip=5)
+    assert set(runs["method"]) == {"retrain_f0.3_domain5"} and set(runs["access"]) == {"few-shot+transductive"} and len(runs) == 2
+    assert (runs["n_adapt"] == 40).all() and runs["accuracy"].between(0, 1).all()
+
+
+def test_split_threshold_never_scores_the_threshold_rows_in_training(config, feature_sets):
+    from pipelines.run_adaptation import run_adaptation_pool
+    runs = run_adaptation_pool(config, feature_sets, "base", ks=(60,), fractions=(0.3,), runs=2, split_threshold=True)
+    assert set(runs["method"]) == {"retrain_split_f0.3"} and set(runs["access"]) == {"few-shot"} and len(runs) == 2
+    assert (runs["n_adapt"] == 60).all() and runs["det95_test_fpr"].between(0, 1).all() and runs["det95_test_detection"].between(0, 1).all()
+    assert set(runs["threshold_source"]) == {"held-out half of the adaptation sample"}

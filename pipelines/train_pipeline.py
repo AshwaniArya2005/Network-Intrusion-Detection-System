@@ -1,4 +1,4 @@
-"""Main training pipeline â€” fully config-driven. Run from the project root:
+"""Main training pipeline — fully config-driven. Run from the project root:
 
     python pipelines/train_pipeline.py
 
@@ -25,6 +25,7 @@ from src.evaluation.metrics import (
     binary_detection_metrics, build_overlap_diagnostics, compute_metrics, confusion_matrix_tables, fpr_at_detection,
     group_recall_from_diagnostics, per_class_metrics, probabilistic_metrics, threshold_sweep, unknown_auroc, unknown_detection_rate,
 )
+from src.adaptation import adaptation_weights
 from src.evaluation.plots import plot_confusion_matrix_for_scheme, plot_roc_curve
 from src.feature_selection import compute_feature_ranking, data_signature, ranking_is_current, write_feature_ranking
 from src.models.model_factory import create_scheme_model
@@ -52,6 +53,11 @@ class Splits:
     unknown: pd.DataFrame
     summary: pd.DataFrame | None = None   # per-class counts before/after dedup and per split
     name: str = "official"                # "official" or "pooled_random": which protocol made the test split
+    # few-shot adaptation (src/adaptation.py): train rows flagged in `adapt_flag` are labelled rows drawn from the TARGET
+    # distribution and together carry this fraction of the total training sample weight (None: no adaptation)
+    adapt_fraction: float | None = None
+    # TRANSDUCTIVE reweighting (src/adaptation.domain_importance_weights): one multiplier per training row, applied to the sample weights
+    weight_multiplier: np.ndarray | None = None
 
 
 def _split_summary(raw: pd.DataFrame, before: pd.DataFrame, parts: dict[str, pd.DataFrame], fine: str) -> pd.DataFrame:
@@ -104,6 +110,8 @@ def load_split_data(config: dict, use_official_split: bool | None = None) -> Spl
     train_df, val_df = train_test_split(train_full, test_size=data_cfg["val_size"], random_state=seed,
                                         stratify=train_full[target])
     train_df, val_df, test_df = (d.reset_index(drop=True) for d in (train_df, val_df, test_df))
+    for part in (train_df, val_df, test_df, unknown_df):
+        part.attrs = {}  # the loader's DataFrame-valued dedup counts must not travel with the splits (they break pd.concat)
     summary = None
     if before_dedup is not None:
         summary = _split_summary(raw_df, before_dedup, {"train": train_df, "val": val_df, "test": test_df,
@@ -240,10 +248,15 @@ def train_and_evaluate(
     model = create_scheme_model(model_cfg["type"], model_cfg["params"], hierarchical, normal_index,
                                 model_cfg.get("stage1_params"), model_cfg.get("stage1_class_weight_power", 0.5))
     # A hierarchical model balances each stage itself (binary stage 1, family stage 2).
-    model.fit(X_train, y_train, sample_weight=None if hierarchical else balanced_sample_weight(
-        y_train, model_cfg.get("class_weight_power", 0.5)))
+    weights = None if hierarchical else balanced_sample_weight(y_train, model_cfg.get("class_weight_power", 0.5))
+    if splits.adapt_fraction is not None and weights is not None:
+        weights = adaptation_weights(weights, splits.train["adapt_flag"].to_numpy(dtype=bool), splits.adapt_fraction)
+    if splits.weight_multiplier is not None and weights is not None:
+        weights = weights * splits.weight_multiplier
+    model.fit(X_train, y_train, sample_weight=weights)
     metrics, predictions = evaluate_model(model, preprocessor, splits.test, config)
     if predictions_out is not None:
+        predictions_out.update(model=model, preprocessor=preprocessor)  # for callers that score further rows
         predictions_out.update({k: predictions[k] for k in
                                 ("y_test", "y_pred", "y_proba", "class_names", "y_pred_labels", "fine_grained_true")})
     y_proba = predictions["y_proba"]
@@ -297,8 +310,8 @@ def train_and_evaluate(
 
     if save_artifacts:
         # Grouped by model type (models_saved/xgboost/, models_saved/random_forest/, ...)
-        # so every artifact for a given model â€” all feature sets, closed/open-set,
-        # preprocessors â€” lives together instead of a flat, hard-to-scan directory.
+        # so every artifact for a given model — all feature sets, closed/open-set,
+        # preprocessors — lives together instead of a flat, hard-to-scan directory.
         # XGBoost artifacts are .json (native format), everything else .pkl.
         model_dir = resolve_path(config["paths"]["models_dir"]) / model_cfg["type"]
         model_dir.mkdir(parents=True, exist_ok=True)
