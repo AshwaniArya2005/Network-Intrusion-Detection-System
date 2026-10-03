@@ -50,6 +50,17 @@ def fpr_at_detection(true_labels: np.ndarray, proba: np.ndarray, class_names: li
     return {f"fpr_at_{round(t * 100)}_detection": round(float(fpr[np.searchsorted(tpr, t, side="left")]), 4) for t in targets}
 
 
+def confusion_matrix_tables(true_labels: np.ndarray, pred_labels: np.ndarray, class_names: list[str]) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Confusion matrix as DataFrames, rows = true class, columns = predicted class (every class
+    present even with zero rows): (counts, row-normalised shares). The row for a class answers
+    "where do this class's flows go?", e.g. the Normal row gives each class's share of Normal flows."""
+    names = list(class_names)
+    counts = pd.crosstab(pd.Categorical(np.asarray(true_labels), categories=names),
+                         pd.Categorical(np.asarray(pred_labels), categories=names), dropna=False)
+    counts.index.name, counts.columns.name = "true", "predicted"
+    return counts, counts.div(counts.sum(axis=1).replace(0, 1), axis=0).round(4)
+
+
 def group_recall_from_diagnostics(diagnostics: dict[str, pd.DataFrame]) -> dict[str, float]:
     """Fine-grained recall of each original category routed into its merged group, read off
     the overlap diagnostic tables (keys like `recall_Analysis_as_Overlap-Group-1`)."""

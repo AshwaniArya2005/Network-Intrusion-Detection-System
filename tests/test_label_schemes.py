@@ -107,6 +107,8 @@ def test_label_scheme_comparison_is_comparable_and_writes_both_splits(config):
     assert not list(results.glob("feature_ranking_*none*")) and not list(results.glob("feature_ranking_*pooled*"))  # scratch only
     assert list((results / "diagnostics").glob("feature_ranking_*"))
     metrics_dir = get_metrics_dir(config)
-    assert (metrics_dir / "label_scheme_comparison.csv").exists() and (metrics_dir / "label_scheme_comparison_pooled.csv").exists()
+    # synthetic data carries the 8 extra columns -> full pool -> "_48f"-tagged outputs; the confusion matrices are written too
+    assert (metrics_dir / "label_scheme_comparison_48f.csv").exists() and (metrics_dir / "label_scheme_comparison_pooled_48f.csv").exists()
+    assert (metrics_dir / "confusion_matrix_48_pooled_random_none_48f.csv").exists()
     text = write_label_scheme_summary(out, pooled, metrics_dir / "label_scheme_summary.md")
     assert "the choice of scheme is the team's" in text and "NOT comparable" in text

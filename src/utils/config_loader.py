@@ -94,10 +94,13 @@ def get_label_scheme(config: dict[str, Any]) -> tuple[str, dict[str, list[str]],
 
 def scheme_tag(config: dict[str, Any]) -> str:
     """Filename suffix of the active output variant: the label scheme ("" for the default
-    "current", else "_<name>") plus `feature_selection.variant_tag` (e.g. "_nonredundant"; unset by
-    default), so a non-default run's outputs never overwrite the default's."""
+    "current", else "_<name>"), `feature_selection.variant_tag` (e.g. "_nonredundant"; unset by
+    default) and the feature pool ("_48f" for the full pool, set by choose_pool; "" for the
+    40-feature base pool), so a non-default run's outputs never overwrite the default's and the
+    two pools' results (and rankings) coexist."""
     name = config["data"]["label_scheme"]
-    return ("" if name == "current" else f"_{name}") + config["feature_selection"].get("variant_tag", "")
+    fs = config["feature_selection"]
+    return ("" if name == "current" else f"_{name}") + fs.get("variant_tag", "") + fs.get("pool_tag", "")
 
 
 def tagged(config: dict[str, Any], filename: str) -> str:
@@ -107,21 +110,30 @@ def tagged(config: dict[str, Any], filename: str) -> str:
 
 
 def choose_pool(config: dict[str, Any], feature_sets: dict[str, Any], columns) -> tuple[dict, dict]:
-    """Pick the feature pool for the loaded data: `feature_pool_full` when every extra official
-    column it adds is present in `columns`, else `feature_pool`. Returns (config, feature_sets)
-    copies with the pool (and, for the full pool, the tier list `experiments.feature_sets_full`)
-    applied and `feature_sets["pool_name"]` set to "full" or "base"; the choice is logged."""
+    """Pick the feature pool for the loaded data per `feature_selection.pool`: "auto" uses
+    `feature_pool_full` when every extra official column it adds is present in `columns`, else
+    `feature_pool`; "base" forces the 40-feature pool (even if the columns exist, for a like-for-like
+    comparison); "full" requires the columns. Returns (config, feature_sets) copies with the pool
+    (and, for the full pool, the tier list `experiments.feature_sets_full`) applied,
+    `feature_sets["pool_name"]` set to "full" or "base" and `feature_selection.pool_tag` ("_48f" for
+    full, which scheme_tag adds to every output name); the choice is logged."""
     config, feature_sets = copy.deepcopy(config), copy.deepcopy(feature_sets)
     full = feature_sets.get("feature_pool_full")
     raw_extra = set(full or []) - set(feature_sets["feature_pool"])  # the extra official columns
-    use_full = full is not None and raw_extra <= set(columns)
+    missing = sorted(raw_extra - set(columns))
+    want = config["feature_selection"].get("pool", "auto")
+    if want not in ("auto", "base", "full"):
+        raise ValueError(f"feature_selection.pool must be auto, base or full, got {want!r}")
+    if want == "full" and (full is None or missing):
+        raise ValueError(f"feature_selection.pool is 'full' but the data lacks official columns: {missing}")
+    use_full = want == "full" or (want == "auto" and full is not None and not missing)
     feature_sets["pool_name"] = "full" if use_full else "base"
+    config["feature_selection"]["pool_tag"] = "_48f" if use_full else ""
     if use_full:
         feature_sets["feature_pool"] = list(full)
         config["experiments"]["feature_sets"] = list(config["experiments"]["feature_sets_full"])
-    missing = sorted(raw_extra - set(columns))
     logger.info(f"Feature pool: '{feature_sets['pool_name']}' ({len(feature_sets['feature_pool'])} features)"
-                + (f"; missing official columns: {missing}" if missing else ""))
+                + (f"; missing official columns: {missing}" if missing and not use_full else ""))
     return config, feature_sets
 
 

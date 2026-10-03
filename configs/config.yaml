@@ -15,7 +15,7 @@ paths:
   unsw_train: "data/raw/unsw_nb15_train.csv"
   unsw_test: "data/raw/unsw_nb15_test.csv"
   cic_file: "data/raw/cicids2017_combined.csv"
-  feature_ranking: "results/feature_ranking_{source}.csv"   # one file per feature_selection.ranking_source
+  feature_ranking: "results/feature_ranking_{source}.csv"   # one file per ranking_source (+ "_48f" for the full pool, see feature_selection.pool)
 
 data:
   label_column: "label"                        # binary: 0 = normal, 1 = attack
@@ -71,6 +71,11 @@ data:
       hierarchical: true
 
 feature_selection:
+  # Feature pool: "auto" = the 48-feature pool when the data has the 8 extra official columns, else the
+  # 40-feature one; "base" forces the 40-feature pool on any data (to compare 40 vs 48 on the same
+  # rows); "full" requires the extra columns. The full pool's outputs carry the suffix "_48f" (rankings,
+  # CSVs, models), so the two pools' results sit side by side and never overwrite each other.
+  pool: "auto"
   active_set: "40"   # one of: "40", "30", "20", "15" — see configs/feature_sets.yaml
   # "mutual_info": rank the pool by mutual information on the training split (generated);
   # "curated": the hand-written order in feature_sets.yaml (feature_curated_rank).

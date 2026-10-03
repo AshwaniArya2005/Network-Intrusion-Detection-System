@@ -163,6 +163,7 @@ def test_stability_models_match_evaluated_models(config, feature_sets, splits, m
 
 
 def test_run_all_writes_every_output(config, feature_sets):
+    config["feature_selection"]["pool"] = "base"  # synthetic data has the 8 extra columns; base keeps the untagged file names
     out = rae.run_all(config, feature_sets)
     metrics_dir = rae.get_metrics_dir(config)
 
@@ -180,6 +181,7 @@ def test_run_all_writes_every_output(config, feature_sets):
     summary = pd.read_csv(metrics_dir / "feature_selection_baselines_summary.csv")
     assert summary.loc[0, "n_random_draws"] == 2 and {"random_f1_mean", "random_f1_std", "worst_f1"} <= set(summary.columns)
     assert (metrics_dir / "split_summary.csv").exists()
+    assert (metrics_dir / "confusion_matrix_15_pooled_random.csv").exists()  # synthetic data always splits randomly
     assert set(out["pooled_split"]["split"]) == {"pooled_random"}
     comparison = pd.read_csv(metrics_dir / "split_comparison.csv")
     assert set(comparison["split"]) == {"official", "pooled_random"} and set(comparison["feature_set"].astype(str)) == {"40", "15"}
@@ -277,3 +279,25 @@ def test_feature_set_metrics_plot_draws_numeric_tiers(tmp_path):
         plots._save = real_save
     # categorical (str) x-values sit at positions 0..3, inside the forced xlim; ints would sit at 15..40, off-screen
     assert all(isinstance(v, str) for v in seen["x"])
+
+
+def test_confusion_matrix_tables_counts_and_row_shares():
+    import numpy as np
+    from src.evaluation.metrics import confusion_matrix_tables
+    true = np.array(["Normal"] * 4 + ["DoS"] * 2)
+    pred = np.array(["Normal", "Normal", "Fuzzers", "Fuzzers", "DoS", "Normal"])
+    counts, share = confusion_matrix_tables(true, pred, ["DoS", "Fuzzers", "Normal", "Worms"])
+    assert counts.loc["Normal", "Fuzzers"] == 2 and counts.loc["DoS", "Normal"] == 1
+    assert counts.to_numpy().sum() == 6 and list(counts.columns) == ["DoS", "Fuzzers", "Normal", "Worms"]  # empty class kept
+    assert share.loc["Normal", "Fuzzers"] == 0.5 and share.loc["Worms"].sum() == 0 and abs(share.loc["DoS"].sum() - 1) < 1e-9
+
+
+def test_train_and_evaluate_writes_the_confusion_csvs(config, feature_sets, splits):
+    import pandas as pd
+    from src.utils.config_loader import get_metrics_dir
+    train_and_evaluate(config, feature_sets, "15", False, splits, save_artifacts=False, write_confusion=True)
+    d = get_metrics_dir(config)
+    counts = pd.read_csv(d / f"confusion_matrix_15_{splits.name}.csv", index_col=0)
+    share = pd.read_csv(d / f"confusion_matrix_15_{splits.name}_rownorm.csv", index_col=0)
+    assert counts.to_numpy().sum() == len(splits.test) and list(counts.index) == list(counts.columns)
+    assert abs(share.loc["Normal"].sum() - 1) < 1e-3

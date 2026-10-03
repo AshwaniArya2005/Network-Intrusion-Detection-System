@@ -22,8 +22,8 @@ from sklearn.model_selection import train_test_split
 
 from src.data_loader import _class_split_counts, load_unsw
 from src.evaluation.metrics import (
-    binary_detection_metrics, build_overlap_diagnostics, compute_metrics, fpr_at_detection, group_recall_from_diagnostics,
-    per_class_metrics, threshold_sweep, unknown_auroc, unknown_detection_rate,
+    binary_detection_metrics, build_overlap_diagnostics, compute_metrics, confusion_matrix_tables, fpr_at_detection,
+    group_recall_from_diagnostics, per_class_metrics, threshold_sweep, unknown_auroc, unknown_detection_rate,
 )
 from src.evaluation.plots import plot_confusion_matrix_for_scheme, plot_roc_curve
 from src.feature_selection import compute_feature_ranking, data_signature, ranking_is_current, write_feature_ranking
@@ -51,6 +51,7 @@ class Splits:
     test: pd.DataFrame
     unknown: pd.DataFrame
     summary: pd.DataFrame | None = None   # per-class counts before/after dedup and per split
+    name: str = "official"                # "official" or "pooled_random": which protocol made the test split
 
 
 def _split_summary(raw: pd.DataFrame, before: pd.DataFrame, parts: dict[str, pd.DataFrame], fine: str) -> pd.DataFrame:
@@ -91,7 +92,8 @@ def load_split_data(config: dict, use_official_split: bool | None = None) -> Spl
                            source_column=data_cfg["fine_grained_target_column"], target_column=target)
     known_df, unknown_df = split_known_unknown(df, data_cfg["unknown_attack_categories"], target)
 
-    if (data_cfg.get("use_official_split", True) if use_official_split is None else use_official_split) and {"train", "test"} <= set(known_df["split"]):
+    official = (data_cfg.get("use_official_split", True) if use_official_split is None else use_official_split)         and {"train", "test"} <= set(known_df["split"])
+    if official:
         train_full = known_df[known_df["split"] == "train"]
         test_df = known_df[known_df["split"] == "test"]
         logger.info("Using the official UNSW-NB15 train/test split")
@@ -106,7 +108,7 @@ def load_split_data(config: dict, use_official_split: bool | None = None) -> Spl
     if before_dedup is not None:
         summary = _split_summary(raw_df, before_dedup, {"train": train_df, "val": val_df, "test": test_df,
                                                         "unknown": unknown_df}, data_cfg["fine_grained_target_column"])
-    return Splits(train_df, val_df, test_df, unknown_df, summary)
+    return Splits(train_df, val_df, test_df, unknown_df, summary, "official" if official else "pooled_random")
 
 
 def generate_feature_ranking(config: dict, feature_sets: dict, train_df: pd.DataFrame) -> pd.Series:
@@ -187,8 +189,17 @@ def evaluate_model(model, preprocessor: Preprocessor, test_df: pd.DataFrame, con
     attack_rows = fine != normal
     metrics["group_size_share"] = round(float(np.isin(fine[attack_rows], list(label_of)).mean()), 4)
     predictions = dict(X_test=X_test, y_test=y_test, y_pred=y_pred, y_proba=y_proba, class_names=preprocessor.target_encoder.classes_,
-                       y_pred_labels=y_pred_labels, fine_grained_true=fine)
+                       y_pred_labels=y_pred_labels, true_labels=true_labels, fine_grained_true=fine)
     return metrics, predictions
+
+
+def write_confusion_csvs(config: dict, feature_set_name: str, split_name: str, predictions: dict) -> None:
+    """results/metrics/<model.type>/confusion_matrix_<tier>_<split>[_rownorm]<tags>.csv from evaluate_model's predictions."""
+    metrics_dir = get_metrics_dir(config)
+    metrics_dir.mkdir(parents=True, exist_ok=True)
+    counts, rownorm = confusion_matrix_tables(predictions["true_labels"], predictions["y_pred_labels"], predictions["class_names"])
+    counts.to_csv(metrics_dir / tagged(config, f"confusion_matrix_{feature_set_name}_{split_name}.csv"))
+    rownorm.to_csv(metrics_dir / tagged(config, f"confusion_matrix_{feature_set_name}_{split_name}_rownorm.csv"))
 
 
 def train_and_evaluate(
@@ -200,6 +211,7 @@ def train_and_evaluate(
     save_artifacts: bool = True,
     predictions_out: dict | None = None,
     features: list[str] | None = None,
+    write_confusion: bool = False,
 ) -> dict:
     """Train one model configuration and return its metrics dict. Optionally save the
     fitted model + preprocessor to models_saved/ for later evaluation/dashboard use.
@@ -207,7 +219,8 @@ def train_and_evaluate(
     `features` overrides the feature list (e.g. the random-ranking baseline); by default
     it's the top-N of the generated ranking for `feature_set_name`. If `predictions_out`
     is passed, it's populated with y_test/y_pred/y_proba/class_names so a caller can
-    render a confusion matrix or ROC curve without retraining."""
+    render a confusion matrix or ROC curve without retraining. `write_confusion` writes the test
+    confusion matrix (counts + row-normalised) as CSVs, named by tier and split protocol."""
     data_cfg = config["data"]
     model_cfg = config["model"]
     features = features or get_active_features(config, feature_sets, feature_set_name)
@@ -231,6 +244,8 @@ def train_and_evaluate(
         predictions_out.update({k: predictions[k] for k in
                                 ("y_test", "y_pred", "y_proba", "class_names", "y_pred_labels", "fine_grained_true")})
     y_proba = predictions["y_proba"]
+    if write_confusion:
+        write_confusion_csvs(config, feature_set_name, splits.name, predictions)
 
     result = {
         "model_type": model_cfg["type"],
