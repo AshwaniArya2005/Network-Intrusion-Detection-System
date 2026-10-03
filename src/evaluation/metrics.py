@@ -101,6 +101,27 @@ def confusion_matrix_tables(true_labels: np.ndarray, pred_labels: np.ndarray, cl
     return counts, counts.div(counts.sum(axis=1).replace(0, 1), axis=0).round(4)
 
 
+def select_attack_threshold(is_attack: np.ndarray, score: np.ndarray, target_detection: float | None = None,
+                            target_fpr: float | None = None) -> float:
+    """Attack-vs-normal operating point chosen on the rows passed in (validation only). `score` is
+    1 - P(Normal); a flow is called an attack when score >= the returned threshold. Give exactly one target:
+    `target_detection` -> the highest threshold whose detection (TPR) reaches it, i.e. the lowest FPR that
+    still detects that share of attacks; `target_fpr` -> the lowest threshold whose FPR stays within it, i.e.
+    the highest detection inside that false-alarm budget."""
+    if (target_detection is None) == (target_fpr is None):
+        raise ValueError("give exactly one of target_detection / target_fpr")
+    fpr, tpr, thresholds = roc_curve(np.asarray(is_attack, dtype=bool), score, drop_intermediate=False)
+    if target_detection is not None:
+        return float(thresholds[np.searchsorted(tpr, target_detection, side="left")])
+    return float(thresholds[np.searchsorted(fpr, target_fpr, side="right") - 1])
+
+
+def attack_rates(is_attack: np.ndarray, score: np.ndarray, threshold: float) -> tuple[float, float]:
+    """(detection rate, false-positive rate) of calling every flow with score >= threshold an attack."""
+    is_attack, called = np.asarray(is_attack, dtype=bool), np.asarray(score) >= threshold
+    return float((called & is_attack).sum() / max(is_attack.sum(), 1)), float((called & ~is_attack).sum() / max((~is_attack).sum(), 1))
+
+
 def group_recall_from_diagnostics(diagnostics: dict[str, pd.DataFrame]) -> dict[str, float]:
     """Fine-grained recall of each original category routed into its merged group, read off
     the overlap diagnostic tables (keys like `recall_Analysis_as_Overlap-Group-1`)."""

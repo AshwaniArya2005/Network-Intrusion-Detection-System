@@ -346,3 +346,44 @@ def test_run_headline_seeds_reports_mean_and_std_per_pool_and_protocol(config, f
     d = rae.get_metrics_dir(config)
     assert (d / "headline_seeds.csv").exists() and "mean +/-" not in (d / "headline_summary.csv").read_text()
     assert "+/-" in (d / "headline_summary.md").read_text()
+
+
+def test_select_attack_threshold_and_rates_by_hand():
+    from src.evaluation.metrics import attack_rates, select_attack_threshold
+    is_attack = np.array([1, 1, 1, 1, 0, 0, 0, 0], dtype=bool)
+    score = np.array([0.9, 0.8, 0.6, 0.3, 0.7, 0.4, 0.2, 0.1])
+    # 75% detection needs the third attack (0.6); the 0.7 normal outranks it -> FPR 1/4
+    t = select_attack_threshold(is_attack, score, target_detection=0.75)
+    assert t == 0.6 and attack_rates(is_attack, score, t) == (0.75, 0.25)
+    # 50% detection is reached at 0.8, where no normal flow scores that high: FPR 0
+    t = select_attack_threshold(is_attack, score, target_detection=0.5)
+    assert t == 0.8 and attack_rates(is_attack, score, t) == (0.5, 0.0)
+    # FPR budget 25% (one of four normals): the 0.7 normal is allowed and the next one enters only at 0.4,
+    # so the lowest admissible threshold is 0.6 (detection .75); a 50% budget also admits the 0.4 normal -> 0.3 (detection 1)
+    t = select_attack_threshold(is_attack, score, target_fpr=0.25)
+    assert t == 0.6 and attack_rates(is_attack, score, t) == (0.75, 0.25)
+    t = select_attack_threshold(is_attack, score, target_fpr=0.5)
+    assert t == 0.3 and attack_rates(is_attack, score, t) == (1.0, 0.5)
+    with pytest.raises(ValueError):
+        select_attack_threshold(is_attack, score)
+    with pytest.raises(ValueError):
+        select_attack_threshold(is_attack, score, target_detection=0.9, target_fpr=0.1)
+
+
+def test_operating_points_are_chosen_on_validation_and_reported_on_both(config, feature_sets, splits):
+    from pipelines.run_operating_point import operating_points
+    pred = {}
+    train_and_evaluate(config, feature_sets, "15", False, splits, save_artifacts=False, predictions_out=pred)
+    rows = {r["rule"]: r for r in operating_points(pred, "Normal")}
+    assert set(rows) == {"argmax", "det95", "fpr10"}
+    assert rows["det95"]["val_detection"] >= 0.95 and rows["fpr10"]["val_fpr"] <= 0.10  # the targets hold on validation
+    for r in rows.values():
+        assert abs(r["fpr_gap"] - (r["test_fpr"] - r["val_fpr"])) < 1e-3
+
+
+def test_class_weight_power_changes_the_weights():
+    from src.preprocessing import balanced_sample_weight
+    y = np.array([0] * 90 + [1] * 10)
+    assert np.allclose(balanced_sample_weight(y, 0.0), 1.0)                       # unweighted
+    w1, w05 = balanced_sample_weight(y, 1.0), balanced_sample_weight(y)           # default power is 0.5
+    assert np.allclose(w05, w1 ** 0.5) and w1[-1] / w1[0] == 9.0                  # fully balanced: 90/10

@@ -234,12 +234,13 @@ def train_and_evaluate(
         "feature_pool": feature_sets.get("pool_name", "base"), "label_scheme": scheme_name,
     }
     X_train, y_train = preprocessor.transform(splits.train)
-    X_val, _ = preprocessor.transform(splits.val)
+    X_val, y_val = preprocessor.transform(splits.val)
 
     normal_index = list(preprocessor.target_encoder.classes_).index(data_cfg["normal_category"])
     model = create_scheme_model(model_cfg["type"], model_cfg["params"], hierarchical, normal_index)
     # A hierarchical model balances each stage itself (binary stage 1, family stage 2).
-    model.fit(X_train, y_train, sample_weight=None if hierarchical else balanced_sample_weight(y_train))
+    model.fit(X_train, y_train, sample_weight=None if hierarchical else balanced_sample_weight(
+        y_train, model_cfg.get("class_weight_power", 0.5)))
     metrics, predictions = evaluate_model(model, preprocessor, splits.test, config)
     if predictions_out is not None:
         predictions_out.update({k: predictions[k] for k in
@@ -267,7 +268,10 @@ def train_and_evaluate(
 
     # Open-set threshold: chosen on KNOWN validation data only (target false-"Unknown" rate),
     # then frozen. The zero-day classes are only ever scored at this threshold.
-    conf_val = model.predict_proba(X_val).max(axis=1)
+    proba_val = model.predict_proba(X_val)
+    conf_val = proba_val.max(axis=1)
+    if predictions_out is not None:  # validation scores, for operating points chosen on validation only
+        predictions_out.update(y_proba_val=proba_val, val_labels=preprocessor.decode_target(y_val))
     threshold = select_threshold(conf_val, config["open_set"]["target_false_unknown_rate"])
 
     if open_set_enabled and len(splits.unknown) > 0:
@@ -275,6 +279,8 @@ def train_and_evaluate(
         X_unknown = preprocessor.transform_features(splits.unknown)
         osp = OpenSetWrapper(model, threshold).predict(np.vstack([X_test, X_unknown]))
         is_true_unknown = np.arange(len(osp.confidence)) >= len(X_test)
+        if predictions_out is not None:
+            predictions_out.update(open_set_is_unknown=osp.is_unknown, is_true_unknown=is_true_unknown)
         result.update(
             open_set_threshold=round(threshold, 4),
             target_false_unknown_rate=config["open_set"]["target_false_unknown_rate"],

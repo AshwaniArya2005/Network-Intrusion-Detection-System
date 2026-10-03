@@ -47,7 +47,7 @@ def _ranked_pool(config: dict[str, Any], feature_sets: dict[str, Any]) -> list[s
     """Features ordered most -> least important for `feature_selection.ranking_source`:
     "curated" is the hand-written feature_curated_rank; "mutual_info" is the data-derived
     ranking file written by run_all_experiments (or train_pipeline.py --write-ranking).
-    Raises if that file is missing or doesn't match the pool — never falls back silently."""
+    Raises if that file is missing or doesn't match the pool â€” never falls back silently."""
     pool = set(feature_sets["feature_pool"])
     if config["feature_selection"]["ranking_source"] == "curated":
         ranked = list(feature_sets["feature_curated_rank"])
@@ -137,6 +137,11 @@ def choose_pool(config: dict[str, Any], feature_sets: dict[str, Any], columns) -
     return config, feature_sets
 
 
+def pool_label(feature_sets: dict[str, Any]) -> str:
+    """"40f" / "48f" / ...: the size of the chosen feature pool, used in the names of per-pool result files."""
+    return f"{len(feature_sets['feature_pool'])}f"
+
+
 def resolve_path(relative_path: str | Path) -> Path:
     """Resolve a path relative to the project root so pipelines work from any cwd."""
     p = Path(relative_path)
@@ -154,7 +159,7 @@ def artifact_suffix(model_type: str) -> str:
 
 def get_dashboard_paths(config: dict[str, Any]) -> tuple[Path, Path]:
     """Derive the dashboard's model + preprocessor paths from `model.type` and
-    `dashboard.feature_set` — the single source of truth is `model.type`, not a
+    `dashboard.feature_set` â€” the single source of truth is `model.type`, not a
     separately hardcoded path. Switching `model.type` in config.yaml and retraining
     is then enough on its own; there's no second path to remember to update, and no
     risk of the dashboard silently loading a stale model saved by a different model type.
@@ -169,7 +174,7 @@ def get_dashboard_paths(config: dict[str, Any]) -> tuple[Path, Path]:
 
 
 def get_metrics_dir(config: dict[str, Any]) -> Path:
-    """Directory for a model type's CSV outputs: results/metrics/<model.type>/ —
+    """Directory for a model type's CSV outputs: results/metrics/<model.type>/ â€”
     mirrors get_dashboard_paths' reasoning and results/plots/<model.type>/: every
     experiment/evaluation/diagnostic CSV is namespaced by model.type, so training a
     different model never silently overwrites another model's reported numbers.
