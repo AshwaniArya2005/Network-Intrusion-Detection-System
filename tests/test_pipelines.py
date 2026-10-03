@@ -864,3 +864,15 @@ def test_validation_blocks_compare_random_and_block_validation(config, feature_s
     assert (val["fpr_gap"] == (val["test_fpr"] - val["val_fpr"]).round(4)).all() and (val["n_val"] > 0).all()
     blocks = val.set_index("validation")
     assert blocks.loc["block_validation", "n_train"] < len(ordered_training_rows(config))   # the gap rows leave training as well
+
+
+def test_ct_ablation_pools_exclude_exactly_the_declared_columns():
+    from src.utils.config_loader import apply_pool_variant, choose_pool
+    cfg, fsets = load_config(), load_feature_sets()
+    cols = fsets["feature_pool_full"]
+    window = {"ct_src_dport_ltm", "ct_dst_sport_ltm", "ct_srv_src", "ct_dst_ltm", "ct_src_ltm", "ct_srv_dst", "ct_dst_src_ltm"}
+    a = choose_pool(apply_pool_variant(cfg, "full_no_ct_window"), fsets, cols)[1]["feature_pool"]
+    b = choose_pool(apply_pool_variant(cfg, "full_no_ct_any"), fsets, cols)[1]["feature_pool"]
+    assert len(a) == 41 and set(fsets["feature_pool_full"]) - set(a) == window
+    assert len(b) == 38 and {f for f in fsets["feature_pool_full"] if f.startswith("ct_")} == set(fsets["feature_pool_full"]) - set(b)
+    assert "ct_state_ttl" not in b and "ct_flw_http_mthd" not in b and "ct_ftp_cmd" not in b and "sttl" in b   # every ct_* column goes, the TTL columns stay

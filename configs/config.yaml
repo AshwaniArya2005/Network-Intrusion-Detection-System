@@ -202,6 +202,10 @@ experiments:
   # five other extra official columns help once the three TTL columns (the shifted ones, see the Normal-to-Fuzzers diagnostic) are gone.
   pool_variants:
     full_no_ttl: {pool: full, exclude: [sttl, dttl, ct_state_ttl]}
+    # Task 2.6 (leakage check): the ct_* columns count recent connections (a sliding window), so neighbouring flows share values.
+    # full_no_ct_window drops the seven window-count columns, full_no_ct_any every column whose name starts with ct_.
+    full_no_ct_window: {pool: full, exclude: [ct_src_dport_ltm, ct_dst_sport_ltm, ct_srv_src, ct_dst_ltm, ct_src_ltm, ct_srv_dst, ct_dst_src_ltm]}
+    full_no_ct_any: {pool: full, exclude: [ct_src_dport_ltm, ct_dst_sport_ltm, ct_srv_src, ct_dst_ltm, ct_src_ltm, ct_srv_dst, ct_dst_src_ltm, ct_state_ttl, ct_flw_http_mthd, ct_ftp_cmd]}
   headline_seeds: [42, 43, 44, 45, 46]   # pipelines/run_headline_seeds.py: mean +/- std of the headline metrics
   stability_seeds: [43, 44]   # extra seeds for the same-feature-set stability reference
 
