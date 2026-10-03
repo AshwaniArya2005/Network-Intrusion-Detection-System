@@ -1,0 +1,17 @@
+split,class,rows,rows_with_signature,share_of_class_with_signature,share_of_signature_rows
+train+val,Analysis,1594,8,0.005,0.0003
+train+val,Backdoor,1535,231,0.1505,0.0074
+train+val,DoS,3806,1065,0.2798,0.0343
+train+val,Exploits,19844,6401,0.3226,0.2061
+train+val,Fuzzers,16150,10938,0.6773,0.3521
+train+val,Generic,4181,262,0.0627,0.0084
+train+val,Normal,51890,7137,0.1375,0.2298
+train+val,Reconnaissance,7522,5021,0.6675,0.1616
+official_test,Analysis,438,0,0.0,0.0
+official_test,Backdoor,345,41,0.1188,0.0023
+official_test,DoS,1694,493,0.291,0.0275
+official_test,Exploits,7590,2420,0.3188,0.1352
+official_test,Fuzzers,4810,3381,0.7029,0.1889
+official_test,Generic,3418,300,0.0878,0.0168
+official_test,Normal,33832,9424,0.2786,0.5265
+official_test,Reconnaissance,2469,1842,0.7461,0.1029
