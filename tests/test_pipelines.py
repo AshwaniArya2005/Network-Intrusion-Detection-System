@@ -738,3 +738,14 @@ def test_split_threshold_never_scores_the_threshold_rows_in_training(config, fea
     assert set(runs["method"]) == {"retrain_split_f0.3"} and set(runs["access"]) == {"few-shot"} and len(runs) == 2
     assert (runs["n_adapt"] == 60).all() and runs["det95_test_fpr"].between(0, 1).all() and runs["det95_test_detection"].between(0, 1).all()
     assert set(runs["threshold_source"]) == {"held-out half of the adaptation sample"}
+
+
+def test_transductive_methods_run_with_their_access_label(config, feature_sets):
+    from pipelines.run_methods import METHODS, run_methods
+    config["experiments"]["headline_seeds"] = [1]
+    out = run_methods(config, feature_sets, "unit_tx", ["flat_default", "domain_weights_clip5", "drop_top5_shifted"], pools=("base",))["40f"]
+    access = out.drop_duplicates("method").set_index("method")["access"]
+    assert access["flat_default"] == "zero-shot" and access["domain_weights_clip5"] == "transductive" == access["drop_top5_shifted"]
+    used = out[out["metric"] == "n_features_used"].set_index("method")["mean"]
+    assert used["flat_default"] == 40 and used["drop_top5_shifted"] == 35 and used["domain_weights_clip5"] == 40
+    assert "val_macro_f1" in set(out["metric"]) and all(METHODS[m]["access"] in ("zero-shot", "transductive") for m in METHODS)

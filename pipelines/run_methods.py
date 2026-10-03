@@ -24,9 +24,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import numpy as np
 import pandas as pd
 
+from dataclasses import replace
+
 from pipelines.run_operating_point import operating_points
 from pipelines.train_pipeline import load_split_data, train_and_evaluate
 from pipelines.tune_xgboost import load_tuned
+from sklearn.metrics import f1_score
+
+from src.adaptation import domain_importance_weights, unlabelled_shift_ranking
 from src.utils.config_loader import apply_pool_variant, choose_pool, get_metrics_dir, load_config, load_feature_sets, pool_label, resolve_path
 from src.utils.logger import add_file_logging, get_logger
 
@@ -37,6 +42,11 @@ METHODS = {
     "flat_default": {"access": "zero-shot", "scheme": "current"},
     "hier_default": {"access": "zero-shot", "scheme": "hierarchical"},
     "hier_stage1_tuned": {"access": "zero-shot", "scheme": "hierarchical", "stage1_tuned": True},
+    # TRANSDUCTIVE: use the unlabelled FEATURES of the official test file (no labels)
+    "domain_weights_clip5": {"access": "transductive", "scheme": "current", "domain_clip": 5},
+    "domain_weights_clip20": {"access": "transductive", "scheme": "current", "domain_clip": 20},
+    "drop_top5_shifted": {"access": "transductive", "scheme": "current", "drop_top_shifted": 5},
+    "drop_top10_shifted": {"access": "transductive", "scheme": "current", "drop_top_shifted": 10},
 }
 NOT_AGGREGATED = {"seed", "n_features", "n_train", "n_val", "n_test"}
 
@@ -61,13 +71,20 @@ def run_method(config: dict, feature_sets: dict, pool: str, method: str, seed: i
     cfg, sets = choose_pool(cfg, feature_sets, splits.train.columns)
     cfg = apply_method(cfg, sets, spec)
     features, pred = list(sets["feature_pool"]), {}
+    if spec.get("domain_clip"):      # TRANSDUCTIVE: reweight the training rows towards the unlabelled test features
+        splits = replace(splits, weight_multiplier=domain_importance_weights(splits.train, splits.test, features, spec["domain_clip"], seed))
+    if spec.get("drop_top_shifted"):  # TRANSDUCTIVE: drop the features whose all-row distribution differs most train vs test
+        ranking = unlabelled_shift_ranking(splits.train, splits.test, features)
+        features = [f for f in features if f not in set(ranking.index[: spec["drop_top_shifted"]])]
     result = train_and_evaluate(cfg, sets, str(len(features)), True, splits, save_artifacts=False, predictions_out=pred, features=features)
     normal = cfg["data"]["normal_category"]
     det95 = {r["rule"]: r for r in operating_points(pred, normal)}["det95"]
     called = pd.Series(pred["y_pred_labels"])[pd.Series(pred["fine_grained_true"]) == normal]
     shares = called.value_counts(normalize=True)
-    return {"pool": pool, "pool_label": pool_label(sets), "method": method, "access": spec["access"], "seed": seed, **result,
-            "det95_threshold": det95["threshold"], "det95_val_fpr": det95["val_fpr"], "det95_val_detection": det95["val_detection"],
+    classes = np.asarray(pred["class_names"])
+    val_macro_f1 = round(float(f1_score(pred["val_labels"], classes[pred["y_proba_val"].argmax(axis=1)], average="macro", zero_division=0)), 4)
+    return {"pool": pool, "pool_label": pool_label(sets), "method": method, "access": spec["access"], "seed": seed, **result, "val_macro_f1": val_macro_f1,
+            "n_features_used": len(features), "det95_threshold": det95["threshold"], "det95_val_fpr": det95["val_fpr"], "det95_val_detection": det95["val_detection"],
             "det95_test_fpr": det95["test_fpr"], "det95_test_detection": det95["test_detection"], "det95_fpr_gap": det95["fpr_gap"],
             **{f"normal_to_{c}": round(float(shares.get(c, 0.0)), 4) for c in pred["class_names"]}}
 
