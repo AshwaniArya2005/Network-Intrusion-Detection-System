@@ -749,3 +749,29 @@ def test_transductive_methods_run_with_their_access_label(config, feature_sets):
     used = out[out["metric"] == "n_features_used"].set_index("method")["mean"]
     assert used["flat_default"] == 40 and used["drop_top5_shifted"] == 35 and used["domain_weights_clip5"] == 40
     assert "val_macro_f1" in set(out["metric"]) and all(METHODS[m]["access"] in ("zero-shot", "transductive") for m in METHODS)
+
+
+def test_final_table_assembles_every_method_with_its_access_level(tmp_path):
+    from scripts.final_table import COLUMNS, render, rows_for
+    def summary(rows, extra):
+        return pd.DataFrame([{**extra, "metric": m, "mean": mean, "std": 0.01} for m, mean in rows])
+    metrics = [(m, 0.5) for m in COLUMNS]
+    pd.concat([summary(metrics, {"pool": "base", "method": m, "access": "zero-shot"}) for m in ("flat_default", "hier_default", "hier_stage1_tuned")]).to_csv(
+        tmp_path / "methods_zero_shot_b1_40f_summary.csv", index=False)
+    for obj in ("f1", "auc"):
+        summary(metrics, {"pool": "base", "split": "official"}).to_csv(tmp_path / f"headline_tuned_{obj}_official_summary.csv", index=False)
+    pd.concat([summary(metrics, {"pool": "base", "k": k, "method": m, "access": "few-shot"}) for k in (100, 500, 1000, 5000)
+               for m in ("zero_shot", "thr_adapt", "retrain_f0.3", "retrain_f0.5")]).to_csv(tmp_path / "adaptation_40f_summary.csv", index=False)
+    pd.concat([summary(metrics, {"pool": "base", "method": m, "access": "transductive"}) for m in ("domain_weights_clip5", "drop_top5_shifted")]).to_csv(
+        tmp_path / "methods_transductive_b3_40f_summary.csv", index=False)
+    pd.concat([summary(metrics, {"pool": "base", "k": k, "method": "retrain_split_f0.5", "access": "few-shot"}) for k in (1000, 5000)]).to_csv(
+        tmp_path / "adaptation_40f_split_summary.csv", index=False)
+    pd.concat([summary(metrics, {"pool": "base", "k": 5000, "method": "retrain_f0.5_domain5", "access": "few-shot+transductive"})]).to_csv(
+        tmp_path / "adaptation_40f_domain5_summary.csv", index=False)
+    df = pd.DataFrame(rows_for(tmp_path, "40f", "base"))
+    assert set(df["access"]) == {"zero-shot", "few-shot", "transductive", "few-shot+transductive"}
+    few = df[df["access"] == "few-shot"]
+    assert set(few["k_labelled"]) == {100, 500, 1000, 5000} and "zero_shot" not in set(few["method"])   # the baseline is a row of its own
+    assert len(df) == 3 + 2 + 4 * 3 + 2 + 2 + 1 and (df["accuracy_mean"] == 0.5).all()
+    text = render(df)
+    assert "| retrain_f0.3 |" in text and "| retrain_f0.1 |" not in text and "| domain_weights_clip5 |" in text   # the .md omits the f=0.1 rows
