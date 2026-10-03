@@ -1,3 +1,7 @@
+> **Update after Task 2.6.** The shift AUCs below (0.8994 / 0.9293 / 0.9301) use random 5-fold cross-validation. Because neighbouring rows of a file share window values, they
+> are inflated: with cross-validation grouped by contiguous row blocks they are 0.814 / 0.836 / 0.837 (seed 42, `leakage_*_shift_auc.csv`). The shift is real (control 0.50) but smaller
+> than first reported; the per-group AUC changes of the ablation used random CV and were not re-run. Normal -> Fuzzers results on the official test split are unaffected.
+
 # Step A: what the official-split shift is made of (XGBoost, official split, scheme `current`)
 
 Sources: `shift_normal_*`, `shift_ranking_stability_40f_45f_48f.csv`, `shift_nf_groups_*`, `shift_group_ablation_*`

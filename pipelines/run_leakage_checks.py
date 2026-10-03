@@ -12,6 +12,7 @@ twins      check 1: share of evaluation rows with an exact / near (L-inf <= 0.1,
 blocks     check 2: the ordered known official-test rows are cut into contiguous blocks; adaptation rows from some blocks, evaluation rows from
            the others, with a gap dropped at every boundary (src/neighbours.block_split). Conditions on the SAME evaluation rows: zero-shot,
            `within_E` (adaptation rows drawn at random from the evaluation blocks) and `block_disjoint` (adaptation rows from the other blocks).
+shift_auc  check 6: the train-vs-test Normal AUC of Task 2.5 Step A with random vs block-grouped cross-validation.
 validation check 5: validation built from contiguous blocks of the training file vs the standard random validation: FPR of the model on its
            validation rows and on the official test (the validation-vs-test gap of Task 2a).
 
@@ -210,6 +211,32 @@ def run_validation_blocks(config: dict, feature_sets: dict, pool: str, seeds=(42
     return pd.DataFrame(rows)
 
 
+def shift_auc_by_cv(config: dict, feature_sets: dict, pool: str, seed: int = 42, block_size: int = BLOCK_SIZE) -> dict:
+    """Check 6: the train-Normal vs test-Normal classifier of Task 2.5 Step A with random 5-fold CV and with CV grouped by contiguous
+    blocks of file rows (every block, hence every neighbourhood, sits in a single fold). If neighbouring flows leak between folds the
+    random-CV AUC is the inflated one."""
+    from sklearn.metrics import roc_auc_score
+    from sklearn.model_selection import GroupKFold, cross_val_predict
+    from xgboost import XGBClassifier
+    from scripts.characterize_shift import shift_classifier
+    from scripts.diagnose_normal_fuzzers import CV_PARAMS, codes
+    from src.preprocessing import engineer_features
+    cfg = apply_pool_variant(config, pool)
+    cfg["project"]["seed"] = seed
+    splits = load_split_data(cfg, use_official_split=True)
+    cfg, sets = choose_pool(cfg, feature_sets, splits.train.columns)
+    features, normal = list(sets["feature_pool"]), cfg["data"]["normal_category"]
+    train_rows, test_rows = ordered_training_rows(cfg), splits.test
+    keep = lambda df: df["attack_cat"].to_numpy() == normal  # noqa: E731
+    train_n, test_n = engineer_features(train_rows[keep(train_rows)], allow_missing=True), engineer_features(test_rows[keep(test_rows)], allow_missing=True)
+    random_auc, _ = shift_classifier(train_n.reset_index(drop=True), test_n.reset_index(drop=True), features, seed)
+    groups = np.r_[train_rows.index[keep(train_rows)].to_numpy() // block_size, 100000 + test_rows.index[keep(test_rows)].to_numpy() // block_size]
+    X, y = codes(pd.concat([train_n, test_n], ignore_index=True), features), np.r_[np.zeros(len(train_n)), np.ones(len(test_n))]
+    proba = cross_val_predict(XGBClassifier(random_state=seed, **CV_PARAMS), X, y, cv=GroupKFold(5), groups=groups, method="predict_proba")[:, 1]
+    return {"pool": pool, "pool_label": pool_label(sets), "seed": seed, "block_size": block_size, "n_train_normal": len(train_n), "n_test_normal": len(test_n),
+            "auc_random_cv": round(float(random_auc), 4), "auc_block_cv": round(float(roc_auc_score(y, proba)), 4)}
+
+
 def validation_filename(label: str, block_size: int) -> str:
     """leakage_<N>f_validation_blocks.csv for the declared 1,000-row blocks; other block sizes get their own file (never overwritten)."""
     return f"leakage_{label}_validation_blocks{'' if block_size == BLOCK_SIZE else f'_b{block_size}'}.csv"
@@ -220,7 +247,7 @@ def main() -> None:
     parser.add_argument("--pools", nargs="*", default=["base", "full"])
     parser.add_argument("--ks", nargs="*", type=int, default=[1000, 5000])
     parser.add_argument("--runs", type=int, default=5)
-    parser.add_argument("--checks", nargs="*", choices=["twins", "blocks", "validation"], default=["twins", "blocks", "validation"])
+    parser.add_argument("--checks", nargs="*", choices=["twins", "blocks", "validation", "shift_auc"], default=["twins", "blocks", "validation"])
     parser.add_argument("--val-block-size", type=int, default=BLOCK_SIZE, help="block size of check 5 (the declared protocol uses 1,000; other sizes are exploratory)")
     parser.add_argument("--val-buffer", type=int, default=BUFFER)
     args = parser.parse_args()
@@ -237,6 +264,10 @@ def main() -> None:
             summary.to_csv(metrics_dir / f"leakage_{label}_summary.csv", index=False)
             print(label, "\n", summary[summary["metric"].isin(["det95_test_fpr", "det95_test_detection", "twin_near_twin_0.1"])]
                   .pivot_table(index=["k", "check", "condition", "method"], columns="metric", values="mean").round(4).to_string())
+        if "shift_auc" in args.checks:
+            row_ = shift_auc_by_cv(config, feature_sets, pool)
+            pd.DataFrame([row_]).to_csv(metrics_dir / f"leakage_{row_['pool_label']}_shift_auc.csv", index=False)
+            print(row_)
         if "validation" in args.checks:
             val = run_validation_blocks(config, feature_sets, pool, tuple(range(42, 42 + args.runs)), args.val_block_size, args.val_buffer)
             val.to_csv(metrics_dir / validation_filename(val["pool_label"].iloc[0], args.val_block_size), index=False)

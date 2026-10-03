@@ -876,3 +876,32 @@ def test_ct_ablation_pools_exclude_exactly_the_declared_columns():
     assert len(a) == 41 and set(fsets["feature_pool_full"]) - set(a) == window
     assert len(b) == 38 and {f for f in fsets["feature_pool_full"] if f.startswith("ct_")} == set(fsets["feature_pool_full"]) - set(b)
     assert "ct_state_ttl" not in b and "ct_flw_http_mthd" not in b and "ct_ftp_cmd" not in b and "sttl" in b   # every ct_* column goes, the TTL columns stay
+
+
+def test_shift_auc_by_cv_reports_random_and_block_grouped_auc(config, feature_sets):
+    from pipelines.run_leakage_checks import shift_auc_by_cv
+    out = shift_auc_by_cv(config, feature_sets, "base", seed=1, block_size=50)
+    assert 0 <= out["auc_random_cv"] <= 1 and 0 <= out["auc_block_cv"] <= 1 and out["n_train_normal"] > 0 and out["n_test_normal"] > 0
+
+
+def test_leakage_table_reads_the_original_and_the_check_files_without_inventing_rows(tmp_path):
+    from scripts.leakage_table import METRICS, build, render
+    def summary(rows):
+        return pd.DataFrame([{**keys, "metric": m, "mean": v, "std": 0.01, "n_runs": 5} for keys, vals in rows for m, v in vals.items()])
+    vals = lambda fpr: {"det95_test_fpr": fpr, "det95_test_detection": 0.95, "accuracy": 0.8, "ece": 0.05, "n_eval": 100.0}  # noqa: E731
+    pd.concat([summary([({"k": k, "method": "retrain_split_f0.5"}, vals(0.09))]) for k in (1000, 5000)]).to_csv(tmp_path / "adaptation_48f_split_summary.csv", index=False)
+    leak = []
+    for k in (1000, 5000):
+        for cond, fpr in (("all_eval", 0.09), ("no_near_twin_0.1", 0.2), ("has_near_twin_0.1", 0.05), ("within_E", 0.08), ("block_disjoint", 0.22)):
+            leak.append(({"k": k, "check": "x", "condition": cond, "method": "retrain_split_f0.5", "access": "few-shot"}, vals(fpr)))
+        for cond in ("all_eval", "no_near_twin_0.1", "has_near_twin_0.1", "zero_shot_E"):
+            leak.append(({"k": k, "check": "x", "condition": cond, "method": "zero_shot", "access": "zero-shot"}, vals(0.25)))
+    summary(leak).to_csv(tmp_path / "leakage_48f_summary.csv", index=False)
+    df = build(tmp_path, {"48f": "48 features", "40f": "40 features"}, {"45f": "no ttl"}, ks=(1000, 5000))
+    assert set(df["pool"]) == {"48f"}                                          # 40f and 45f files do not exist: no rows are made up
+    by = df.set_index(["k_labelled", "row"])
+    assert by.loc[(5000, "original Task 2.5 result (retrain_split_f0.5, random adaptation rows)"), "det95_test_fpr_mean"] == 0.09
+    assert by.loc[(5000, "twins: rows with NO near twin (<= 0.1) in the adaptation set"), "det95_test_fpr_mean"] == 0.2
+    assert by.loc[(5000, "blocks: adaptation rows from other blocks (neighbourhood-disjoint)"), "det95_test_fpr_mean"] == 0.22
+    assert {"few-shot", "zero-shot"} <= set(df["access"]) and all(f"{m}_mean" in df.columns for m in METRICS)
+    assert "0.2200 +/- 0.0100" in render(df)

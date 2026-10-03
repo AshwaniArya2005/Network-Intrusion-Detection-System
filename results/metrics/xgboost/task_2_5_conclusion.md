@@ -1,3 +1,10 @@
+> **Update after Task 2.6 (`task_2_6_conclusion.md`).** The few-shot result below (48 features, FPR 0.094 at ~95% detection with 5,000 labelled rows) was checked
+> for neighbour leakage and holds (0.085-0.096 with no near twins and with adaptation rows from other row-order blocks), but it relies on the window-count `ct_*`
+> columns and is within-capture adaptation, not transfer to a new deployment; on 40 features the small gain is partly neighbour-dependent. The "pooled-split reference
+> of 0.109" is not a like-for-like comparison (that model trains on 68% of the test file). The validation-vs-test gap and the train-vs-test shift AUC quoted from earlier
+> tasks are partly neighbour artefacts: block-built validation gives FPR 0.19-0.25 instead of 0.10-0.12, and block-grouped cross-validation gives shift AUC 0.81-0.84
+> instead of 0.90-0.93.
+
 # Task 2.5 conclusion: the official-split shift and the Normal false-positive rate
 
 Numbers: `task_2_5_final_table_40f_48f.md` (all methods, access levels, 5 seeds/runs), `shift_conclusion_40f_45f_48f.md`
