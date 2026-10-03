@@ -786,3 +786,81 @@ def test_composition_counts_rows_by_source_file_and_share():
     assert pooled.loc[("train", "test"), "share_of_part"] == round(30 / 90, 4)
     off = table[table["protocol"] == "official"].set_index(["part", "source_file"])
     assert off.loc[("train", "test"), "rows"] == 0 and off.loc[("test", "test"), "share_of_source_file"] == 1.0
+
+
+def test_block_split_leaves_a_gap_between_adaptation_and_evaluation_rows():
+    from src.neighbours import block_split
+    adapt, evaluation = block_split(200, block_size=20, buffer=3, adapt_share=0.4, seed=1)
+    assert not set(adapt) & set(evaluation) and len(adapt) > 0 and len(evaluation) > 0
+    gaps = np.abs(adapt[:, None] - evaluation[None, :])
+    assert gaps.min() >= 2 * 3 + 1                                        # buffer rows dropped on each side of every boundary
+    assert 20 * 3 <= len(adapt) <= 20 * 5                                  # about 40% of the 10 blocks (minus the dropped edges)
+    again = block_split(200, 20, 3, 0.4, 1)
+    assert np.array_equal(adapt, again[0]) and np.array_equal(evaluation, again[1])   # reproducible
+    assert not np.array_equal(block_split(200, 20, 3, 0.4, 2)[0], adapt)               # another seed, another blocks
+    # an adaptation block is contiguous apart from its dropped edges
+    runs = np.split(adapt, np.flatnonzero(np.diff(adapt) > 1) + 1)
+    assert all(len(r) == r[-1] - r[0] + 1 for r in runs)
+
+
+def test_embedding_distance_uses_the_training_scale_and_exact_categoricals():
+    from src.neighbours import Embedder, exact_twin_mask, nearest_distance, twin_shares
+    train = pd.DataFrame({"dur": [0.0, 1.0, 3.0, 7.0], "sbytes": [10.0, 20.0, 40.0, 80.0], "dbytes": [1.0, 1.0, 2.0, 2.0],
+                          "spkts": [1.0, 2.0, 3.0, 4.0], "dpkts": [1.0, 1.0, 1.0, 1.0], "proto": ["tcp", "tcp", "udp", "udp"]})
+    feats = ["dur", "proto"]
+    emb = Embedder(feats).fit(train)
+    sd = np.log1p(train["dur"]).std(ddof=0)
+    query = pd.DataFrame({"dur": [3.0, 3.5, 3.0, 100.0], "sbytes": [40.0] * 4, "dbytes": [2.0] * 4, "spkts": [3.0] * 4, "dpkts": [1.0] * 4,
+                          "proto": ["udp", "udp", "tcp", "udp"]})
+    d = nearest_distance(emb.transform(query), emb.transform(train), cutoff=0.5)
+    assert d[0] == 0.0                                                    # identical row
+    assert abs(d[1] - (np.log1p(3.5) - np.log1p(3.0)) / sd) < 1e-9         # distance in the TRAINING standard deviations
+    assert d[2] == np.inf and d[3] == np.inf                               # another protocol never matches; a far value exceeds the cutoff
+    exact = exact_twin_mask(query, train, ["dur", "proto"])
+    assert exact.tolist() == [True, False, False, False]
+    shares = twin_shares(d, exact, thresholds=(0.1, 0.25))
+    assert shares["exact_twin"] == 0.25 and shares["near_twin_0.1"] >= 0.25
+
+
+def test_subset_metrics_by_hand():
+    from pipelines.run_leakage_checks import subset_metrics
+    # classes: 0 = Normal, 1 = attack. Rows: two Normal (scores .1, .6), two attacks (scores .9, .4)
+    proba = np.array([[0.9, 0.1], [0.4, 0.6], [0.1, 0.9], [0.6, 0.4]])
+    y = np.array([0, 0, 1, 1])
+    full = subset_metrics(proba, y, normal_index=0, threshold=0.5, mask=np.ones(4, bool), ece_bins=10)
+    assert full["det95_test_fpr"] == 0.5 and full["det95_test_detection"] == 0.5 and full["accuracy"] == 0.5 and full["n_eval"] == 4
+    only_first_three = subset_metrics(proba, y, 0, 0.5, np.array([True, True, True, False]), 10)
+    assert only_first_three["det95_test_fpr"] == 0.5 and only_first_three["det95_test_detection"] == 1.0 and only_first_three["n_eval"] == 3
+    assert np.isnan(subset_metrics(proba, y, 0, 0.5, np.array([True, True, False, False]), 10)["det95_test_fpr"])   # no attacks in the subset
+
+
+def test_validation_file_names_never_collide_across_block_sizes():
+    from pipelines.run_leakage_checks import validation_filename
+    assert validation_filename("48f", 1000) == "leakage_48f_validation_blocks.csv"
+    assert validation_filename("48f", 200) == "leakage_48f_validation_blocks_b200.csv"
+
+
+def test_leakage_runs_report_twin_shares_subsets_and_block_conditions(config, feature_sets):
+    from pipelines.run_leakage_checks import run_runs, summarise
+    runs = run_runs(config, feature_sets, "base", ks=(40,), runs=2, block_size=60, buffer=5, adapt_share=0.4)
+    cond = set(runs["condition"])
+    assert {"twin_share_vs_adaptation_rows", "twin_share_vs_random_training_subset", "twin_share_vs_whole_training_set", "all_eval",
+            "no_near_twin_0.1", "has_near_twin_0.1", "zero_shot_E", "within_E", "block_disjoint"} <= cond
+    for _, g in runs[runs["check"] == "twins"].groupby("run"):
+        sub = g[(g["method"] == "retrain_split_f0.5")].set_index("condition")["n_eval"]
+        assert sub["no_near_twin_0.1"] + sub["has_near_twin_0.1"] == sub["all_eval"]            # the two subsets partition the evaluation rows
+    shares = runs[runs["condition"] == "twin_share_vs_adaptation_rows"]
+    assert shares["twin_exact_twin"].between(0, 1).all() and (shares["twin_near_twin_0.25"] >= shares["twin_near_twin_0.1"]).all()
+    assert set(runs.loc[runs["method"] == "zero_shot", "access"]) == {"zero-shot"} and set(runs.loc[runs["method"] == "retrain_split_f0.5", "access"]) == {"few-shot"}
+    assert summarise(runs).query("condition == 'block_disjoint' and metric == 'accuracy'")["n_runs"].iloc[0] == 2
+
+
+def test_validation_blocks_compare_random_and_block_validation(config, feature_sets):
+    from pipelines.run_leakage_checks import ordered_training_rows, run_validation_blocks
+    config["data"]["val_size"] = 0.2
+    assert len(ordered_training_rows(config)) > 0
+    val = run_validation_blocks(config, feature_sets, "base", seeds=(1,), block_size=50, buffer=5)
+    assert set(val["validation"]) == {"random_validation", "block_validation"}
+    assert (val["fpr_gap"] == (val["test_fpr"] - val["val_fpr"]).round(4)).all() and (val["n_val"] > 0).all()
+    blocks = val.set_index("validation")
+    assert blocks.loc["block_validation", "n_train"] < len(ordered_training_rows(config))   # the gap rows leave training as well
