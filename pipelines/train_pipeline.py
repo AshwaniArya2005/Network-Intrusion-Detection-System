@@ -96,7 +96,9 @@ def load_split_data(config: dict, use_official_split: bool | None = None) -> Spl
     # so the zero-day split below is unaffected by the merge.
     df = add_merged_label(df, get_label_scheme(config)[1],
                            source_column=data_cfg["fine_grained_target_column"], target_column=target)
-    known_df, unknown_df = split_known_unknown(df, data_cfg["unknown_attack_categories"], target)
+    # The held-out (zero-day) classes are named by their ORIGINAL class, so a member of a merged group (Analysis, Backdoor, DoS) can be held out while its siblings stay known
+    # and still form the merged group; for unmerged classes (Worms, Shellcode, ...) the original and the merged label are the same.
+    known_df, unknown_df = split_known_unknown(df, data_cfg["unknown_attack_categories"], data_cfg["fine_grained_target_column"])
 
     official = (data_cfg.get("use_official_split", True) if use_official_split is None else use_official_split)         and {"train", "test"} <= set(known_df["split"])
     if official:
@@ -126,7 +128,7 @@ def ordered_training_rows(config: dict) -> pd.DataFrame:
     df = load_unsw(resolve_path(config["paths"]["unsw_train"]), resolve_path(config["paths"]["unsw_test"]), seed=config["project"]["seed"],
                    synthetic_rows=data["synthetic_fallback_rows"])
     df = add_merged_label(df, get_label_scheme(config)[1], source_column=data["fine_grained_target_column"], target_column=data["target_column"])
-    known, _ = split_known_unknown(df, data["unknown_attack_categories"], data["target_column"])
+    known, _ = split_known_unknown(df, data["unknown_attack_categories"], data["fine_grained_target_column"])
     return known[known["split"] == "train"].reset_index(drop=True)
 
 

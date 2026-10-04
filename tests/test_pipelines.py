@@ -1108,3 +1108,208 @@ def test_model_config_explains_what_to_add_for_an_undeclared_model_type():
     from pipelines.run_tier_study import model_config
     with pytest.raises(ValueError, match="tier_study.model_params.lightgbm"):
         model_config(copy.deepcopy(load_config()), "lightgbm", 42)
+
+
+def test_confidence_scores_by_hand():
+    from src.openset_scores import entropy_score, margin_score, msp_score
+    p = np.array([[1.0, 0.0, 0.0], [0.5, 0.5, 0.0], [1 / 3, 1 / 3, 1 / 3], [0.7, 0.2, 0.1]])
+    assert np.allclose(msp_score(p), [0.0, 0.5, 2 / 3, 0.3])
+    assert np.allclose(margin_score(p), [0.0, 1.0, 1.0, 0.5])                                  # 1 - (top - second)
+    h = entropy_score(p)
+    assert abs(h[0]) < 1e-6 and abs(h[1] - np.log(2) / np.log(3)) < 1e-9 and abs(h[2] - 1.0) < 1e-9 and h[2] > h[3] > h[0]   # 0 certain ... 1 uniform
+
+
+def test_conformal_scorer_pvalues_and_sets_by_hand():
+    from src.openset_scores import ConformalScorer
+    # two classes; calibration flows: class 0 nonconformities 0.1, 0.2, 0.4 (p_0 = .9, .8, .6); class 1: 0.3 (p_1 = .7)
+    proba = np.array([[0.9, 0.1], [0.8, 0.2], [0.6, 0.4], [0.3, 0.7]])
+    y = np.array([0, 0, 0, 1])
+    c = ConformalScorer().fit(proba, y)
+    pv = c.pvalues(np.array([[0.8, 0.2], [0.55, 0.45], [0.05, 0.95]]))
+    # class 0: nonconf(x) = 0.2 -> cal scores >= 0.2 are {0.2, 0.4} = 2 -> (2 + 1) / (3 + 1) = .75 ; x2: 0.45 -> none >= .45 -> 1/4 ; x3: 0.95 -> 1/4
+    assert np.allclose(pv[:, 0], [0.75, 0.25, 0.25])
+    # class 1: nonconf = 0.8 / 0.55 / 0.05 vs cal {0.3}: x1 none -> 1/2 ; x2 none -> 1/2 ; x3 0.05 <= 0.3 -> (1 + 1) / 2 = 1
+    assert np.allclose(pv[:, 1], [0.5, 0.5, 1.0])
+    assert np.allclose(c.score(np.array([[0.8, 0.2], [0.55, 0.45], [0.05, 0.95]])), [0.25, 0.5, 0.0])      # 1 - max p-value
+    sets = c.prediction_sets(np.array([[0.8, 0.2]]), alpha=0.6)
+    assert sets.tolist() == [[True, False]]                                                              # p = (.75, .5): only class 0 exceeds .6
+    assert c.prediction_sets(np.array([[0.55, 0.45]]), alpha=0.6).sum() == 0                              # empty set <=> score >= 1 - alpha
+    absent = ConformalScorer().fit(proba[:3], y[:3])                                                      # class 1 never calibrated
+    assert absent.pvalues(np.array([[0.2, 0.8]]))[0, 1] == 0.0
+
+
+def test_rank_normalizer_combination_and_threshold_by_hand():
+    from src.openset_scores import RankNormalizer, combine, flag_threshold, unknown_auroc
+    r = RankNormalizer().fit(np.array([4.0, 1.0, 3.0, 2.0]))
+    assert np.allclose(r.transform(np.array([0.5, 1.0, 2.5, 4.0, 9.0])), [0.0, 0.25, 0.5, 1.0, 1.0])     # ECDF of the calibration sample
+    a, b = np.array([0.2, 0.9]), np.array([0.6, 0.1])
+    assert np.allclose(combine(a, b, "mean"), [0.4, 0.5]) and np.allclose(combine(a, b, "max"), [0.6, 0.9])
+    with pytest.raises(ValueError):
+        combine(a, b, "min")
+    known = np.arange(100.0)
+    thr = flag_threshold(known, 0.05)
+    assert abs(thr - 94.05) < 1e-9 and (known > thr).mean() == 0.05                                       # 5% of the known scores are flagged
+    assert unknown_auroc(np.array([0.1, 0.2, 0.3]), np.array([0.25, 0.9])) == (5 / 6)                      # 5 of the 6 (known, unknown) pairs ordered correctly
+    assert unknown_auroc(np.array([0.1, 0.2]), np.array([0.1, 0.2])) == 0.5
+
+
+def test_anomaly_scorer_ranks_far_points_above_normal_ones_and_the_suite_builds_every_candidate():
+    from src.openset_scores import BASE_SCORES, RULES, AnomalyScorer, ScoreSuite
+    rng = np.random.default_rng(0)
+    normal = rng.normal(0, 1, (800, 4))
+    scorer = AnomalyScorer(seed=1).fit(normal)
+    far = rng.normal(8, 1, (50, 4))
+    assert scorer.score(far).mean() > scorer.score(rng.normal(0, 1, (50, 4))).mean()
+    proba = rng.dirichlet(np.ones(3), 300)
+    suite = ScoreSuite(seed=1).fit(proba, rng.integers(0, 3, 300), rng.normal(0, 1, (300, 4)), normal)
+    out = suite.scores(proba[:20], rng.normal(0, 1, (20, 4)))
+    expected = {*BASE_SCORES, "iforest", *(f"iforest+{b}:{r}" for b in BASE_SCORES for r in RULES)}
+    assert set(out) == expected and all(len(v) == 20 and np.isfinite(v).all() for v in out.values())
+    assert all((out[f"iforest+{b}:max"] >= out[f"iforest+{b}:mean"] - 1e-12).all() for b in BASE_SCORES)    # max of two ranks >= their mean
+
+
+def _open_set_config(config):
+    config["tier_study"].update(block_size=40, buffer=5, seeds=[1])
+    config["data"]["val_size"] = 0.5
+    return config
+
+
+def test_validation_halves_are_disjoint_blockwise_and_reproducible():
+    from pipelines.run_open_set_study import validation_halves
+    df = pd.DataFrame({"x": range(400)})
+    cal = validation_halves(df, block_size=50, seed=3)
+    assert cal.dtype == bool and cal.sum() == 200 and (~cal).sum() == 200                          # half of the 8 blocks each
+    blocks = np.arange(400) // 50
+    assert all(len(set(cal[blocks == b])) == 1 for b in range(8))                                  # a block is never split between the halves
+    assert np.array_equal(cal, validation_halves(df, 50, 3)) and not np.array_equal(cal, validation_halves(df, 50, 4))
+
+
+def test_open_set_run_thresholds_never_see_the_unknown_flows(config, feature_sets):
+    from pipelines.run_open_set_study import CANDIDATES, OpenSetRun, zero_day_rows, zero_sets_of
+    from pipelines.run_tier_study import prepare
+    from src.openset_scores import flag_threshold
+    cfg, sets, splits = prepare(_open_set_config(config), feature_sets, "base", "xgboost", 1)
+    feats = list(sets["feature_pool"])
+    run_a = OpenSetRun(cfg, splits.train, splits.val, splits.test, splits.unknown, feats, 1)
+    shuffled_unknown = splits.unknown.sample(frac=1, random_state=0).iloc[: len(splits.unknown) // 2].reset_index(drop=True)       # different zero-day flows
+    run_b = OpenSetRun(cfg, splits.train, splits.val, splits.test, shuffled_unknown, feats, 1)
+    for name in CANDIDATES:
+        assert run_a.threshold(name) == run_b.threshold(name) == flag_threshold(run_a.parts["thr"]["scores"][name], 0.05)   # fixed on the known threshold half only
+    rows = zero_day_rows(run_a, "40f", 1, zero_sets_of(splits.unknown))
+    assert {r["zero_day"] for r in rows} == {"Shellcode+Worms", "Shellcode", "Worms"} and len(rows) == 3 * len(CANDIDATES)
+    msp = [r for r in rows if r["score"] == "msp" and r["zero_day"] == "Shellcode+Worms"][0]
+    assert abs(msp["false_unknown_thr_half"] - 0.05) < 0.04 and 0 <= msp["unknown_auroc"] <= 1 and msp["flagged_or_attack"] >= msp["detection"]
+
+
+def test_review_queue_curve_and_false_alarm_sources_obey_their_definitions(config, feature_sets):
+    from pipelines.run_open_set_study import OpenSetRun, curve_rows, source_rows
+    from pipelines.run_tier_study import prepare
+    cfg, sets, splits = prepare(_open_set_config(config), feature_sets, "base", "xgboost", 1)
+    run = OpenSetRun(cfg, splits.train, splits.val, splits.test, splits.unknown, list(sets["feature_pool"]), 1)
+    curve = pd.DataFrame(curve_rows(run, "40f", 1, ["msp", "iforest"]))
+    assert (curve["alert_fpr_on"] >= curve["alert_fpr_off"] - 1e-12).all() and (curve["confident_alert_fpr"] <= curve["alert_fpr_off"] + 1e-12).all()
+    assert (curve["zero_day_catch"] >= curve["zero_day_flagged"] - 1e-12).all()
+    for name, g in curve.groupby("score"):
+        g = g.sort_values("target")
+        assert g["review_rate_normal"].is_monotonic_increasing and g["confident_alert_fpr"].is_monotonic_decreasing   # a looser threshold sends more to review and fewer alerts skip it
+    one = curve[(curve["score"] == "msp") & (curve["target"] == 0.05)].iloc[0]
+    assert abs(one["alert_fpr_on"] - (one["confident_alert_fpr"] + one["review_rate_normal"])) < 1e-9        # alert = confident alert + every reviewed Normal flow
+    src = pd.DataFrame(source_rows(run, "40f", 1, ["msp"]))
+    for part, g in src.groupby("part"):
+        assert abs(g["share_of_false_alarms"].sum() - 1.0) < 1e-9 or g["flagged_share"].sum() == 0
+
+
+def test_pool_selection_picks_rules_and_the_best_score_from_pseudo_unknown_auroc_only():
+    from pipelines.run_open_set_study import BASE_SCORES, CANDIDATES, RULES, pool_selection
+    rows = []
+    for seed in (1, 2):
+        for inner in ("Reconnaissance", "Generic"):
+            for name in CANDIDATES:
+                value = 0.5
+                if name == "iforest+entropy:max":
+                    value = 0.9                      # the best combination, with the "max" rule
+                if name == "iforest+entropy:mean":
+                    value = 0.8
+                if name == "margin":
+                    value = 0.7
+                rows.append({"pool": "40f", "seed": seed, "inner_class": inner, "score": name, "pseudo_auroc": value})
+    sel = pool_selection(pd.DataFrame(rows))
+    assert sel["rules"]["entropy"] == "max" and sel["rules"]["msp"] in RULES                     # ties go to the first rule, a clear winner wins
+    assert sel["best"] == "iforest+entropy:max" and sel["mean_pseudo_auroc"]["margin"] == 0.7
+    assert set(sel["candidates"]) == {*BASE_SCORES, "iforest", *(f"iforest+{b}:{sel['rules'][b]}" for b in BASE_SCORES)} and len(sel["candidates"]) == 9
+
+
+def test_pseudo_unknown_rows_use_only_validation_flows_of_the_inner_classes(config, feature_sets):
+    from pipelines.run_open_set_study import CANDIDATES, INNER_CLASSES, pseudo_unknown_rows
+    from pipelines.run_tier_study import prepare
+    cfg, sets, splits = prepare(_open_set_config(config), feature_sets, "base", "xgboost", 1)
+    rows = pd.DataFrame(pseudo_unknown_rows(cfg, splits.train, splits.val, list(sets["feature_pool"]), 1, "40f"))
+    assert set(rows["inner_class"]) == set(INNER_CLASSES) and len(rows) == 2 * len(CANDIDATES)
+    assert rows["pseudo_auroc"].between(0, 1).all() and (rows["n_pseudo"] == rows.groupby("inner_class")["n_pseudo"].transform("first")).all()
+    expected = {c: int((splits.val["attack_cat"] == c).sum()) for c in INNER_CLASSES}
+    assert {c: int(g["n_pseudo"].iloc[0]) for c, g in rows.groupby("inner_class")} == expected         # the pseudo-unknowns are the validation rows of the class, nothing else
+
+
+def test_rotation_holds_each_class_out_and_reports_twins(config, feature_sets):
+    from pipelines.run_open_set_study import ROTATION_CLASSES, rotation_specs, run_rotation
+    assert [n for n, _ in rotation_specs()][:-1] == ROTATION_CLASSES and rotation_specs()[-1][1] == ["Analysis", "Backdoor", "DoS"]
+    assert rotation_specs(["Fuzzers"]) == [("Fuzzers", ["Fuzzers"])]
+    out = run_rotation(_open_set_config(config), feature_sets, "base", [1], ["msp", "iforest"], classes=["Fuzzers", "Worms"])
+    runs = out["runs"]
+    assert set(runs["held_out"]) == {"Fuzzers", "Worms"} and set(runs["score"]) == {"msp", "iforest"} and len(runs) == 4
+    assert runs["exact_twin_share_in_known"].between(0, 1).all() and runs["unknown_auroc"].between(0, 1).all()
+    assert set(out["sources"]["held_out"]) == {"Fuzzers", "Worms"}
+    # the held-out class is really unknown to the model: a Fuzzers-held-out source table has no Fuzzers flows among the known classes
+    assert "Fuzzers" not in set(out["sources"].query("held_out == 'Fuzzers'")["known_class"])
+
+
+def test_run_scores_end_to_end_and_the_saved_selection_drives_the_rotation_choice(config, feature_sets):
+    from pipelines.run_open_set_study import save_tables, selection_for
+    from pipelines.run_open_set_study import run_scores
+    tables = run_scores(_open_set_config(config), feature_sets, "base", [1])
+    assert set(tables) == {"runs", "selection", "curve", "sources"} and all(len(t) for t in tables.values())
+    save_tables(config, "scores", "40f", tables)
+    d = rae.get_metrics_dir(config)
+    assert all((d / f"open_set_{n}_40f.csv").exists() for n in ("runs", "selection", "curve", "sources"))
+    sel = selection_for(config, "40f")
+    assert sel["best"] in sel["candidates"] and len(sel["candidates"]) == 9
+
+
+def test_open_set_summary_tables_and_the_declared_ct_verdict():
+    from pipelines.run_open_set_study import CANDIDATES
+    from scripts.open_set_summary import ct_verdict, mean_std, rotation_table, step1_table
+    rows = []
+    for seed in (1, 2, 3):
+        for name in CANDIDATES:
+            for zero, det in (("Shellcode+Worms", 0.30), ("Shellcode", 0.32), ("Worms", 0.10)):
+                rows.append({"pool": "48f", "seed": seed, "score": name, "zero_day": zero, "n_zero_day": 100, "threshold": 0.5,
+                             "unknown_auroc": 0.8 + (0.05 if name == "margin" else 0), "detection": det + 0.01 * seed, "flagged_or_attack": 0.9,
+                             "false_unknown_thr_half": 0.05, "false_unknown_cal_half": 0.07, "false_unknown_test": 0.09})
+    sel_rows = [{"pool": "48f", "seed": s, "inner_class": c, "score": n, "pseudo_auroc": 0.9 if n == "iforest" else 0.6} for s in (1, 2, 3) for c in ("Reconnaissance", "Generic") for n in CANDIDATES]
+    table, sel = step1_table(pd.DataFrame(rows), pd.DataFrame(sel_rows))
+    assert sel["best"] == "iforest" and table.loc[table["score"] == "iforest", "best_on_validation"].iloc[0]       # chosen on pseudo-unknown validation
+    assert table.loc[table["score"] == "margin", "best_on_zero_day_auroc"].iloc[0] and not table.loc[table["score"] == "margin", "best_on_validation"].iloc[0]   # reported, not used
+    msp = table[table["score"] == "msp"].iloc[0]
+    assert abs(msp["detection_mean"] - 0.32) < 1e-9 and abs(msp["detection_std"] - 0.01) < 1e-9 and msp["n_seeds"] == 3     # mean / std (ddof=1) over the seeds
+    assert abs(msp["detection_Shellcode"] - 0.34) < 1e-9 and abs(msp["detection_Worms"] - 0.12) < 1e-9
+    rot = pd.DataFrame([{"held_out": c, "seed": s, "score": "msp", "n_zero_day": 50, "unknown_auroc": a, "detection": 0.1, "flagged_or_attack": 0.5,
+                         "false_unknown_cal_half": 0.05, "false_unknown_test": 0.07, "exact_twin_share_in_known": t}
+                        for c, a, t in (("Analysis", 0.55, 0.77), ("Exploits", 0.8, 0.37)) for s in (1, 2)])
+    r = rotation_table(rot, ["msp"]).set_index("held_out")
+    assert r.loc["Analysis", "exact_twin_share"] == 0.77 and abs(r.loc["Exploits", "unknown_auroc_mean"] - 0.8) < 1e-9
+    assert ct_verdict({"40f": 0.25, "48f": 0.37, "41f": 0.30})[0] == "confirmed"                                   # drop 0.07 >= half of the 0.12 gap
+    assert ct_verdict({"40f": 0.25, "48f": 0.37, "41f": 0.36})[0] == "rejected"                                    # drop 0.01 < a quarter
+    assert ct_verdict({"40f": 0.25, "48f": 0.37, "41f": 0.33})[0] == "partial"
+    assert ct_verdict({"40f": 0.40, "48f": 0.37, "41f": 0.33})[0] == "no gap to explain"
+
+
+def test_a_member_of_a_merged_group_can_be_held_out_while_its_siblings_stay_known(config):
+    config["data"]["unknown_attack_categories"] = ["Analysis"]
+    s = load_split_data(config)
+    assert set(s.unknown["attack_cat"]) == {"Analysis"} and len(s.unknown) > 0
+    known = pd.concat([s.train, s.val, s.test])
+    assert "Analysis" not in set(known["attack_cat"])                                         # never trained on or tested as a known class
+    assert set(known.loc[known["attack_cat"].isin(["Backdoor", "DoS"]), "label_merged"]) == {"Overlap-Group-1"}   # the siblings still form the merged group
+    config["data"]["unknown_attack_categories"] = ["Analysis", "Backdoor", "DoS"]              # the trio as a unit
+    trio = load_split_data(config)
+    assert set(trio.unknown["attack_cat"]) == {"Analysis", "Backdoor", "DoS"} and "Overlap-Group-1" not in set(pd.concat([trio.train, trio.val, trio.test])["label_merged"])
