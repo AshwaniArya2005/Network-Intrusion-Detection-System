@@ -116,16 +116,18 @@ def render_self(runs: pd.DataFrame) -> str:
 def render_fewshot(runs: pd.DataFrame) -> str:
     out = ["# Task 2.7 Step 4 (FEW-SHOT): label budget and selection strategy, mean +/- std over 5 runs", "",
            "Half of the k labelled rows retrain the model (weight fraction 0.5), the other half chooses the 95%-detection threshold. Candidates and evaluation rows come from different time blocks "
-           "(200-row gaps); every method is scored on the same evaluation rows as the zero-shot baseline. Smallest k with mean det95 FPR <= 0.15 is stated per strategy.", ""]
+           "(200-row gaps); every method is scored on the same evaluation rows as the zero-shot baseline. Two FPRs are shown: `det95 FPR` at the threshold chosen on the held-out labelled half (its test detection is in the next column and is often below 95%, which flatters the FPR) "
+           "and the threshold-free FPR at exactly 95% detection. Smallest k with mean FPR <= 0.15 is stated per strategy for both.", ""]
     for label, g in runs.groupby("pool_label", sort=False):
         zero = g[g["method"] == "zero_shot"]
-        out += [f"## {label}", "", f"Zero-shot baseline on the same rows: det95 FPR {mean_std(zero['det95_test_fpr'])}, detection {mean_std(zero['det95_test_detection'])}, argmax FPR {mean_std(zero['argmax_fpr'])}.", "",
-                "| strategy | k | det95 FPR | detection | argmax FPR | accuracy | macro F1 | ECE | held-out half FPR | labelled attack share |", "|---|---|---|---|---|---|---|---|---|---|"]
+        out += [f"## {label}", "", f"Zero-shot baseline on the same rows: det95 FPR {mean_std(zero['det95_test_fpr'])}, threshold-free FPR at 95% detection {mean_std(zero['fpr_at_95_threshold_free'])}, detection {mean_std(zero['det95_test_detection'])}, argmax FPR {mean_std(zero['argmax_fpr'])}.", "",
+                "| strategy | k | det95 FPR | detection | FPR at exactly 95% detection | argmax FPR | accuracy | macro F1 | ECE | held-out half FPR | labelled attack share |", "|---|---|---|---|---|---|---|---|---|---|---|"]
         few = g[g["k"] > 0]
         for (strategy, k), s in few.groupby(["strategy", "k"], sort=False):
-            out.append(f"| {strategy} | {k} | {mean_std(s['det95_test_fpr'])} | {mean_std(s['det95_test_detection'])} | {mean_std(s['argmax_fpr'])} | {mean_std(s['accuracy'])} | "
+            out.append(f"| {strategy} | {k} | {mean_std(s['det95_test_fpr'])} | {mean_std(s['det95_test_detection'])} | {mean_std(s['fpr_at_95_threshold_free'])} | {mean_std(s['argmax_fpr'])} | {mean_std(s['accuracy'])} | "
                        f"{mean_std(s['macro_f1'])} | {mean_std(s['ece'])} | {mean_std(s['held_half_fpr'])} | {mean_std(s['labelled_attack_share'])} |")
-        out += ["", "| strategy | smallest k with mean det95 FPR <= 0.15 |", "|---|---|", *[f"| {s} | {smallest_k(few, s) or 'none reached'} |" for s in few['strategy'].unique()], ""]
+        out += ["", "| strategy | smallest k with mean det95 FPR <= 0.15 | smallest k with mean FPR at exactly 95% detection <= 0.15 |", "|---|---|---|",
+                *[f"| {s} | {smallest_k(few, s) or 'none reached'} | {smallest_k(few, s, metric='fpr_at_95_threshold_free') or 'none reached'} |" for s in few['strategy'].unique()], ""]
     return "\n".join(out) + "\n"
 
 
@@ -157,10 +159,12 @@ def render_final(tuned: pd.DataFrame, prior: pd.DataFrame, combined: pd.DataFram
     out += ["", "### B. Rows from other time blocks than the unlabelled / labelled rows (each method next to its zero-shot baseline on the same rows)", "",
             "| method | access | " + " | ".join(FINAL_COLUMNS) + " |", "|---|---|" + "---|" * len(FINAL_COLUMNS)]
     test_rows = selfs[selfs["source"] == "test"]
-    out += [line("zero-shot baseline (self-training evaluation rows)", "zero-shot", test_rows[test_rows["method"] == "self_round0"]),
-            line("self-training, round 2", "transductive", test_rows[test_rows["method"] == "self_round2"])]
+    if len(test_rows):
+        out += [line("zero-shot baseline (self-training evaluation rows)", "zero-shot", test_rows[test_rows["method"] == "self_round0"]),
+                line("self-training, round 2", "transductive", test_rows[test_rows["method"] == "self_round2"])]
     choice = best_strategy(fewshot)
-    out += [line("zero-shot baseline (few-shot evaluation rows)", "zero-shot", fewshot[fewshot["method"] == "zero_shot"])]
+    if len(fewshot):
+        out += [line("zero-shot baseline (few-shot evaluation rows)", "zero-shot", fewshot[fewshot["method"] == "zero_shot"])]
     if choice:
         for k in (1000, 5000):
             out.append(line(f"few-shot, {choice} selection, k = {k}", "few-shot", fewshot[fewshot["method"] == f"{choice}_k{k}"]))
@@ -180,7 +184,9 @@ def main() -> None:
     if args.step == "final":
         parts = []
         for p in args.pools:
-            read = lambda step, p=p: pd.read_csv(d / f"fpr_study_{step}_{p}_runs.csv")   # noqa: E731
+            def read(step: str, p: str = p) -> pd.DataFrame:   # a step that was not run for this pool (few-shot covers 48 / 45 / 41 features) is an empty table
+                path = d / f"fpr_study_{step}_{p}_runs.csv"
+                return pd.read_csv(path) if path.exists() else pd.DataFrame(columns=["method", "source", "k", "strategy", "held_half_fpr"])
             parts.append(render_final(read("tuned"), read("prior"), read("combined"), read("self"), read("fewshot"), p))
         text = "# Task 2.7 Step 5: final table (official split, mean +/- std over seeds 42-46)\n\n" + "\n".join(parts)
         out = d / f"fpr_study_final_{'_'.join(args.pools)}.md"
