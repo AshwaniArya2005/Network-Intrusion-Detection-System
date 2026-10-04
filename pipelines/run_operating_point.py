@@ -93,7 +93,8 @@ def run_operating_point(config: dict, feature_sets: dict, pools=("base", "full")
         seeds_df.to_csv(metrics_dir / f"operating_point_seeds_{label}.csv", index=False)
         summary.to_csv(metrics_dir / f"operating_point_summary_{label}.csv", index=False)
         summaries[label] = summary
-    (metrics_dir / "operating_point_summary.md").write_text(render_summary(summaries, seeds), encoding="utf-8")
+    md_name = "operating_point_summary.md" if sorted(summaries) == ["40f", "48f"] else f"operating_point_summary_{'_'.join(sorted(summaries))}.md"
+    (metrics_dir / md_name).write_text(render_summary(summaries, seeds), encoding="utf-8")   # a run of other pools never overwrites the 40f/48f table
     return summaries
 
 
@@ -119,8 +120,8 @@ def main() -> None:
     args = parser.parse_args()
     config = load_config()
     add_file_logging(str(resolve_path(config["logging"]["log_file"])))
-    run_operating_point(config, load_feature_sets(), args.pools, args.seeds)
-    print((get_metrics_dir(config) / "operating_point_summary.md").read_text(encoding="utf-8"))
+    summaries = run_operating_point(config, load_feature_sets(), args.pools, args.seeds)
+    print(render_summary(summaries, config["experiments"]["headline_seeds"]))
 
 
 if __name__ == "__main__":

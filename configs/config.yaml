@@ -131,6 +131,21 @@ shift:
     ttl: [sttl, dttl, ct_state_ttl]
     connection_counts: [ct_src_dport_ltm, ct_dst_sport_ltm, ct_srv_src, ct_dst_ltm, ct_src_ltm, ct_srv_dst, ct_dst_src_ltm]
 
+# Task 3 tier study (pipelines/run_tier_study.py; protocol in results/task_3_protocol.md). Training / validation are built from contiguous
+# blocks of the training file (a random validation split shares neighbouring flows with training and is optimistic).
+tier_study:
+  block_size: 1000
+  buffer: 200
+  seeds: [42, 43, 44, 45, 46]
+  shap_rows: 1000          # rows explained for the global SHAP importance (the same rows for every model type)
+  bootstrap: 100           # paired bootstrap resamples of the explained rows (cross-model agreement intervals)
+  random_draws: 10
+  random_tiers: ["30", "20", "15"]
+  pools: ["base", "full_no_ttl", "full"]   # 40, 45 and 48 features
+  model_params:            # declared settings for the other model families (no tuning)
+    random_forest: {n_estimators: 150, max_depth: 10, min_samples_leaf: 5, n_jobs: -1}
+    logistic_regression: {max_iter: 300}
+
 evaluation:
   ece_bins: 15   # equal-width confidence bins of the expected calibration error
 

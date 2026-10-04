@@ -33,7 +33,7 @@ import pandas as pd
 from dataclasses import replace
 
 from pipelines.run_adaptation import score_rows
-from pipelines.train_pipeline import load_split_data, train_and_evaluate
+from pipelines.train_pipeline import block_validation_splits, load_split_data, ordered_training_rows, train_and_evaluate
 from src.adaptation import draw_adaptation_sample, with_adaptation
 from src.data_loader import load_unsw
 from src.evaluation.metrics import attack_rates, expected_calibration_error, select_attack_threshold
@@ -171,16 +171,6 @@ def summarise(runs_df: pd.DataFrame) -> pd.DataFrame:
             .round(4).reset_index())
 
 
-def ordered_training_rows(config: dict) -> pd.DataFrame:
-    """The known training-file rows in FILE order (load_split_data shuffles them when it splits train / validation)."""
-    data = config["data"]
-    df = load_unsw(resolve_path(config["paths"]["unsw_train"]), resolve_path(config["paths"]["unsw_test"]), seed=config["project"]["seed"],
-                   synthetic_rows=data["synthetic_fallback_rows"])
-    df = add_merged_label(df, get_label_scheme(config)[1], source_column=data["fine_grained_target_column"], target_column=data["target_column"])
-    known, _ = split_known_unknown(df, data["unknown_attack_categories"], data["target_column"])
-    return known[known["split"] == "train"].reset_index(drop=True)
-
-
 def run_validation_blocks(config: dict, feature_sets: dict, pool: str, seeds=(42, 43, 44, 45, 46), block_size: int = BLOCK_SIZE,
                           buffer: int = BUFFER) -> pd.DataFrame:
     """Check 5: argmax FPR / detection of a model on (a) the standard random validation rows and (b) a model trained without a block-built
@@ -193,9 +183,7 @@ def run_validation_blocks(config: dict, feature_sets: dict, pool: str, seeds=(42
         cfg, sets = choose_pool(cfg, feature_sets, splits.train.columns)
         features, tier, normal = list(sets["feature_pool"]), None, cfg["data"]["normal_category"]
         tier = str(len(features))
-        ordered = ordered_training_rows(cfg)
-        val_pos, train_pos = block_split(len(ordered), block_size, buffer, cfg["data"]["val_size"], seed)
-        block_splits = replace(splits, train=ordered.iloc[train_pos].reset_index(drop=True), val=ordered.iloc[val_pos].reset_index(drop=True))
+        block_splits = block_validation_splits(cfg, splits, seed, block_size, buffer)
         for name, sp in (("random_validation", splits), ("block_validation", block_splits)):
             pred = {}
             train_and_evaluate(cfg, sets, tier, False, sp, False, pred, features=features)

@@ -119,6 +119,29 @@ def load_split_data(config: dict, use_official_split: bool | None = None) -> Spl
     return Splits(train_df, val_df, test_df, unknown_df, summary, "official" if official else "pooled_random")
 
 
+def ordered_training_rows(config: dict) -> pd.DataFrame:
+    """The known training-file rows in FILE order (load_split_data shuffles them when it splits train / validation). The official
+    files are not shuffled: neighbouring rows share sliding-window (ct_*) values and often a class."""
+    data = config["data"]
+    df = load_unsw(resolve_path(config["paths"]["unsw_train"]), resolve_path(config["paths"]["unsw_test"]), seed=config["project"]["seed"],
+                   synthetic_rows=data["synthetic_fallback_rows"])
+    df = add_merged_label(df, get_label_scheme(config)[1], source_column=data["fine_grained_target_column"], target_column=data["target_column"])
+    known, _ = split_known_unknown(df, data["unknown_attack_categories"], data["target_column"])
+    return known[known["split"] == "train"].reset_index(drop=True)
+
+
+def block_validation_splits(config: dict, splits: Splits, seed: int, block_size: int = 1000, buffer: int = 200) -> Splits:
+    """`splits` with the training / validation parts rebuilt from contiguous blocks of the training file (in file order): `data.val_size` of
+    the blocks, drawn with `seed`, form the validation set and `buffer` rows on each side of every block boundary are dropped from both, so no
+    validation row has a neighbour (a row within the sliding window) in training. The official test and zero-day parts are unchanged. A random
+    validation split shares neighbours with the training rows and is optimistic (Task 2.6)."""
+    from dataclasses import replace
+    from src.neighbours import block_split
+    ordered = ordered_training_rows(config)
+    val_pos, train_pos = block_split(len(ordered), block_size, buffer, config["data"]["val_size"], seed)
+    return replace(splits, train=ordered.iloc[train_pos].reset_index(drop=True), val=ordered.iloc[val_pos].reset_index(drop=True))
+
+
 def generate_feature_ranking(config: dict, feature_sets: dict, train_df: pd.DataFrame) -> pd.Series:
     """Write the ranking for `feature_selection.ranking_source` to its own file
     (results/feature_ranking_<source>.csv): mutual information on the training split, or the

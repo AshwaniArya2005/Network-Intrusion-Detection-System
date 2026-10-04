@@ -2,6 +2,9 @@
 selection, experiment grid, stability study. Nothing here touches data/raw, models_saved or results."""
 from __future__ import annotations
 
+import copy
+import io
+
 import joblib
 import numpy as np
 import pandas as pd
@@ -905,3 +908,115 @@ def test_shift_auc_by_cv_reports_random_and_block_grouped_auc(config, feature_se
     from pipelines.run_leakage_checks import shift_auc_by_cv
     out = shift_auc_by_cv(config, feature_sets, "base", seed=1, block_size=50)
     assert 0 <= out["auc_random_cv"] <= 1 and 0 <= out["auc_block_cv"] <= 1 and out["n_train_normal"] > 0 and out["n_test_normal"] > 0
+
+
+def test_block_validation_splits_leave_a_gap_and_keep_the_test_part(config, feature_sets, splits):
+    from pipelines.train_pipeline import block_validation_splits, ordered_training_rows
+    config["data"]["val_size"] = 0.2
+    out = block_validation_splits(config, splits, seed=3, block_size=50, buffer=5)
+    ordered = ordered_training_rows(config)
+    assert out.test is splits.test and out.unknown is splits.unknown                                  # only train / val are rebuilt
+    from src.neighbours import block_split
+    val_pos, train_pos = block_split(len(ordered), 50, 5, 0.2, 3)                                    # the same positions the helper used
+    assert len(out.val) == len(val_pos) and len(out.train) == len(train_pos)
+    assert len(out.train) + len(out.val) < len(ordered)                                              # the gap rows leave both parts
+    assert out.val["attack_cat"].tolist() == ordered.iloc[val_pos]["attack_cat"].tolist()           # validation = those file rows, in file order
+    assert np.abs(val_pos[:, None] - train_pos[None, :]).min() >= 2 * 5 + 1                          # no training row within the gap of a validation row
+
+
+def test_family_counts_reports_which_extra_columns_survive():
+    from pipelines.run_tier_study import family_counts
+    groups = load_config()["shift"]["feature_groups"]
+    out = family_counts(["rate", "sttl", "ct_state_ttl", "ct_srv_src", "ct_dst_ltm", "ct_flw_http_mthd", "dur"], groups)
+    assert out["n_ct_window"] == 2 and out["n_ttl"] == 2 and out["n_ct_other"] == 1                 # ct_state_ttl counts as TTL, not as "other ct_"
+    assert out["ct_window_cols"] == "ct_srv_src;ct_dst_ltm" and out["ttl_cols"] == "sttl;ct_state_ttl" and out["ct_other_cols"] == "ct_flw_http_mthd"
+    assert family_counts(["rate", "dur"], groups)["n_ct_window"] == 0
+
+
+def test_model_config_sets_the_declared_parameters_per_model_family():
+    from pipelines.run_tier_study import model_config
+    base = load_config()
+    xgb = model_config(copy.deepcopy(base), "xgboost", 44)
+    assert xgb["model"]["type"] == "xgboost" and xgb["model"]["params"]["random_state"] == 44 and xgb["model"]["params"]["max_depth"] == 8
+    rf = model_config(copy.deepcopy(base), "random_forest", 45)
+    assert rf["model"]["params"] == {"n_estimators": 150, "max_depth": 10, "min_samples_leaf": 5, "n_jobs": -1, "random_state": 45}
+    lr = model_config(copy.deepcopy(base), "logistic_regression", 46)
+    assert lr["model"]["params"] == {"max_iter": 300, "random_state": 46} and lr["project"]["seed"] == 46
+    assert base["model"]["type"] == "xgboost"                                                        # the input config is not modified
+
+
+def test_shap_with_bootstrap_is_paired_deterministic_and_centred_on_the_importance():
+    from pipelines.run_tier_study import shap_with_bootstrap
+    from src.models.model_factory import create_model
+    from src.preprocessing import Preprocessor
+    df = make_synthetic_unsw(n_rows=900, seed=2)
+    feats = ["rate", "sbytes", "dbytes", "dur", "spkts", "proto"]
+    pre = Preprocessor(feature_list=feats, target_column="attack_cat").fit(df)
+    X, y = pre.transform(df)
+    out = {}
+    for name in ("xgboost", "random_forest"):
+        m = create_model(name, {"n_estimators": 10, "max_depth": 3, "random_state": 0, "n_jobs": 1}).fit(X, y)
+        out[name] = shap_with_bootstrap(m, pre, df, feats, n_rows=200, n_boot=30, seed=7)
+    imp, boot = out["xgboost"]
+    assert list(imp.index) == feats and (imp >= 0).all() and boot.shape == (30, 6)
+    assert np.allclose(boot.mean(axis=0), imp.to_numpy(), rtol=0.25, atol=0.02)                      # resamples centre on the point estimate
+    again = shap_with_bootstrap(create_model("xgboost", {"n_estimators": 10, "max_depth": 3, "random_state": 0, "n_jobs": 1}).fit(X, y), pre, df, feats, 200, 30, 7)
+    assert np.allclose(again[1], boot)                                                               # deterministic
+    assert not np.allclose(shap_with_bootstrap(create_model("xgboost", {"n_estimators": 10, "max_depth": 3, "random_state": 0, "n_jobs": 1}).fit(X, y), pre, df, feats, 200, 30, 8)[1], boot)
+    # a second model family goes through the same path (same row count, hence the same resample indices for a given seed)
+    assert out["random_forest"][1].shape == boot.shape and (out["random_forest"][0] >= 0).all()
+
+
+def test_run_tiers_trains_once_per_run_and_writes_metrics_and_shap(config, feature_sets):
+    from pipelines.run_tier_study import run_tiers, save
+    config["tier_study"].update(block_size=50, buffer=5, shap_rows=60, bootstrap=5, seeds=[1, 2])
+    runs, imps, boots = run_tiers(config, feature_sets, "base", "xgboost", tiers=["40", "15"])
+    assert len(runs) == 4 and set(runs["tier"]) == {"40", "15"} and set(runs["seed"]) == {1, 2}
+    assert {"det95_test_fpr", "det95_val_fpr", "n_ct_window", "n_ttl", "roc_auc_attack_vs_normal", "ece"} <= set(runs.columns)
+    assert runs["pool_label"].eq("40f").all() and (runs["n_features"].isin([40, 15])).all()
+    assert len(imps) == 2 * (40 + 15) and set(imps["tier"]) == {"40", "15"} and boots["15__1"].shape == (5, 15)
+    assert list(boots["15__features"]) == list(imps[(imps.tier == "15") & (imps.seed == 1)]["feature"])      # bootstrap columns follow the stored feature order
+    from src.utils.config_loader import resolve_path
+    save(config, "xgboost", "40f", runs, imps, boots)
+    d = rae.get_metrics_dir(config)
+    assert (d / "tier_study_xgboost_40f_runs.csv").exists() and (d / "shap_importance_xgboost_40f.csv").exists() and (d / "shap_boot_xgboost_40f.npz").exists()
+    import glob
+    assert any("blockval_40f" in f for f in glob.glob(str(resolve_path(config["paths"]["feature_ranking"]).parent / "*")))  # its own ranking file
+
+
+def test_tier_baselines_and_pooled_runs(config, feature_sets):
+    from pipelines.run_tier_study import run_baselines, run_tiers
+    config["tier_study"].update(block_size=50, buffer=5, shap_rows=60, bootstrap=3, seeds=[1, 2])
+    runs, _, _ = run_tiers(config, feature_sets, "base", "xgboost", tiers=["15"], with_shap=False)
+    csv_runs = pd.read_csv(io.StringIO(runs.to_csv(index=False)))                                       # as main() reads it: tier names come back as integers
+    df, summary, summary_acc = run_baselines(config, feature_sets, "base", csv_runs, draws=3, tiers=["15"])
+    assert set(df["ranking"]) == {"ranked", "random", "worst"} and (df["ranking"] == "random").sum() == 3
+    assert {"ranked_f1", "worst_f1", "random_f1_mean", "ranked_z_vs_random", "ranked_percentile_in_random"} <= set(summary.columns) and len(summary) == 1
+    assert df.loc[df["ranking"] == "ranked", "f1"].iloc[0] == round(float(runs["f1"].mean()), 4)       # the ranked row is the seed mean
+    pooled, imps, _ = run_tiers(config, feature_sets, "base", "xgboost", tiers=["15"], with_shap=True, pooled=True)
+    assert set(pooled["split"]) == {"pooled_random"} and "det95_test_fpr" not in pooled.columns and imps.empty
+
+
+def test_tier_table_computes_the_drop_welch_z_and_the_declared_criteria():
+    from scripts.tier_summary import tier_table
+    rows = []
+    for tier, n, f1s in (("48", 48, [0.72, 0.721, 0.719, 0.72, 0.72]), ("30", 30, [0.715, 0.716, 0.714, 0.715, 0.715]), ("15", 15, [0.68, 0.681, 0.679, 0.68, 0.68])):
+        for seed, f1 in zip(range(42, 47), f1s):
+            rows.append({"tier": tier, "n_features": n, "seed": seed, "f1": f1, "accuracy": f1 + 0.03, "n_ct_window": 7 if n == 48 else 0, "n_ct_other": 0, "n_ttl": 3 if n == 48 else 0})
+    t = tier_table(pd.DataFrame(rows)).set_index("tier")
+    assert abs(t.loc["30", "drop_f1"] - 0.005) < 1e-9 and abs(t.loc["15", "drop_f1"] - 0.04) < 1e-9 and t.loc["48", "drop_f1"] == 0
+    full_std = np.std([0.72, 0.721, 0.719, 0.72, 0.72], ddof=1)
+    assert bool(t.loc["30", "meets_noise"]) == (0.005 <= 2 * full_std)                                    # compared with 2 x the full pool's std
+    assert t.loc["30", "meets_practical"] and not t.loc["15", "meets_practical"]                          # 0.005 <= 0.02 < 0.04
+    se = np.sqrt(full_std ** 2 / 5 + np.std([0.715, 0.716, 0.714, 0.715, 0.715], ddof=1) ** 2 / 5)
+    assert abs(t.loc["30", "welch_z_f1"] - round(0.005 / se, 4)) < 1e-3 and t.loc["48", "n_ct_window"] == 7
+
+
+def test_operating_point_summary_for_other_pools_does_not_overwrite_the_40f_48f_table(config, feature_sets):
+    from pipelines.run_operating_point import run_operating_point
+    d = rae.get_metrics_dir(config)
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "operating_point_summary.md").write_text("original table")
+    config["experiments"]["pool_variants"] = {"no_ttl": {"pool": "full", "exclude": ["sttl", "dttl", "ct_state_ttl"]}}
+    run_operating_point(config, feature_sets, pools=("no_ttl",), seeds=[1])
+    assert (d / "operating_point_summary.md").read_text() == "original table" and (d / "operating_point_summary_45f.md").exists()
