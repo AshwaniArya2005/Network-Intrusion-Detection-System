@@ -1037,3 +1037,19 @@ def test_stability_table_compares_tiers_per_seed_and_seeds_per_tier():
     assert t.loc[("tier_pair", "12", "8"), "n_common_features"] == 8 and t.loc[("tier_pair", "12", "8"), "n"] == 3
     assert t.loc[("tier_pair", "12", "8"), "rank_correlation_mean"] > 0.99                                    # same ordering up to tiny noise
     assert t.loc[("same_tier_seeds", "12", "12"), "n"] == 3 and t.loc[("same_tier_seeds", "12", "12"), "cosine_similarity_mean"] > 0.999   # 3 seeds -> 3 pairs
+
+
+def test_cross_model_agreement_intervals_by_hand():
+    from scripts.cross_model_agreement import agreement_with_intervals
+    feats = list("abcdef")
+    v = pd.Series([6.0, 5, 4, 3, 2, 1], index=feats)
+    reversed_v = pd.Series(v.to_numpy()[::-1], index=feats)
+    vectors = {"m1": {1: v, 2: v}, "m2": {1: v * 2, 2: v * 2}, "m3": {1: reversed_v, 2: reversed_v}}
+    boots = {m: {s: np.tile(vec.to_numpy(), (4, 1)) for s, vec in d.items()} for m, d in vectors.items()}
+    same = agreement_with_intervals(vectors, boots, feats, "m1", "m2")
+    assert same["rank_correlation_mean"] == 1.0 and same["rank_correlation_ci_low"] == same["rank_correlation_ci_high"] == 1.0 and same["topk_overlap_mean"] == 1.0
+    opposite = agreement_with_intervals(vectors, boots, feats, "m1", "m3")
+    assert opposite["rank_correlation_mean"] == -1.0 and opposite["n_seeds"] == 2 and opposite["n_bootstrap"] == 4
+    noisy = {"m1": {1: boots["m1"][1][:1].repeat(50, axis=0) + np.random.default_rng(0).normal(0, 0.8, (50, 6))}, "m2": {1: boots["m2"][1][:1].repeat(50, axis=0)}}
+    out = agreement_with_intervals({"m1": {1: v}, "m2": {1: v * 2}}, noisy, feats, "m1", "m2")
+    assert out["rank_correlation_ci_low"] < out["rank_correlation_ci_high"] <= 1.0                           # resampling noise gives a real interval
