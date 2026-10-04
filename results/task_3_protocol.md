@@ -50,3 +50,9 @@ three models), averaged over the seeds. Whether agreement drops for the smaller 
 
 ## Not claimed
 Stability is evidence about the explanations, not about the cause of the official-split shift, which remains undetermined.
+
+## Amendment (declared before any Task 3 result was read)
+Logistic regression belongs to a teammate's work package and is **not part of this task's results**: no logistic-regression tier study, stability or
+agreement results are produced or kept. Its code path (`model_config`, the declared `max_iter` 300, the LinearExplainer route) stays in the repository and
+is exercised by tests only. Steps 3 and 4 therefore compare XGBoost with the random forest (the Step 4 agreement is between those two models; the script
+accepts any number of models). The random forest is run with the declared settings above.
