@@ -141,7 +141,10 @@ def block_validation_splits(config: dict, splits: Splits, seed: int, block_size:
     from src.neighbours import block_split
     ordered = ordered_training_rows(config)
     val_pos, train_pos = block_split(len(ordered), block_size, buffer, config["data"]["val_size"], seed)
-    return replace(splits, train=ordered.iloc[train_pos].reset_index(drop=True), val=ordered.iloc[val_pos].reset_index(drop=True))
+    train, val = ordered.iloc[train_pos].reset_index(drop=True), ordered.iloc[val_pos].reset_index(drop=True)
+    for part in (train, val):
+        part.attrs = {}  # the loader's DataFrame-valued dedup counts must not travel with the splits (they break pd.concat when rows are added to the training set)
+    return replace(splits, train=train, val=val)
 
 
 def generate_feature_ranking(config: dict, feature_sets: dict, train_df: pd.DataFrame) -> pd.Series:

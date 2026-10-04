@@ -424,6 +424,24 @@ def test_tune_pool_uses_validation_only_and_writes_search_and_selection(config, 
     assert saved["n_trials"] == 3 and "validation mlogloss" in saved["early_stopping"]
 
 
+def test_block_validation_tuning_uses_the_regularised_space_and_its_own_files(config, feature_sets):
+    import json
+    from pipelines.tune_xgboost import load_tuned, tune_pool
+    config["tuning"].update(n_trials=3, max_estimators=30, early_stopping_rounds=5)
+    config["tier_study"].update(block_size=100, buffer=20)
+    config["feature_selection"]["pool"] = "base"
+    trials = tune_pool(config, feature_sets, "base", block_validation=True)
+    d = rae.get_metrics_dir(config)
+    space = config["tuning"]["space_regularised"]
+    search = trials[~trials["is_default"]]
+    assert (d / "hyperparameter_search_blockval_40f.csv").exists() and not (d / "hyperparameter_search_40f.csv").exists()   # earlier files are never written
+    assert search["min_child_weight"].isin(space["min_child_weight"]["choice"]).all() and search["max_depth"].between(3, 7).all()
+    assert search["reg_lambda"].between(2.0, 100.0).all()
+    params, power = load_tuned(config, "40f", "auc", block_validation=True)
+    assert 0.0 <= power <= 1.0 and params["n_estimators"] >= 1
+    assert json.loads((d / "tuned_params_blockval_40f.json").read_text())["n_trials"] == 3
+
+
 def test_headline_runner_can_use_tuned_parameters_and_tags_its_files(config, feature_sets):
     from pipelines.run_headline_seeds import output_stem, run_headline_seeds
     from pipelines.tune_xgboost import tune_pool

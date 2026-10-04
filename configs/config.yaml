@@ -116,6 +116,16 @@ tuning:
     reg_lambda: {loguniform: [0.5, 20.0]}
     reg_alpha: {choice: [0, 0.1, 1, 5]}
     class_weight_power: {uniform: [0.0, 1.0]}   # exponent of the balanced class weights (default model: 0.5)
+  # Task 2.7 (results/task_2_7_protocol.md): the same search on block-grouped validation with stronger regularisation
+  space_regularised:
+    max_depth: {int: [3, 7]}
+    learning_rate: {loguniform: [0.03, 0.3]}
+    min_child_weight: {choice: [5, 10, 20, 50, 100]}
+    subsample: {uniform: [0.6, 1.0]}
+    colsample_bytree: {uniform: [0.5, 1.0]}
+    reg_lambda: {loguniform: [2.0, 100.0]}
+    reg_alpha: {choice: [0, 0.1, 1, 5]}
+    class_weight_power: {uniform: [0.0, 1.0]}
 
 # Feature groups for the train-vs-test shift study (scripts/characterize_shift.py): they partition the 48-feature pool
 # (the 40-feature pool has no ttl group). Used to ask WHICH kinds of features carry the shift, one group at a time.

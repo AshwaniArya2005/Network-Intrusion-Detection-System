@@ -1,0 +1,44 @@
+{
+  "pool": "base",
+  "n_features": 40,
+  "n_trials": 40,
+  "seed": 42,
+  "early_stopping": "30 rounds on validation mlogloss, max 1000 trees",
+  "default_reference": {
+    "best_iteration": 177,
+    "val_macro_f1": 0.758,
+    "val_attack_auc": 0.9624
+  },
+  "f1": {
+    "params": {
+      "max_depth": 3,
+      "learning_rate": 0.13694,
+      "min_child_weight": 10,
+      "subsample": 0.8908,
+      "colsample_bytree": 0.8843,
+      "reg_lambda": 3.04845,
+      "reg_alpha": 1.0,
+      "n_estimators": 904
+    },
+    "class_weight_power": 0.2302,
+    "val_macro_f1": 0.7614,
+    "val_attack_auc": 0.9627,
+    "trial": 25
+  },
+  "auc": {
+    "params": {
+      "max_depth": 6,
+      "learning_rate": 0.13867,
+      "min_child_weight": 50,
+      "subsample": 0.8821,
+      "colsample_bytree": 0.8904,
+      "reg_lambda": 12.04243,
+      "reg_alpha": 1.0,
+      "n_estimators": 367
+    },
+    "class_weight_power": 0.1398,
+    "val_macro_f1": 0.7583,
+    "val_attack_auc": 0.963,
+    "trial": 9
+  }
+}

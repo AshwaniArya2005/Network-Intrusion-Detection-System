@@ -29,7 +29,7 @@ import pandas as pd
 import xgboost as xgb
 from sklearn.metrics import f1_score, roc_auc_score
 
-from pipelines.train_pipeline import load_split_data
+from pipelines.train_pipeline import block_validation_splits, load_split_data
 from src.preprocessing import Preprocessor, balanced_sample_weight
 from src.utils.config_loader import apply_pool_variant, choose_pool, get_metrics_dir, load_config, load_feature_sets, pool_label, resolve_path
 from src.utils.logger import add_file_logging, get_logger
@@ -82,13 +82,19 @@ def select_best(trials: pd.DataFrame) -> dict[str, pd.Series]:
     return {obj: search.loc[search[col].idxmax()] for obj, col in OBJECTIVES.items()}
 
 
-def tune_pool(config: dict, feature_sets: dict, pool: str, stage1: bool = False) -> pd.DataFrame:
+def tune_pool(config: dict, feature_sets: dict, pool: str, stage1: bool = False, block_validation: bool = False) -> pd.DataFrame:
     """Random search for `pool`. With `stage1` the labels are attack (1) vs Normal (0): the search for the binary first
     stage of the hierarchical model (same space and budget; the 2-class macro F1 and attack AUC are scored on validation);
-    its files are named hyperparameter_search_stage1_<N>f.csv / tuned_params_stage1_<N>f.json."""
+    its files are named hyperparameter_search_stage1_<N>f.csv / tuned_params_stage1_<N>f.json.
+    With `block_validation` (Task 2.7) the validation split is built from contiguous blocks of the training file (no neighbours shared with training) and the
+    search uses `tuning.space_regularised`; the files are named hyperparameter_search_blockval_<N>f.csv / tuned_params_blockval_<N>f.json."""
     cfg = apply_pool_variant(config, pool)
-    tuning, seed = cfg["tuning"], cfg["tuning"]["seed"]
+    tuning, seed = dict(cfg["tuning"]), cfg["tuning"]["seed"]
+    if block_validation:
+        tuning["space"] = tuning["space_regularised"]
     splits = load_split_data(cfg, use_official_split=True)
+    if block_validation:
+        splits = block_validation_splits(cfg, splits, seed, cfg["tier_study"]["block_size"], cfg["tier_study"]["buffer"])
     cfg, sets = choose_pool(cfg, feature_sets, splits.train.columns)
     features = list(sets["feature_pool"])
     pre = Preprocessor(feature_list=features, target_column=cfg["data"]["target_column"]).fit(splits.train)
@@ -113,7 +119,7 @@ def tune_pool(config: dict, feature_sets: dict, pool: str, stage1: bool = False)
     metrics_dir = get_metrics_dir(cfg)
     metrics_dir.mkdir(parents=True, exist_ok=True)
     label = pool_label(sets)
-    prefix = "stage1_" if stage1 else ""
+    prefix = ("stage1_" if stage1 else "") + ("blockval_" if block_validation else "")
     trials.to_csv(metrics_dir / f"hyperparameter_search_{prefix}{label}.csv", index=False)
     keys = [k for k in tuning["space"] if k != "class_weight_power"]
     best = select_best(trials)
@@ -128,10 +134,10 @@ def tune_pool(config: dict, feature_sets: dict, pool: str, stage1: bool = False)
     return trials
 
 
-def load_tuned(config: dict, label: str, objective: str, stage1: bool = False) -> tuple[dict, float]:
+def load_tuned(config: dict, label: str, objective: str, stage1: bool = False, block_validation: bool = False) -> tuple[dict, float]:
     """(model params to merge into config model.params, class_weight_power) of the tuned selection for `objective`
-    (the stage-1 search with `stage1`)."""
-    path = get_metrics_dir(config) / f"tuned_params_{'stage1_' if stage1 else ''}{label}.json"
+    (the stage-1 search with `stage1`, the block-grouped-validation search with `block_validation`)."""
+    path = get_metrics_dir(config) / f"tuned_params_{'stage1_' if stage1 else ''}{'blockval_' if block_validation else ''}{label}.json"
     chosen = json.loads(path.read_text(encoding="utf-8"))[objective]
     return chosen["params"], chosen["class_weight_power"]
 
@@ -140,13 +146,14 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--pools", nargs="*", default=["base", "full"], help="base, full, or an experiments.pool_variants name")
     parser.add_argument("--stage1", action="store_true", help="search the binary attack-vs-normal first stage of the hierarchical model")
+    parser.add_argument("--block-validation", action="store_true", help="select on block-grouped validation with the regularised space (Task 2.7)")
     args = parser.parse_args()
     config = load_config()
     if config["model"]["type"] != "xgboost":
         raise SystemExit("tune_xgboost.py tunes XGBoost only (model.type: xgboost)")
     add_file_logging(str(resolve_path(config["logging"]["log_file"])))
     for pool in args.pools:
-        trials = tune_pool(config, load_feature_sets(), pool, args.stage1)
+        trials = tune_pool(config, load_feature_sets(), pool, args.stage1, args.block_validation)
         print(trials.sort_values("val_macro_f1", ascending=False).head(5).to_string(index=False))
 
 
