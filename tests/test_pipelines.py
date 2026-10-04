@@ -1012,16 +1012,6 @@ def test_tier_table_computes_the_drop_welch_z_and_the_declared_criteria():
     assert abs(t.loc["30", "welch_z_f1"] - round(0.005 / se, 4)) < 1e-3 and t.loc["48", "n_ct_window"] == 7
 
 
-def test_operating_point_summary_for_other_pools_does_not_overwrite_the_40f_48f_table(config, feature_sets):
-    from pipelines.run_operating_point import run_operating_point
-    d = rae.get_metrics_dir(config)
-    d.mkdir(parents=True, exist_ok=True)
-    (d / "operating_point_summary.md").write_text("original table")
-    config["experiments"]["pool_variants"] = {"no_ttl": {"pool": "full", "exclude": ["sttl", "dttl", "ct_state_ttl"]}}
-    run_operating_point(config, feature_sets, pools=("no_ttl",), seeds=[1])
-    assert (d / "operating_point_summary.md").read_text() == "original table" and (d / "operating_point_summary_45f.md").exists()
-
-
 def test_stability_table_compares_tiers_per_seed_and_seeds_per_tier():
     from scripts.explanation_stability_tiers import stability_table
     feats = [f"f{i}" for i in range(12)]
@@ -1053,3 +1043,13 @@ def test_cross_model_agreement_intervals_by_hand():
     noisy = {"m1": {1: boots["m1"][1][:1].repeat(50, axis=0) + np.random.default_rng(0).normal(0, 0.8, (50, 6))}, "m2": {1: boots["m2"][1][:1].repeat(50, axis=0)}}
     out = agreement_with_intervals({"m1": {1: v}, "m2": {1: v * 2}}, noisy, feats, "m1", "m2")
     assert out["rank_correlation_ci_low"] < out["rank_correlation_ci_high"] <= 1.0                           # resampling noise gives a real interval
+
+
+def test_operating_point_summary_for_other_pools_does_not_overwrite_the_40f_48f_table(config, feature_sets):
+    from pipelines.run_operating_point import run_operating_point
+    d = rae.get_metrics_dir(config)
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "operating_point_summary.md").write_text("original table")
+    config["experiments"]["pool_variants"] = {"no_ttl": {"pool": "full", "exclude": ["sttl", "dttl", "ct_state_ttl"]}}
+    run_operating_point(config, feature_sets, pools=("no_ttl",), seeds=[1])
+    assert (d / "operating_point_summary.md").read_text() == "original table" and (d / "operating_point_summary_45f.md").exists()

@@ -5,6 +5,18 @@
 > duplicates removed, single seed unless stated. Reproduce with `python pipelines/run_all_experiments.py`.
 > Items that cannot be derived from the repository (team progress, review dates) are left as they were and marked.
 
+## Corrections since this plan was written (Tasks 1-3)
+
+- The repository now runs on the 42-feature UNSW-NB15 files (40- and 48-feature pools); the "obtain the official files with all 42 features" open item is done. Numbers below that say 34 raw features / 0.742 / 0.685 are the earlier single-seed figures.
+  Current official-split figures (XGBoost, 5 seeds): accuracy 0.743 / 0.740 and FPR 0.285 / 0.293 for 40 / 48 features.
+- **Random splits leak through neighbouring flows** (the official files are in capture order; `ct_*` window counts and class labels are shared by consecutive rows). The pooled-split and random-validation figures in this document are
+  best cases; block-grouped validation is used for any new selection.
+- **Train-vs-test shift:** block-grouped AUC 0.81-0.84 (not 0.90-0.93). Its cause is undetermined; the TTL columns do not explain the Normal -> Fuzzers errors.
+- **Few-shot result:** the 48-feature FPR of about 0.09 at 95% detection with ~5,000 labelled test rows is within-capture adaptation that relies on the window-count `ct_*` columns; zero-shot FPR stays 0.24-0.25.
+- **Novelty 3 (Task 3, XGBoost):** no measurable cost down to 30 features; 20 / 15 features cost 0.006-0.014 macro F1 and about half the open-set detection; explanation stability stays near the retraining floor
+  (`results/metrics/xgboost/task_3_conclusion.md`). Other model families are left to their owners (`pipelines/run_tier_study.py --model <type>`, `scripts/cross_model_agreement.py`).
+- 0.912 / 0.921 is an empirical feature-space ceiling, not a Bayes ceiling.
+
 ## Overview
 
 XIDS (Explainable AI-Based Network Intrusion Detection System) classifies network flows into normal and
@@ -48,7 +60,7 @@ for the experiment grid and for re-evaluating saved models.
 
 | Model | Owner | Status in the repository |
 |---|---|---|
-| XGBoost | Ashwani | Done. Macro F1 **0.685** (accuracy 0.742) on the official test split; 0.760 / 0.836 on a pooled random split. The earlier "0.97 macro ROC-AUC" is not reproduced (ROC curves are plotted, AUC is not in the result CSVs). |
+| XGBoost | Ashwani | Done. Macro F1 **0.685** (accuracy 0.742) on the official test split; 0.760 / 0.836 on a pooled random split (an optimistic best case: it shares neighbouring flows with its training rows). The earlier "0.97 macro ROC-AUC" is not reproduced (ROC curves are plotted, AUC is not in the result CSVs). |
 | Logistic Regression | Samiksha Tiwari | Supported via `model.type: logistic_regression`; no comparison results in the repo (the earlier 64% F1 is not reproduced here). |
 | Random Forest | Anjali | Supported via `model.type: random_forest`; no results in the repo. |
 | LightGBM | Anshu | Not implemented; worked example in `ONBOARDING.md`. |
@@ -58,7 +70,7 @@ for the experiment grid and for re-evaluating saved models.
 
 **Data hygiene changed the headline numbers.** Removing exact duplicates and using the official train/test split
 lowers macro F1 from ~0.78 to **0.685**. The attack-vs-normal false-positive rate is **0.276** on the official
-split vs. 0.112 on a pooled random split (FPR at 90 / 95 / 99% detection: 0.167 / 0.264 / 0.374); most of the gap is
+split vs. 0.112 on a pooled random split, which is optimistic because it shares neighbouring flows with its training rows (FPR at 90 / 95 / 99% detection: 0.167 / 0.264 / 0.374); most of the gap is
 train/test shift plus dedup (dedup removes recurring easy rows and reshapes the class mix: Generic 18,871 → 1,257
 test rows, DoS 4,089 → 1,504), not the model.
 

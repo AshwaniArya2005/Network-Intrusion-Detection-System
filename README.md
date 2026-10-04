@@ -21,6 +21,23 @@ around four research novelties:
 The reference model is **XGBoost**, but every pipeline is written against an
 abstract `BaseModel` interface — see [Swapping the model](#swapping-the-model) below.
 
+## Updates since the tables below were written (Tasks 1-3; read these first)
+
+The tables further down were written for the 34-feature data and a single seed. What has since been established (details in `results/metrics/xgboost/`):
+
+- **Data and pools.** The loader now uses the 42-feature UNSW-NB15 training/testing files (257,673 rows, 162,745 after exact deduplication) and two pools: 40 features (34 raw + 6 engineered)
+  and 48 features (42 raw + 6 engineered). Official split, 5 seeds, XGBoost, scheme `current`: accuracy 0.743 / 0.740, FPR 0.285 / 0.293 (40 / 48 features).
+- **Random splits are optimistic.** Consecutive rows of the official files are not shuffled: neighbouring flows share sliding-window `ct_*` values and often a class. A random validation split or the pooled
+  random split therefore shares neighbours with its training rows. The pooled-split figures quoted below (and the random-validation FPR) are best cases. A validation set built from contiguous blocks
+  predicts the test FPR to within 0.03-0.05 at the 95%-detection point; the random validation under-predicts it by 0.15-0.17 (`task_2_6_conclusion.md`, `task_3_conclusion.md`).
+- **The train-vs-test shift is real but smaller than first reported.** A classifier separating train-Normal from official-test-Normal reaches AUC 0.81-0.84 with block-grouped cross-validation
+  (0.90-0.93 with random cross-validation, which is inflated by neighbours). What the shift is made of is undetermined; removing the three TTL columns does not reduce the Normal -> Fuzzers errors.
+- **Zero-shot FPR is about 0.24-0.25** at 95% detection for every method that uses no target labels (hierarchical scheme, tuning, importance weighting). The few-shot result (FPR about 0.09 at 48 features with
+  ~5,000 labelled test rows) is **within-capture adaptation**: it holds with adaptation rows from other row-order blocks, but it relies on the window-count `ct_*` columns and was not tested on another capture.
+- **Feature-set size (Task 3, XGBoost).** Down to 30 features, macro F1 is within 0.003 of the full pool and the SHAP explanations are as stable as retraining makes them; 20 / 15 features cost 0.006-0.014 macro F1 and
+  about half of the open-set detection (`results/metrics/xgboost/task_3_conclusion.md`).
+- The 0.912 / 0.921 best-possible accuracy is an empirical feature-space ceiling (rows sharing a feature vector can only get one label), not a Bayes ceiling.
+
 ## Key findings (current results, XGBoost, 40 features, official UNSW-NB15 split)
 
 These are the numbers to quote; every row is reproducible with `python pipelines/run_all_experiments.py`
@@ -28,8 +45,8 @@ These are the numbers to quote; every row is reproducible with `python pipelines
 
 | Topic | Result |
 |---|---|
-| Closed-set classification | macro F1 **0.685**, accuracy 0.742 on the deduplicated official test set (0.760 / 0.836 on a pooled random split). About 44% of UNSW rows were exact duplicates (257,673 → 145,222) and are removed. |
-| Attack vs. normal | detection rate 0.955, false-positive rate **0.276** (0.112 pooled); FPR 0.167 / 0.264 / 0.374 at 90 / 95 / 99% detection. Most of the gap to the pooled split is train/test shift plus dedup, not the model. |
+| Closed-set classification | macro F1 **0.685**, accuracy 0.742 on the deduplicated official test set (0.760 / 0.836 on a pooled random split, an optimistic best case that shares neighbouring flows with its training rows). About 44% of UNSW rows were exact duplicates (257,673 → 145,222) and are removed. |
+| Attack vs. normal | detection rate 0.955, false-positive rate **0.276** (0.112 on the optimistic pooled split); FPR 0.167 / 0.264 / 0.374 at 90 / 95 / 99% detection. Most of the gap to the pooled split is train/test shift plus dedup, not the model. |
 | Analysis / Backdoor / DoS | indistinguishable at flow level: 72–80% of their rows have an exact feature twin in another class. Merged into `Overlap-Group-1` (recall into the group 0.83 / 0.94 / 0.50). Restoring the 8 columns missing from the local data does not resolve this. Exploits is the closest other class. |
 | Open-set (zero-day) | validation-chosen threshold ≈ 0.49: **~25% zero-day detection at ~6.4% false "Unknown"**, AUROC 0.80 (0.75–0.80 across tiers). Weak. The old fixed 0.65 gives 67% / 26% but was tuned on the reported zero-day samples. |
 | Feature-set size | tiers 40 → 15 change macro F1 by only ~0.015 (0.672–0.687). The mutual-information ranking beats random subsets significantly only at 30 features; at 20 and 15 it does not. Worst-N subsets are far worse (0.466 at 15). |
@@ -152,7 +169,7 @@ than the raw one. `split_comparison.csv` is written on every run (when
 random split (`use_official_split: false`) per feature tier, with the per-class train/test row counts
 as columns. For 40 features:
 
-| | official split | pooled random split |
+| | official split | pooled random split (optimistic: shares neighbouring flows) |
 |---|---|---|
 | accuracy / macro F1 | 0.742 / 0.685 | 0.836 / 0.760 |
 | attack detection rate / false-positive rate | 0.955 / 0.276 | 0.931 / 0.112 |
