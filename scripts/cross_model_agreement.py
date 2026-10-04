@@ -46,16 +46,23 @@ def agreement_with_intervals(vectors: dict[str, dict[int, pd.Series]], boots: di
     return out
 
 
-def load_model(config: dict, model: str, label: str):
-    d = get_metrics_dir(dict(config, model={"type": model}))
+def model_dir(config: dict, model: str, in_dir: str | None = None) -> Path:
+    """<in-dir>/<model>/ when that folder exists (local runs of a model family), else results/metrics/<model>/."""
+    if in_dir and (Path(in_dir) / model).exists():
+        return Path(in_dir) / model
+    return get_metrics_dir(dict(config, model={"type": model}))
+
+
+def load_model(config: dict, model: str, label: str, in_dir: str | None = None):
+    d = model_dir(config, model, in_dir)
     imp, boot_path = d / f"shap_importance_{model}_{label}.csv", d / f"shap_boot_{model}_{label}.npz"
     if not imp.exists() or not boot_path.exists():
         return None
     return pd.read_csv(imp), np.load(boot_path)
 
 
-def cross_model_table(config: dict, label: str, models=MODELS) -> pd.DataFrame:
-    loaded = {m: load_model(config, m, label) for m in models}
+def cross_model_table(config: dict, label: str, models=MODELS, in_dir: str | None = None) -> pd.DataFrame:
+    loaded = {m: load_model(config, m, label, in_dir) for m in models}
     loaded = {m: v for m, v in loaded.items() if v is not None}
     if len(loaded) < 2:
         return pd.DataFrame()
@@ -90,13 +97,16 @@ def render(tables: dict[str, pd.DataFrame]) -> str:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--pools", nargs="*", default=["40f", "45f", "48f"])
+    parser.add_argument("--models", nargs="*", default=list(MODELS), help="model types to compare (their SHAP files must exist)")
+    parser.add_argument("--in-dir", help="look for <in-dir>/<model>/ first (local runs); XGBoost falls back to results/metrics/xgboost/")
+    parser.add_argument("--out-dir", help="where to write the agreement tables (default results/metrics/cross_model, or <in-dir>/cross_model with --in-dir)")
     args = parser.parse_args()
     config = load_config()
-    out_dir = resolve_path(config["paths"]["results_dir"]) / "metrics" / "cross_model"
+    out_dir = Path(args.out_dir) if args.out_dir else (Path(args.in_dir) / "cross_model" if args.in_dir else resolve_path(config["paths"]["results_dir"]) / "metrics" / "cross_model")
     out_dir.mkdir(parents=True, exist_ok=True)
     tables = {}
     for label in args.pools:
-        t = cross_model_table(config, label)
+        t = cross_model_table(config, label, tuple(args.models), args.in_dir)
         if len(t):
             tables[label] = t
             t.to_csv(out_dir / f"cross_model_agreement_{label}.csv", index=False)

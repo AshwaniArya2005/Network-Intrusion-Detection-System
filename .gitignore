@@ -21,6 +21,9 @@ models_saved/*
 # pipeline script), not part of the reported results — excluded on purpose.
 results/diagnostics/
 
+# Local-only runs of other model families (teammates' packages): never committed, never quoted in docs.
+results/_local_scratch/
+
 # Frontend
 dashboard/frontend/node_modules/
 dashboard/frontend/dist/

@@ -1053,3 +1053,58 @@ def test_operating_point_summary_for_other_pools_does_not_overwrite_the_40f_48f_
     config["experiments"]["pool_variants"] = {"no_ttl": {"pool": "full", "exclude": ["sttl", "dttl", "ct_state_ttl"]}}
     run_operating_point(config, feature_sets, pools=("no_ttl",), seeds=[1])
     assert (d / "operating_point_summary.md").read_text() == "original table" and (d / "operating_point_summary_45f.md").exists()
+
+
+def test_shap_explainer_type_matches_the_model_family():
+    import shap
+    from src.models.model_factory import create_model
+    from src.preprocessing import Preprocessor
+    from src.xai.shap_explainer import SHAPExplainer
+    df = make_synthetic_unsw(n_rows=700, seed=4)
+    feats = ["rate", "sbytes", "dbytes", "dur", "spkts", "proto"]
+    pre = Preprocessor(feature_list=feats, target_column="attack_cat").fit(df)
+    X, y = pre.transform(df)
+    expected = {"xgboost": shap.TreeExplainer, "random_forest": shap.TreeExplainer, "logistic_regression": shap.LinearExplainer}
+    params = {"xgboost": {"n_estimators": 8, "max_depth": 3}, "random_forest": {"n_estimators": 8, "max_depth": 4, "random_state": 0},
+              "logistic_regression": {"max_iter": 200}}
+    for name, cls in expected.items():
+        explainer = SHAPExplainer(create_model(name, params[name]).fit(X, y), feats)
+        values = explainer.compute_shap_values(X, 50)
+        assert isinstance(explainer._explainer, cls), name
+        assert len(values) == len(set(y)) and values[0].shape == (50, 6)
+
+
+def test_tier_runner_works_for_every_model_family_and_writes_to_an_out_dir(config, feature_sets, tmp_path):
+    from pipelines.run_tier_study import output_dir, run_tiers, save
+    config["tier_study"].update(block_size=50, buffer=5, shap_rows=60, bootstrap=4, seeds=[1, 2])
+    for model in ("random_forest", "logistic_regression"):
+        config["tier_study"]["model_params"][model] = {**config["tier_study"]["model_params"][model], **({"n_estimators": 8, "max_depth": 4} if model == "random_forest" else {"max_iter": 100})}
+        runs, imps, boots = run_tiers(config, feature_sets, "base", model, tiers=["15"])
+        assert set(runs["model"]) == {model} and len(runs) == 2 and runs["f1"].between(0, 1).all()
+        assert len(imps) == 2 * 15 and (imps["importance"] >= 0).all() and boots["15__1"].shape == (4, 15)
+        save(config, model, "40f", runs, imps, boots, out_dir=str(tmp_path / "scratch"))
+        assert (tmp_path / "scratch" / model / "tier_study_" f"{model}_40f_runs.csv").exists()
+        assert not (output_dir(config, model) / f"tier_study_{model}_40f_runs.csv").exists()          # nothing leaked into results/metrics/<model>/
+
+
+def test_cross_model_agreement_runs_end_to_end_from_saved_tier_runs(config, feature_sets, tmp_path):
+    from pipelines.run_tier_study import run_tiers, save
+    from scripts.cross_model_agreement import cross_model_table
+    config["tier_study"].update(block_size=50, buffer=5, shap_rows=80, bootstrap=6, seeds=[1, 2])
+    config["tier_study"]["model_params"]["random_forest"].update(n_estimators=8, max_depth=4)
+    scratch = tmp_path / "scratch"
+    for model in ("xgboost", "random_forest"):
+        runs, imps, boots = run_tiers(config, feature_sets, "base", model, tiers=["15", "40"])
+        save(config, model, "40f", runs, imps, boots, out_dir=str(scratch))
+    table = cross_model_table(config, "40f", ("xgboost", "random_forest"), in_dir=str(scratch))
+    assert set(table["tier"]) == {15, 40} and set(zip(table["model_a"], table["model_b"])) == {("xgboost", "random_forest")}
+    assert table["n_seeds"].eq(2).all() and table["n_bootstrap"].eq(6).all()
+    for m in ("rank_correlation", "cosine_similarity", "topk_overlap"):
+        assert table[f"{m}_ci_low"].le(table[f"{m}_ci_high"]).all() and table[f"{m}_mean"].between(-1, 1).all()
+    assert cross_model_table(config, "40f", ("xgboost", "logistic_regression"), in_dir=str(scratch)).empty   # a model without saved runs is skipped, not invented
+
+
+def test_model_config_explains_what_to_add_for_an_undeclared_model_type():
+    from pipelines.run_tier_study import model_config
+    with pytest.raises(ValueError, match="tier_study.model_params.lightgbm"):
+        model_config(copy.deepcopy(load_config()), "lightgbm", 42)

@@ -46,7 +46,11 @@ def model_config(cfg: dict, model_type: str, seed: int) -> dict:
     """`cfg` for `model_type` and `seed`: XGBoost keeps config.yaml's parameters, the other families the declared `tier_study.model_params`."""
     cfg["model"]["type"] = model_type
     if model_type != "xgboost":
-        cfg["model"]["params"] = dict(cfg["tier_study"]["model_params"][model_type])
+        declared = cfg["tier_study"]["model_params"]
+        if model_type not in declared:
+            raise ValueError(f"No parameters declared for model type {model_type!r}: add tier_study.model_params.{model_type} to configs/config.yaml "
+                             f"(and register the model in src/models/model_factory.py)")
+        cfg["model"]["params"] = dict(declared[model_type])
     cfg["model"]["params"]["random_state"] = seed
     cfg["project"]["seed"] = seed
     return cfg
@@ -166,11 +170,14 @@ def run_baselines(config: dict, feature_sets: dict, pool: str, ranked_runs: pd.D
     return df, summarize_baselines(df), summarize_baselines(df.assign(f1=df["accuracy"]))
 
 
+def output_dir(config: dict, model_type: str, out_dir: str | None = None) -> Path:
+    """results/metrics/<model_type>/, or <out_dir>/<model_type>/ when `--out-dir` is given (e.g. the gitignored results/_local_scratch)."""
+    return Path(out_dir) / model_type if out_dir else get_metrics_dir(dict(config, model=dict(config["model"], type=model_type)))
+
+
 def save(config: dict, model_type: str, label: str, runs: pd.DataFrame | None = None, importances: pd.DataFrame | None = None, boots: dict | None = None,
-         suffix: str = "") -> None:
-    cfg = config.copy()
-    cfg["model"] = dict(config["model"], type=model_type)
-    d = get_metrics_dir(cfg)
+         suffix: str = "", out_dir: str | None = None) -> None:
+    d = output_dir(config, model_type, out_dir)
     d.mkdir(parents=True, exist_ok=True)
     if runs is not None:
         runs.to_csv(d / f"tier_study_{model_type}_{label}_runs{suffix}.csv", index=False)
@@ -182,10 +189,11 @@ def save(config: dict, model_type: str, label: str, runs: pd.DataFrame | None = 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--model", choices=["xgboost", "random_forest", "logistic_regression"], default="xgboost")
+    parser.add_argument("--model", default="xgboost", help="a model.type registered in src/models/model_factory.py (non-XGBoost types need tier_study.model_params.<type>)")
     parser.add_argument("--pools", nargs="*")
     parser.add_argument("--parts", nargs="*", choices=["tiers", "baselines", "pooled"], default=["tiers"])
     parser.add_argument("--seeds", nargs="*", type=int)
+    parser.add_argument("--out-dir", help="write the outputs under <out-dir>/<model>/ instead of results/metrics/<model>/ (e.g. results/_local_scratch, which is gitignored)")
     args = parser.parse_args()
     config, feature_sets = load_config(), load_feature_sets()
     add_file_logging(str(resolve_path(config["logging"]["log_file"])))
@@ -193,10 +201,10 @@ def main() -> None:
         label = pool_label(prepare(config, feature_sets, pool, args.model, 42)[1])
         if "tiers" in args.parts:
             runs, imps, boots = run_tiers(config, feature_sets, pool, args.model, args.seeds)
-            save(config, args.model, label, runs, imps, boots)
+            save(config, args.model, label, runs, imps, boots, out_dir=args.out_dir)
             print(label, "\n", runs.groupby("tier")[["accuracy", "f1", "false_positive_rate", "det95_test_fpr"]].mean().round(4).to_string())
         if "baselines" in args.parts:
-            d = get_metrics_dir(dict(config, model=dict(config["model"], type=args.model)))
+            d = output_dir(config, args.model, args.out_dir)
             ranked = pd.read_csv(d / f"tier_study_{args.model}_{label}_runs.csv")
             df, summary_f1, summary_acc = run_baselines(config, feature_sets, pool, ranked, seeds=args.seeds)
             df.to_csv(d / f"tier_baselines_{args.model}_{label}.csv", index=False)
@@ -205,7 +213,7 @@ def main() -> None:
             print(summary_f1.to_string(index=False))
         if "pooled" in args.parts:
             runs, _, _ = run_tiers(config, feature_sets, pool, args.model, args.seeds, with_shap=False, pooled=True)
-            save(config, args.model, label, runs, suffix="_pooled")
+            save(config, args.model, label, runs, suffix="_pooled", out_dir=args.out_dir)
 
 
 if __name__ == "__main__":
