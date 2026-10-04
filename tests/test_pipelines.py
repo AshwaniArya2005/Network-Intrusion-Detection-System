@@ -1020,3 +1020,20 @@ def test_operating_point_summary_for_other_pools_does_not_overwrite_the_40f_48f_
     config["experiments"]["pool_variants"] = {"no_ttl": {"pool": "full", "exclude": ["sttl", "dttl", "ct_state_ttl"]}}
     run_operating_point(config, feature_sets, pools=("no_ttl",), seeds=[1])
     assert (d / "operating_point_summary.md").read_text() == "original table" and (d / "operating_point_summary_45f.md").exists()
+
+
+def test_stability_table_compares_tiers_per_seed_and_seeds_per_tier():
+    from scripts.explanation_stability_tiers import stability_table
+    feats = [f"f{i}" for i in range(12)]
+    rng = np.random.default_rng(0)
+    base = np.linspace(1, 0.05, 12)
+    rows = []
+    for tier, keep in (("12", feats), ("8", feats[:8])):
+        for seed in (1, 2, 3):
+            noise = rng.normal(0, 0.001, 12)
+            for f, v in zip(keep, (base + noise)[: len(keep)]):
+                rows.append({"tier": tier, "seed": seed, "feature": f, "importance": v})
+    t = stability_table(pd.DataFrame(rows)).set_index(["comparison", "a", "b"])
+    assert t.loc[("tier_pair", "12", "8"), "n_common_features"] == 8 and t.loc[("tier_pair", "12", "8"), "n"] == 3
+    assert t.loc[("tier_pair", "12", "8"), "rank_correlation_mean"] > 0.99                                    # same ordering up to tiny noise
+    assert t.loc[("same_tier_seeds", "12", "12"), "n"] == 3 and t.loc[("same_tier_seeds", "12", "12"), "cosine_similarity_mean"] > 0.999   # 3 seeds -> 3 pairs
