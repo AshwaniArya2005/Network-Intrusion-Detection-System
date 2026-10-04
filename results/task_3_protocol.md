@@ -56,3 +56,10 @@ Logistic regression belongs to a teammate's work package and is **not part of th
 agreement results are produced or kept. Its code path (`model_config`, the declared `max_iter` 300, the LinearExplainer route) stays in the repository and
 is exercised by tests only. Steps 3 and 4 therefore compare XGBoost with the random forest (the Step 4 agreement is between those two models; the script
 accepts any number of models). The random forest is run with the declared settings above.
+
+## Second amendment (declared before any Task 3 result was read)
+The other model families (logistic regression, random forest) are teammates' work packages; this task's results are **XGBoost only**. Steps 3 and 4 (other
+model families, cross-model agreement) are therefore not run here: no logistic-regression or random-forest tier, stability or agreement results are
+produced or kept. The code for them (`model_config`, the declared per-family parameters, the SHAP paths, `scripts/cross_model_agreement.py`) stays in the
+repository, tested on synthetic data, so a teammate can run `pipelines/run_tier_study.py --model <type>` and `scripts/cross_model_agreement.py` with the same
+rankings, seeds and block-grouped validation and obtain comparable numbers. A partial random-forest run (40-feature pool only) was stopped and deleted.
