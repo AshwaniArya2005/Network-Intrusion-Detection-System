@@ -46,6 +46,10 @@ The tables further down were written for the 34-feature data and a single seed. 
   (0.81 / 0.27), but flags fewer Worms + Shellcode flows; margin, conformal, a Normal-trained isolation forest and their combinations are no better than max-softmax. The 40 -> 48-feature gain disappears
   without the window-count `ct_*` columns. 94-99% of zero-day flows are already flagged or called an attack, so flagging 22% instead of 4% of them adds only 1.6 points of catch (40 features), and the review queue barely lowers the alert FPR
   (0.289 -> 0.254 at 5%) because 88-92% of the false alerts on shifted Normal flows are confidently wrong. The earlier "67-75% detection at 26-28% false alarms" is withdrawn (threshold tuned on the zero-day flows).
+- **Task 4.5 (zero-shot, tried to improve it).** Temperature scaling, per-class thresholds, ensemble disagreement, kNN / Mahalanobis distance, pseudo-unknown training and a rank-average were compared on the same nine-class rotation. The best result
+  is a rank-average of ensemble mutual information and an Unknown-class probability: rotation-mean detection 0.27 / 0.34 (40 / 48 features) against 0.13 / 0.21 for max-softmax in the same, smaller setting (two known classes removed), only 0.02-0.07 above entropy, and it
+  loses on Shellcode. In the full known set only temperature-scaled entropy on 48 features clearly beats max-softmax (0.304 against 0.234). Distance scores fail because Shellcode sits inside the training data, and the review queue still does not lower the alert FPR
+  (`results/metrics/xgboost/task_4_conclusion.md`).
 - The 0.912 / 0.921 best-possible accuracy is an empirical feature-space ceiling (rows sharing a feature vector can only get one label), not a Bayes ceiling.
 
 ## Key findings (current results, XGBoost, 40 features, official UNSW-NB15 split)

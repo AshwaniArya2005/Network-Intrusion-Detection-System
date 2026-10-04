@@ -22,6 +22,8 @@
   leave-one-class-out mean of 0.21-0.23 (AUROC 0.77; hardest: Worms, Exploits, Fuzzers). Entropy ranks better but is not reliably better at the threshold; margin, conformal, an isolation forest and combinations are no better.
   The 48-feature gain depends on window-count `ct_*` columns. 94-99% of zero-day flows are already called an attack, and the review queue barely lowers the alert FPR (0.289 -> 0.254) because the false alerts are confidently wrong
   (`results/metrics/xgboost/task_4_conclusion.md`).
+- **Novelty 1, Task 4.5:** six ideas to improve it (calibration, per-class thresholds, ensemble disagreement, distance, pseudo-unknown training, a rank-average chosen on pseudo-unknown validation) leave the picture much the same: the best combination reaches rotation-mean detection
+  0.27 / 0.34 (40 / 48 features) in a setting that removes two known classes, only 0.02-0.07 above entropy; in the full known set only calibrated entropy on 48 features clearly beats max-softmax (0.304 against 0.234); distance scores fail and the review queue does not lower the alert FPR.
 - 0.912 / 0.921 is an empirical feature-space ceiling, not a Bayes ceiling.
 
 ## Overview

@@ -92,3 +92,82 @@ Worms + Shellcode flows (AUROC 0.80-0.83), and a flag rate of 0.04-0.41 across n
 although it is the best score over the nine-class rotation (mean detection 0.27-0.28, AUROC 0.81); the anomaly detector, the conformal score and margin are no help. The 48-feature gain over 40 features disappears when the window-count ct_* columns are removed, so it is a within-capture effect. Most zero-day flows are already called some attack
 class, so the Unknown flag adds little catch, and routing uncertain flows to review barely lowers the alert FPR: the shifted Normal flows behind most false alerts are confidently wrong (88-92% skip the queue) and make up 46-60% of the alarms on the test split
 against 8-17% on validation. Confidence is not reliable under the official-split shift, and these results come from one capture.
+
+---
+
+# Task 4.5: trying to improve zero-day detection (novelty 1, ZERO-SHOT)
+
+Protocol declared before any result: `results/task_4_5_protocol.md`. Same evaluation as above: thresholds at 5% false-Unknown from known block-grouped validation, the nine-class rotation, the Overlap-Group-1 trio
+and Worms + Shellcode, seeds 42-46. Score selection used the pseudo-unknown validation only (inner models without Reconnaissance or Generic), never the real zero-day classes. Declared rule: a score **clearly beats**
+max-softmax when its rotation-mean detection is at least 0.05 higher, its rotation-mean AUROC is not lower, it is better in at least 4 of 5 seeds and its Worms + Shellcode detection is not more than 0.02 lower.
+Tables: `open_set_boost_<idea>_40f_48f.md` for calibration, perclass, ensemble, distance, oe, combo and iforest.
+
+## The updated claim for novelty 1
+Cheap changes to the confidence score do not make zero-day detection good. Under an honest protocol the best result is a rank-average of ensemble mutual information and an Unknown-class probability, which raises the
+nine-class mean detection at a 5% false-Unknown budget to 0.27 (40 features) / 0.34 (48 features); it clearly beats max-softmax under the declared rule, but only in a setting that removes two known classes, it is only 0.02-0.07
+above entropy, it loses on Shellcode, and the flagged bucket stays mostly known flows (precision of Unknown 0.11-0.17). In the full known set the only clear gain is calibrated entropy on 48 features (0.304 against 0.234).
+Per-class thresholds, ensemble variance, and kNN / Mahalanobis distance are worse than max-softmax, and the review queue still does not lower the alert FPR.
+
+## Results (rotation mean over nine held-out classes: AUROC / detection; Worms + Shellcode detection; the full known set)
+| idea | score | 40 features | 48 features | clearly beats max-softmax (40, 48) |
+|---|---|---|---|---|
+| baseline | max-softmax | 0.769 / 0.213; W+S 0.224 | 0.774 / 0.234; W+S 0.334 | |
+| baseline (Task 4) | entropy | 0.810 / 0.266; W+S 0.159 | 0.811 / 0.283; W+S 0.294 | no, no |
+| 1 calibration | max-softmax, temperature-scaled | 0.780 / 0.230; W+S 0.232 | 0.787 / 0.260; W+S 0.347 | no, no |
+| 1 calibration | entropy, temperature-scaled | 0.819 / 0.276; W+S 0.165 | 0.826 / 0.304; W+S 0.317 | no, **yes** |
+| 2 per-class thresholds | max-softmax / entropy | 0.705 / 0.160; 0.742 / 0.216 | 0.687 / 0.170; 0.717 / 0.253 | no, no |
+| 3 ensemble (5 members) | mutual information | 0.733 / 0.202; W+S 0.134 | 0.757 / 0.268; W+S 0.335 | no, no |
+| 3 ensemble | variance / ensemble max-softmax | 0.717 / 0.150; 0.770 / 0.206 | 0.734 / 0.199; 0.776 / 0.242 | no, no |
+| 4 distance | kNN / Mahalanobis | 0.623 / 0.152; 0.471 / 0.098 | 0.571 / 0.156; 0.469 / 0.089 | no, no |
+
+Caption. Temperature scaling helps a little (ECE of the known test flows 0.087 -> 0.067 and 0.112 -> 0.086; mean temperature 1.19 / 1.25) and calibrated entropy is the best score in the full known set, but its Worms + Shellcode detection
+is still below max-softmax's on 40 features (0.165 against 0.224), which is why the rule says no there. The detection-at-matched-false-Unknown diagnostic (0.348 / 0.477 for calibrated entropy against 0.224 / 0.334 for max-softmax) says
+part of entropy's disadvantage on Worms + Shellcode is where its threshold lands on the shifted test flows, not its ranking. Per-class thresholds split the 5% budget evenly over predicted classes and spend it on classes whose flows look
+confident, so Exploits AUROC drops to 0.51 / 0.38. The two distance scores fail for a structural reason: Shellcode, 89.5% of the Worms + Shellcode set, sits **closer** to the training data than a typical known test flow (mean percentile 0.28-0.39), so distance ranks it as
+more normal than normal.
+
+## Outlier exposure and the combination (a smaller known set: two known classes, by default Reconnaissance and Generic, become the "Unknown" training class)
+| score | 40 features | 48 features | clearly beats max-softmax (40, 48) |
+|---|---|---|---|
+| max-softmax of the model trained without them (baseline) | 0.730 / 0.128; W+S 0.248 | 0.754 / 0.209; W+S 0.416 | |
+| entropy of that model (Task 4 baseline) | 0.765 / 0.200; W+S 0.462 | 0.782 / 0.318; W+S 0.598 | yes, yes (a baseline, not a new idea) |
+| P(Unknown) of the Unknown-class model | 0.842 / 0.179; W+S 0.049 | 0.868 / 0.239; W+S 0.101 | no, no |
+| max-softmax of the Unknown-class model | 0.754 / 0.195; W+S 0.230 | 0.752 / 0.212; W+S 0.390 | yes, no |
+| **rank-average of ensemble mutual information and P(Unknown)** (chosen on pseudo-unknown validation, both pools) | 0.794 / **0.268**; W+S 0.236 | 0.810 / **0.335**; W+S 0.466 | **yes, yes** |
+
+Caption. P(Unknown) has the best AUROC of any score (0.84-0.87) but its threshold, fixed on validation flows that almost never carry Unknown probability, lands far too strict on the shifted test flows (Worms + Shellcode detection 0.05 / 0.10, realised
+false-Unknown 0.044); the rank-average repairs that. Ensemble mutual information and the Unknown-class probability had the top two mean pseudo-unknown validation AUROCs on both pools (0.818 / 0.815 at 40 features, 0.841 / 0.869 at 48). The gain is **not uniform across held-out classes**: against
+max-softmax of the same setting the combination detects 0.42 / 0.34 of Exploits (against 0.10 / 0.08), 0.56 / 0.82 of Generic, 0.26 / 0.26 of Worms and 0.43 / 0.45 of Reconnaissance, but loses on Shellcode (0.21 / 0.49 against 0.28 / 0.44 at max-softmax and
+0.50 / 0.64 for entropy), is flat on Worms + Shellcode (0.236 / 0.466 against 0.248 / 0.416), on the trio and on Fuzzers (0.09 / 0.12). Against **entropy** in the same setting the combination gains 0.068 / 0.017 detection and 0.029 / 0.028 AUROC but detects far fewer
+Worms + Shellcode flows (0.236 / 0.466 against 0.462 / 0.598). Costs: the two pseudo-unknown classes can no longer be recognised as attacks, the known-class macro recall is 0.020-0.022 lower than for the model trained without them (0.747 -> 0.727; 0.781 -> 0.759), and in the two specs where Fuzzers had to be
+used as a pseudo-unknown class 17% of known test flows are predicted Unknown. The realised false-Unknown on the official test is 0.074 / 0.082 against the 5% target. Because the baselines in this setting have lost two classes (max-softmax rotation detection 0.128 / 0.209
+against 0.213 / 0.234 in the full set), the 0.268 / 0.335 are not directly comparable with the full-set figures above.
+
+## Flagged-Unknown bucket and review queue (Worms + Shellcode held out, 5% target, official test)
+| score (setting) | zero-day flagged: Shellcode / Worms | known flows flagged: Normal / Exploits / Fuzzers | precision of Unknown | alert FPR off -> on | confident-alert FPR | review rate on Normal |
+|---|---|---|---|---|---|---|
+| max-softmax, 40 features (full set) | 358 of 1,456 / 7 of 171 | 1,937 / 437 / 319 | 0.103 | 0.289 -> 0.311 | 0.254 | 0.057 |
+| calibrated entropy, 40 features | 264 / 4 | 249 / 250 / 215 | 0.179 | 0.289 -> 0.290 | 0.283 | 0.007 |
+| calibrated entropy, 48 features | 510 / 6 | 253 / 263 / 355 | 0.264 | 0.298 -> 0.299 | 0.292 | 0.007 |
+| combination, 40 features (smaller known set) | 334 / 51 | 1,376 / 980 / 321 | 0.107 | 0.288 -> 0.304 | 0.263 | 0.041 |
+| combination, 48 features (smaller known set) | 716 / 41 | 1,248 / 957 / 740 | 0.174 | 0.297 -> 0.308 | 0.272 | 0.037 |
+
+Caption. Whatever the score, three quarters or more of the flagged flows are known flows (precision of Unknown 0.10-0.26). Entropy-based scores keep the queue small (under 1% of Normal) but then the confident alerts are still 0.28-0.29 of Normal; max-softmax and the combination
+send 4-6% of Normal flows to review and the confident-alert FPR still stays at 0.25-0.27. No score lowers the alert FPR (it can only rise when Unknown is added); the queue does not remove the confidently wrong shifted Normal flows.
+
+## Isolation-forest check
+The sign is right: on the official test the isolation-forest score ranks known attacks above Normal flows (AUROC 0.67 on 40 features, 0.72 on 48; the same over the nine rotation runs). The zero-day flows split: Worms look more anomalous than a typical known test flow (mean percentile 0.68 / 0.71) but
+Shellcode looks like an inlier (0.41 / 0.47), and Shellcode is 89.5% of the set, which is why the Task 4 union AUROC was below 0.5. The kNN score shows the same split (0.63 / 0.52 and 0.39 / 0.29); the Mahalanobis score ranks attacks below Normal (AUROC 0.41 / 0.43) and does not look
+like an anomaly score on this data.
+
+## What did not work, and the hypothesis
+- Hypothesis (a guess): rotation mean detection rises from about 21% to 30-35%. **Partly:** 0.268 / 0.335 for the combination in the outlier-exposure setting, 0.276 / 0.304 for calibrated entropy in the full known set; but the first uses a smaller known set with its own lower baseline
+  and the gain over entropy is 0.02-0.07.
+- Per-class thresholds, ensemble variance and mutual information on their own, kNN and Mahalanobis distance, and P(Unknown) alone are not better than max-softmax at the declared threshold.
+- The pseudo-unknown validation chose the same pair on both pools, so it was never tested on a case where it picks a bad one (as it did for the isolation-forest combination in Task 4).
+- The review queue does not lower the alert FPR for any score.
+
+## One paragraph (Task 4.5)
+Of six ideas for improving zero-day detection, only two produce a gain that holds over seeds: temperature-scaled entropy in the full known set (detection 0.304 against 0.234 for max-softmax on 48 features) and a rank-average of ensemble disagreement and an Unknown-class probability trained
+with two known classes as stand-ins (0.27 / 0.34 against 0.13 / 0.21 for max-softmax in the same, smaller setting). Both gains depend on the held-out class (Exploits, Generic, Reconnaissance and Worms gain; Shellcode and Fuzzers do not), the second removes two known attack classes from what the model can recognise,
+and neither changes what the analyst receives: most of the flagged flows are still known traffic and the confidently wrong Normal alerts are not reduced. Distance-based scores fail because the most common zero-day class sits inside the training data, and one fitted anomaly score is not a reliable guide to novelty on this capture.
