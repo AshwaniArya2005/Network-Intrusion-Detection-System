@@ -13,6 +13,9 @@
   best cases; block-grouped validation is used for any new selection.
 - **Train-vs-test shift:** block-grouped AUC 0.81-0.84 (not 0.90-0.93). Its cause is undetermined; the TTL columns do not explain the Normal -> Fuzzers errors.
 - **Few-shot result:** the 48-feature FPR of about 0.09 at 95% detection with ~5,000 labelled test rows is within-capture adaptation that relies on the window-count `ct_*` columns; zero-shot FPR stays 0.24-0.25.
+- **Task 2.7 (XGBoost):** re-tuning on block-grouped validation, temperature scaling, EM class-prior correction, self-training and their combination do not lower the zero-shot FPR (all within 0.007 of the default at about 95% detection);
+  with labels, 0.15 at exactly 95% detection takes about 2,500-5,000 labelled rows (48 and 45 features) and is never reached without the window-count `ct_*` columns; the earlier 0.09 was read at a test detection of 0.93
+  (`results/metrics/xgboost/task_2_7_conclusion.md`).
 - **Novelty 3 (Task 3, XGBoost):** no measurable cost down to 30 features; 20 / 15 features cost 0.006-0.014 macro F1 and about half the open-set detection; explanation stability stays near the retraining floor
   (`results/metrics/xgboost/task_3_conclusion.md`). Other model families are left to their owners (`pipelines/run_tier_study.py --model <type>`, `scripts/cross_model_agreement.py`).
 - **Novelty 1 (Task 4, XGBoost, zero-shot):** under thresholds fixed on known block-grouped validation at 5% false-Unknown, max-softmax flags 0.22 (40 features) / 0.33 (48) of the Worms + Shellcode flows and a nine-class

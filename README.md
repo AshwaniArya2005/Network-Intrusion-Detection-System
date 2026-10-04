@@ -34,6 +34,10 @@ The tables further down were written for the 34-feature data and a single seed. 
   (0.90-0.93 with random cross-validation, which is inflated by neighbours). What the shift is made of is undetermined; removing the three TTL columns does not reduce the Normal -> Fuzzers errors.
 - **Zero-shot FPR is about 0.24-0.25** at 95% detection for every method that uses no target labels (hierarchical scheme, tuning, importance weighting). The few-shot result (FPR about 0.09 at 48 features with
   ~5,000 labelled test rows) is **within-capture adaptation**: it holds with adaptation rows from other row-order blocks, but it relies on the window-count `ct_*` columns and was not tested on another capture.
+- **Task 2.7 (XGBoost): the zero-shot FPR could not be lowered.** Re-tuning on block-grouped validation, temperature scaling, EM class-prior correction (transductive), self-training (transductive; it raises the
+  FPR) and their declared combination all leave the FPR at about 0.25 for a 95%-detection operating point (every change within 0.007, below the declared 0.02). With labels, the FPR at *exactly* 95% detection reaches 0.15
+  at about 2,500-5,000 labelled rows from the same capture (48 and 45 features; the "about 0.09" above is read at a test detection of 0.93, 0.12-0.13 at exactly 95%), the choice of which rows to label matters little,
+  and it never reaches 0.15 without the window-count `ct_*` columns (`results/metrics/xgboost/task_2_7_conclusion.md`).
 - **Feature-set size (Task 3, XGBoost).** Down to 30 features, macro F1 is within 0.003 of the full pool and the SHAP explanations are as stable as retraining makes them; 20 / 15 features cost 0.006-0.014 macro F1 and
   about half of the open-set detection (`results/metrics/xgboost/task_3_conclusion.md`).
 - **Open-set / zero-day detection (Task 4, XGBoost, zero-shot).** Thresholds come from known block-grouped validation at a 5% false-Unknown target; no zero-day flow is used for any choice
