@@ -27,6 +27,7 @@ import pandas as pd
 from pipelines.run_tier_study import prepare
 from src.models.model_factory import create_model
 from src.neighbours import exact_twin_mask
+from src.openset_extra import matched_detection
 from src.openset_scores import BASE_SCORES, RULES, ScoreSuite, flag_threshold, unknown_auroc
 from src.preprocessing import Preprocessor, balanced_sample_weight
 from src.utils.config_loader import get_active_features, get_metrics_dir, load_config, load_feature_sets, pool_label, resolve_path
@@ -67,6 +68,8 @@ class OpenSetRun:
         self.cfg, self.seed = cfg, seed
         self.normal = cfg["data"]["normal_category"]
         self.pre, self.model, X_train, y_train = fit_closed_set(cfg, train_df, features)
+        self.X_train, self.y_train, self.train_df, self.features = X_train, y_train, train_df, features   # kept for the Task 4.5 scores (distance, ensemble, outlier exposure)
+        self.flaggers = {}   # name -> f(part, target) -> boolean flags, for rules that are not one threshold on one score (per-class thresholds)
         self.classes = list(self.pre.target_encoder.classes_)
         self.normal_index = self.classes.index(self.normal)
         cal_mask = validation_halves(val_df, cfg["tier_study"]["block_size"], seed)
@@ -88,23 +91,32 @@ class OpenSetRun:
     def threshold(self, name: str, target: float = TARGET) -> float:
         return flag_threshold(self.parts["thr"]["scores"][name], target)
 
+    def flags(self, name: str, part: str, target: float = TARGET) -> np.ndarray:
+        """Boolean "flagged Unknown" of every flow of `part`: one threshold on the score fixed on the known threshold half, or the registered per-name rule."""
+        if name in self.flaggers:
+            return self.flaggers[name](part, target)
+        return self.parts[part]["scores"][name] > self.threshold(name, target)
+
 
 def zero_day_rows(run: OpenSetRun, pool: str, seed: int, zero_sets: dict[str, np.ndarray], names=CANDIDATES) -> list[dict]:
     """Step 1 / 2 rows: per candidate score and zero-day set, unknown AUROC, detection at the 5% threshold, share flagged OR predicted as an attack class, and the realised
     false-Unknown rate on the two validation halves and on the official test."""
     rows = []
+    msp_test_rate = float(run.flags("msp", "test").mean()) if "msp" in run.parts["test"]["scores"] else float("nan")
     for name in names:
-        thr = run.threshold(name)
+        thr = float("nan") if name in run.flaggers else run.threshold(name)
         known_test = run.parts["test"]["scores"][name]
+        flagged_unknown = run.flags(name, "unknown")
         for zero_name, mask in zero_sets.items():
             s = run.parts["unknown"]["scores"][name][mask]
             attack_pred = run.parts["unknown"]["pred"][mask] != run.normal_index
             rows.append({"pool": pool, "seed": seed, "score": name, "zero_day": zero_name, "n_zero_day": int(mask.sum()), "threshold": thr,
-                         "unknown_auroc": unknown_auroc(known_test, s), "detection": float((s > thr).mean()),
-                         "flagged_or_attack": float(((s > thr) | attack_pred).mean()),
-                         "false_unknown_thr_half": float((run.parts["thr"]["scores"][name] > thr).mean()),
-                         "false_unknown_cal_half": float((run.parts["cal"]["scores"][name] > thr).mean()),
-                         "false_unknown_test": float((known_test > thr).mean())})
+                         "unknown_auroc": unknown_auroc(known_test, s), "detection": float(flagged_unknown[mask].mean()),
+                         "flagged_or_attack": float((flagged_unknown[mask] | attack_pred).mean()),
+                         "false_unknown_thr_half": float(run.flags(name, "thr").mean()), "false_unknown_cal_half": float(run.flags(name, "cal").mean()),
+                         "false_unknown_test": float(run.flags(name, "test").mean()),
+                         "msp_false_unknown_test": msp_test_rate,   # diagnostic: detection at the threshold that flags the same share of known test flows as max-softmax did
+                         "detection_matched_to_msp": matched_detection(known_test, s, msp_test_rate) if msp_test_rate == msp_test_rate else float("nan")})
     return rows
 
 
@@ -113,9 +125,8 @@ def source_rows(run: OpenSetRun, pool: str, seed: int, names) -> list[dict]:
     of all false alarms."""
     rows = []
     for name in names:
-        thr = run.threshold(name)
         for part in ("thr", "cal", "test"):
-            flagged = run.parts[part]["scores"][name] > thr
+            flagged = run.flags(name, part)
             fine = run.frames[part]["attack_cat"].to_numpy()
             for cls in sorted(set(fine)):
                 m = fine == cls
@@ -134,8 +145,8 @@ def curve_rows(run: OpenSetRun, pool: str, seed: int, names=CANDIDATES) -> list[
     rows = []
     for name in names:
         for target in CURVE_TARGETS:
-            thr = run.threshold(name, target)
-            flag, flag_u = test["scores"][name] > thr, unk["scores"][name] > thr
+            thr = float("nan") if name in run.flaggers else run.threshold(name, target)
+            flag, flag_u = run.flags(name, "test", target), run.flags(name, "unknown", target)
             off = float(called[is_normal].mean())
             conf = float((called & ~flag)[is_normal].mean())
             rows.append({"pool": pool, "seed": seed, "score": name, "target": target, "threshold": thr,
