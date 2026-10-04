@@ -15,6 +15,10 @@
 - **Few-shot result:** the 48-feature FPR of about 0.09 at 95% detection with ~5,000 labelled test rows is within-capture adaptation that relies on the window-count `ct_*` columns; zero-shot FPR stays 0.24-0.25.
 - **Novelty 3 (Task 3, XGBoost):** no measurable cost down to 30 features; 20 / 15 features cost 0.006-0.014 macro F1 and about half the open-set detection; explanation stability stays near the retraining floor
   (`results/metrics/xgboost/task_3_conclusion.md`). Other model families are left to their owners (`pipelines/run_tier_study.py --model <type>`, `scripts/cross_model_agreement.py`).
+- **Novelty 1 (Task 4, XGBoost, zero-shot):** under thresholds fixed on known block-grouped validation at 5% false-Unknown, max-softmax flags 0.22 (40 features) / 0.33 (48) of the Worms + Shellcode flows and a nine-class
+  leave-one-class-out mean of 0.21-0.23 (AUROC 0.77; hardest: Worms, Exploits, Fuzzers). Entropy ranks better but is not reliably better at the threshold; margin, conformal, an isolation forest and combinations are no better.
+  The 48-feature gain depends on window-count `ct_*` columns. 94-99% of zero-day flows are already called an attack, and the review queue barely lowers the alert FPR (0.289 -> 0.254) because the false alerts are confidently wrong
+  (`results/metrics/xgboost/task_4_conclusion.md`).
 - 0.912 / 0.921 is an empirical feature-space ceiling, not a Bayes ceiling.
 
 ## Overview
@@ -33,7 +37,7 @@ equally candid about what did *not* work (zero-day detection, cross-dataset tran
 ## Objectives and Research Novelties
 
 1. **Open-Set / Zero-Day Attack Detection** — confidence-based thresholding on the max softmax probability.
-   *Outcome: works only weakly (about a quarter of zero-day flows detected at ~6% false alarms).*
+   *Outcome: works only weakly (about a quarter of zero-day flows detected at ~6% false alarms; 0.04-0.41 depending on the held-out class; no alternative score reliably better; see Task 4 above).*
 2. **Human-Centered Actionable Explanations** — SHAP-driven plain-language narratives per prediction, checked
    against real data. *Outcome: implemented; two bugs found and fixed through real-data checks (below).*
 3. **Feature-Selection + Explanation Consistency Study** — does shrinking the feature set change accuracy and the

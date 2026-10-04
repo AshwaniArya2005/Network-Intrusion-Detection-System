@@ -21,7 +21,7 @@ around four research novelties:
 The reference model is **XGBoost**, but every pipeline is written against an
 abstract `BaseModel` interface — see [Swapping the model](#swapping-the-model) below.
 
-## Updates since the tables below were written (Tasks 1-3; read these first)
+## Updates since the tables below were written (Tasks 1-4; read these first)
 
 The tables further down were written for the 34-feature data and a single seed. What has since been established (details in `results/metrics/xgboost/`):
 
@@ -36,6 +36,12 @@ The tables further down were written for the 34-feature data and a single seed. 
   ~5,000 labelled test rows) is **within-capture adaptation**: it holds with adaptation rows from other row-order blocks, but it relies on the window-count `ct_*` columns and was not tested on another capture.
 - **Feature-set size (Task 3, XGBoost).** Down to 30 features, macro F1 is within 0.003 of the full pool and the SHAP explanations are as stable as retraining makes them; 20 / 15 features cost 0.006-0.014 macro F1 and
   about half of the open-set detection (`results/metrics/xgboost/task_3_conclusion.md`).
+- **Open-set / zero-day detection (Task 4, XGBoost, zero-shot).** Thresholds come from known block-grouped validation at a 5% false-Unknown target; no zero-day flow is used for any choice
+  (`results/task_4_protocol.md`, `results/metrics/xgboost/task_4_conclusion.md`). Max-softmax flags 0.22 (40 features) / 0.33 (48 features) of the Worms + Shellcode flows (AUROC 0.80 / 0.83); the
+  nine-class leave-one-class-out mean is detection 0.21-0.23, AUROC 0.77, with Worms, Exploits and Fuzzers the hardest. Entropy ranks better (AUROC 0.86-0.88) and is the best score over the rotation at 40 features
+  (0.81 / 0.27), but flags fewer Worms + Shellcode flows; margin, conformal, a Normal-trained isolation forest and their combinations are no better than max-softmax. The 40 -> 48-feature gain disappears
+  without the window-count `ct_*` columns. 94-99% of zero-day flows are already flagged or called an attack, so flagging 22% instead of 4% of them adds only 1.6 points of catch (40 features), and the review queue barely lowers the alert FPR
+  (0.289 -> 0.254 at 5%) because 88-92% of the false alerts on shifted Normal flows are confidently wrong. The earlier "67-75% detection at 26-28% false alarms" is withdrawn (threshold tuned on the zero-day flows).
 - The 0.912 / 0.921 best-possible accuracy is an empirical feature-space ceiling (rows sharing a feature vector can only get one label), not a Bayes ceiling.
 
 ## Key findings (current results, XGBoost, 40 features, official UNSW-NB15 split)
