@@ -128,6 +128,28 @@ def render_step4(rows: pd.DataFrame, gap_note: str) -> str:
     return "\n".join(lines) + "\n"
 
 
+def sources_table(sources: pd.DataFrame, scores: list[str]) -> pd.DataFrame:
+    """Which known classes the false-Unknown alarms come from: per score, split (thr = validation threshold half, cal = held-out validation half, test = official test) and original
+    class, the mean over seeds of the share of that class's flows flagged and of its share of all false alarms."""
+    g = sources[sources["score"].isin(scores)].groupby(["score", "part", "known_class"], sort=False)
+    out = g[["flagged_share", "share_of_false_alarms"]].mean()
+    out["n"] = g["n"].mean()
+    return out.reset_index()
+
+
+def render_sources(label: str, best: str, t: pd.DataFrame) -> str:
+    lines = [f"## {label}: where the false-Unknown alarms come from (Worms + Shellcode held out, threshold at 5%, mean over 5 seeds)", "",
+             "`flagged` = share of the class's known flows flagged Unknown; `of alarms` = the class's share of all false alarms. thr / cal = the two validation halves, test = official test.", ""]
+    for score in dict.fromkeys([best, "msp"]):
+        g = t[t["score"] == score].pivot(index="known_class", columns="part", values=["flagged_share", "share_of_false_alarms", "n"])
+        lines += [f"**{score}**", "", "| known class | flows (test) | flagged: thr | cal | test | of alarms: thr | cal | test |", "|---|---|---|---|---|---|---|---|"]
+        for cls in g.index:
+            lines.append(f"| {cls} | {g.loc[cls, ('n', 'test')]:.0f} | " + " | ".join(f"{g.loc[cls, ('flagged_share', p)]:.3f}" for p in ("thr", "cal", "test")) + " | "
+                         + " | ".join(f"{g.loc[cls, ('share_of_false_alarms', p)]:.3f}" for p in ("thr", "cal", "test")) + " |")
+        lines.append("")
+    return "\n".join(lines) + "\n"
+
+
 def ct_verdict(det_by_label: dict[str, float]) -> tuple[str, float, float]:
     """Declared reading (results/task_4_protocol.md): with gap = detection(48f) - detection(40f) for msp, the ct_* window counts carry the gain if removing them lowers the detection by at
     least half the gap (confirm), by less than a quarter (reject), otherwise partial. Returns (verdict, drop, gap)."""
@@ -155,6 +177,11 @@ def main() -> None:
             step3[label] = (mean_std(curve[curve["score"].isin([sel["best"], "msp"])], ["score", "target"], CURVE_COLS), sel["best"])
     tag = "_".join(step1)
     if step1:
+        src_text = "# Task 4 Step 2 (continued): known classes behind the false-Unknown alarms\n\n"
+        for label, (t, sel) in step1.items():
+            src = pd.read_csv(d / f"open_set_sources_{label}.csv")
+            src_text += render_sources(label, sel["best"], sources_table(src, list(dict.fromkeys([sel["best"], "msp"]))))
+        (d / f"open_set_step2_sources_{tag}.md").write_text(src_text, encoding="utf-8")
         (d / f"open_set_step1_{tag}.md").write_text(render_step1(step1), encoding="utf-8")
         (d / f"open_set_step3_{tag}.md").write_text(render_step3(step3), encoding="utf-8")
     step2 = {}

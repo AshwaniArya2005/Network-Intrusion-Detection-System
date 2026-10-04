@@ -1313,3 +1313,15 @@ def test_a_member_of_a_merged_group_can_be_held_out_while_its_siblings_stay_know
     config["data"]["unknown_attack_categories"] = ["Analysis", "Backdoor", "DoS"]              # the trio as a unit
     trio = load_split_data(config)
     assert set(trio.unknown["attack_cat"]) == {"Analysis", "Backdoor", "DoS"} and "Overlap-Group-1" not in set(pd.concat([trio.train, trio.val, trio.test])["label_merged"])
+
+
+def test_sources_table_averages_the_per_class_alarm_shares_over_seeds():
+    from scripts.open_set_summary import sources_table
+    rows = []
+    for seed, (a, b) in ((1, (0.2, 0.8)), (2, (0.4, 0.6))):
+        for cls, flagged, share in (("Normal", 0.05, a), ("Fuzzers", 0.10, b)):
+            rows.append({"pool": "40f", "seed": seed, "score": "msp", "part": "test", "known_class": cls, "n": 100, "flagged_share": flagged, "share_of_false_alarms": share})
+            rows.append({"pool": "40f", "seed": seed, "score": "entropy", "part": "test", "known_class": cls, "n": 100, "flagged_share": 0.5, "share_of_false_alarms": 0.5})
+    t = sources_table(pd.DataFrame(rows), ["msp"]).set_index("known_class")
+    assert set(t["score"]) == {"msp"} and abs(t.loc["Normal", "share_of_false_alarms"] - 0.3) < 1e-9 and abs(t.loc["Fuzzers", "share_of_false_alarms"] - 0.7) < 1e-9
+    assert t.loc["Fuzzers", "flagged_share"] == 0.10 and t.loc["Normal", "n"] == 100                      # means over the two seeds
