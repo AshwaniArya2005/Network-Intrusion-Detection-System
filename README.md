@@ -50,6 +50,10 @@ The tables further down were written for the 34-feature data and a single seed. 
   is a rank-average of ensemble mutual information and an Unknown-class probability: rotation-mean detection 0.27 / 0.34 (40 / 48 features) against 0.13 / 0.21 for max-softmax in the same, smaller setting (two known classes removed), only 0.02-0.07 above entropy, and it
   loses on Shellcode. In the full known set only temperature-scaled entropy on 48 features clearly beats max-softmax (0.304 against 0.234). Distance scores fail because Shellcode sits inside the training data, and the review queue still does not lower the alert FPR
   (`results/metrics/xgboost/task_4_conclusion.md`).
+- **Explanations and narratives (Task 5, XGBoost).** SHAP values reproduce the model's raw output to within 1.4e-5. Removing the top-5 SHAP features lowers the predicted-class probability 0.50-0.55 more than removing random ones on the whole pools (0.33-0.34 with 15 features),
+  in every seed and class, and as much on shifted test flows as on validation flows. The dashboard narratives passed every mechanical check on 2,000 audited flows (label, confidence, cited features, cues in the right units, category names, action) and match the pipeline exactly. They
+  are weaker as explanations: 36-47% of cited features read "typical" and the cue direction agrees with the model's general use of the feature in 72-76% of cases (36-49% for Overlap-Group-1); the confidence quoted is the uncalibrated probability. Human ratings were not collected (`results/task_5_human_audit_sheet.csv`
+  is a blank template). `scripts/check_explainability.py` had the double-standardisation defect and is fixed (`results/metrics/xgboost/task_5_conclusion.md`).
 - The 0.912 / 0.921 best-possible accuracy is an empirical feature-space ceiling (rows sharing a feature vector can only get one label), not a Bayes ceiling.
 
 ## Key findings (current results, XGBoost, 40 features, official UNSW-NB15 split)

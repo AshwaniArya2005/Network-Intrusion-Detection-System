@@ -24,6 +24,9 @@
   (`results/metrics/xgboost/task_4_conclusion.md`).
 - **Novelty 1, Task 4.5:** six ideas to improve it (calibration, per-class thresholds, ensemble disagreement, distance, pseudo-unknown training, a rank-average chosen on pseudo-unknown validation) leave the picture much the same: the best combination reaches rotation-mean detection
   0.27 / 0.34 (40 / 48 features) in a setting that removes two known classes, only 0.02-0.07 above entropy; in the full known set only calibrated entropy on 48 features clearly beats max-softmax (0.304 against 0.234); distance scores fail and the review queue does not lower the alert FPR.
+- **Novelty 2 (Task 5, XGBoost):** the SHAP explanations are faithful (SHAP additivity error 1.4e-5; removing the top-5 SHAP features lowers the predicted-class probability 0.50-0.55 more than removing random ones on the whole pools, 0.33-0.34 at 15 features; unchanged on shifted test flows) and the
+  narratives pass every mechanical check on 2,000 audited flows (label, confidence, cited features, cues in the right units, categories, action) and match the dashboard exactly; they are weaker as explanations (36-47% of cited features read "typical", cue direction agrees with the model's general behaviour in 72-76% of cases)
+  and quote an uncalibrated confidence. The pipeline's own `check_explainability.py` standardised twice and was fixed. Human ratings are not collected (blank sheet `results/task_5_human_audit_sheet.csv`) (`results/metrics/xgboost/task_5_conclusion.md`).
 - 0.912 / 0.921 is an empirical feature-space ceiling, not a Bayes ceiling.
 
 ## Overview
