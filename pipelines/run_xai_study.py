@@ -210,7 +210,8 @@ def audit_flows(frame: pd.DataFrame, results: list[dict], model, pre, cfg: dict,
     return rows, failures
 
 
-def run_audit(config: dict, feature_sets: dict, pool: str, seeds=SEEDS, scratch: Path | None = None, per_class: int = AUDIT_PER_CLASS, unknown_n: int = AUDIT_UNKNOWN) -> dict[str, pd.DataFrame]:
+def run_audit(config: dict, feature_sets: dict, pool: str, seeds=SEEDS, scratch: Path | None = None, per_class: int = AUDIT_PER_CLASS, unknown_n: int = AUDIT_UNKNOWN,
+              source: str = "test") -> dict[str, pd.DataFrame]:
     from dashboard.backend.prediction_service import PredictionService
     scratch = scratch or resolve_path(config["paths"]["results_dir"]) / "_local_scratch" / "xai_models"
     rows, failures = [], []
@@ -219,7 +220,7 @@ def run_audit(config: dict, feature_sets: dict, pool: str, seeds=SEEDS, scratch:
         label, features = pool_label(sets), list(sets["feature_pool"])
         model, pre, service_cfg = train_and_save(cfg, sets, splits, features, scratch / f"{label}_{seed}")
         service = PredictionService(service_cfg)
-        candidates = pd.concat([splits.test, splits.unknown], ignore_index=True)
+        candidates = pd.concat([splits.test, splits.unknown], ignore_index=True) if source == "test" else splits.val.reset_index(drop=True)   # `validation`: block-grouped validation flows, no shift
         raw = candidates.drop(columns=[c for c in LABEL_COLUMNS if c in candidates.columns])           # the dashboard receives flows without labels
         proba_c = service.model.predict_proba(service.preprocessor.transform_features(raw))
         flagged = service.wrapper.predict(service.preprocessor.transform_features(raw)).is_unknown
@@ -267,6 +268,7 @@ def main() -> None:
     parser.add_argument("--part", required=True, choices=["faithfulness", "audit"])
     parser.add_argument("--pools", nargs="*")
     parser.add_argument("--seeds", nargs="*", type=int)
+    parser.add_argument("--source", choices=["test", "validation"], default="test", help="audit: flows from the official test file (default) or from block-grouped validation (the shift check)")
     args = parser.parse_args()
     config, feature_sets = load_config(), load_feature_sets()
     add_file_logging(str(resolve_path(config["logging"]["log_file"])))
@@ -276,7 +278,7 @@ def main() -> None:
         if args.part == "faithfulness":
             save(config, "faithfulness", label, run_faithfulness(config, feature_sets, pool, seeds))
         else:
-            save(config, "audit", label, run_audit(config, feature_sets, pool, seeds))
+            save(config, "audit" if args.source == "test" else "audit_validation", label, run_audit(config, feature_sets, pool, seeds, source=args.source))
 
 
 if __name__ == "__main__":

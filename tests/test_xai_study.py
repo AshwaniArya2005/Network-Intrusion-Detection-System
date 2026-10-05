@@ -57,3 +57,9 @@ def test_audit_catches_a_wrong_narrative(config, tmp_path):
     assert check_cue("extremely high", -3.0)["direction"] is False                                              # a low value described as high is caught
     assert check_label_statement(parsed, "Exploits", False, text)[0] is False
     assert check_action(parsed["action"], "Exploits", cfg["narrative"]["suggested_actions"]) is False
+
+
+def test_audit_can_use_validation_flows(config, tmp_path):
+    tables = rxs.run_audit(config, load_feature_sets(), "base", seeds=(42,), scratch=tmp_path / "scratch", per_class=3, unknown_n=3, source="validation")
+    n = tables["narratives"]
+    assert len(n) > 5 and n["confidence_text_ok"].all() and (n["flow"] < 100000).all()

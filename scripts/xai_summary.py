@@ -120,6 +120,21 @@ def render_audit(summary: pd.DataFrame, failures: pd.DataFrame, narratives: pd.D
     return "\n".join(out) + "\n"
 
 
+def render_audit_shift(test: pd.DataFrame, validation: pd.DataFrame) -> str:
+    """The audit rates on official-test flows against block-grouped validation flows (the same models, 5 seeds), to see whether the narratives are less trustworthy under the shift."""
+    cols = [("a_cited_in_top_k", "(a) cited features in the SHAP top 5"), ("b_cue_exact_cite", "(b) cue exact"), ("c_categorical_cite", "(c) categorical named"), ("d_action", "(d) action"),
+            ("e_label", "(e) label statement"), ("f_consistent_of_determined", "(f) directional consistency"), ("f_share_typical_cue", "share of cited features read \"typical\""),
+            ("f_share_no_monotone_relation", "share with no monotone SHAP-vs-value relation")]
+    out = ["## Audit rates on official-test flows against validation flows (the shift check)", "", "| check | pool | official test | validation | test minus validation |", "|---|---|---|---|---|"]
+    for col, name in cols:
+        for pool in sorted(test["pool_label"].unique()):
+            t = test[(test["stratum"] == "all") & (test["pool_label"] == pool)].sort_values("seed")[col].to_numpy()
+            v = validation[(validation["stratum"] == "all") & (validation["pool_label"] == pool)].sort_values("seed")[col].to_numpy()
+            if len(t) and len(v):
+                out.append(f"| {name} | {pool} | {ms(pd.Series(t))} | {ms(pd.Series(v))} | {np.nanmean(t) - np.nanmean(v):+.3f} |")
+    return "\n".join(out) + "\n"
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--pools", nargs="+", required=True)
@@ -135,6 +150,8 @@ def main() -> None:
     if all((d / f"xai_audit_{p}_summary.csv").exists() for p in args.pools):
         failures = pd.concat([pd.read_csv(d / f"xai_audit_{p}_failures.csv") for p in args.pools if (d / f"xai_audit_{p}_failures.csv").exists()], ignore_index=True)
         text = render_audit(cat("xai_audit_{p}_{kind}.csv", "summary"), failures, cat("xai_audit_{p}_{kind}.csv", "narratives"))
+        if all((d / f"xai_audit_validation_{p}_summary.csv").exists() for p in args.pools):
+            text += "\n" + render_audit_shift(cat("xai_audit_{p}_{kind}.csv", "summary"), cat("xai_audit_validation_{p}_{kind}.csv", "summary"))
         (d / f"xai_audit_{tag}.md").write_text(text, encoding="utf-8")
         print(text)
 

@@ -52,3 +52,24 @@ Most frequent reasons:
 - f_direction: avg_pkt_size: cue 'reduced' but SHAP for Overlap-Group-1 falls as the value rises (rho 0.51 on training rows) (30)
 - f_direction: avg_pkt_size: cue 'reduced' but SHAP for Overlap-Group-1 falls as the value rises (rho 0.43 on training rows) (28)
 - f_direction: avg_pkt_size: cue 'reduced' but SHAP for Overlap-Group-1 falls as the value rises (rho 0.45 on training rows) (26)
+
+## Audit rates on official-test flows against validation flows (the shift check)
+
+| check | pool | official test | validation | test minus validation |
+|---|---|---|---|---|
+| (a) cited features in the SHAP top 5 | 40f | 1.000 +/- 0.000 | 1.000 +/- 0.000 | +0.000 |
+| (a) cited features in the SHAP top 5 | 48f | 1.000 +/- 0.000 | 1.000 +/- 0.000 | +0.000 |
+| (b) cue exact | 40f | 1.000 +/- 0.000 | 1.000 +/- 0.000 | +0.000 |
+| (b) cue exact | 48f | 1.000 +/- 0.000 | 1.000 +/- 0.000 | +0.000 |
+| (c) categorical named | 40f | 1.000 +/- 0.000 | 1.000 +/- 0.000 | +0.000 |
+| (c) categorical named | 48f | 1.000 +/- 0.000 | 1.000 +/- 0.000 | +0.000 |
+| (d) action | 40f | 1.000 +/- 0.000 | 1.000 +/- 0.000 | +0.000 |
+| (d) action | 48f | 1.000 +/- 0.000 | 1.000 +/- 0.000 | +0.000 |
+| (e) label statement | 40f | 1.000 +/- 0.000 | 1.000 +/- 0.000 | +0.000 |
+| (e) label statement | 48f | 1.000 +/- 0.000 | 1.000 +/- 0.000 | +0.000 |
+| (f) directional consistency | 40f | 0.757 +/- 0.018 | 0.788 +/- 0.017 | -0.030 |
+| (f) directional consistency | 48f | 0.722 +/- 0.013 | 0.731 +/- 0.029 | -0.009 |
+| share of cited features read "typical" | 40f | 0.469 +/- 0.017 | 0.479 +/- 0.034 | -0.010 |
+| share of cited features read "typical" | 48f | 0.357 +/- 0.031 | 0.363 +/- 0.030 | -0.005 |
+| share with no monotone SHAP-vs-value relation | 40f | 0.045 +/- 0.013 | 0.034 +/- 0.013 | +0.011 |
+| share with no monotone SHAP-vs-value relation | 48f | 0.017 +/- 0.010 | 0.016 +/- 0.009 | +0.000 |

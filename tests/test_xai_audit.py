@@ -127,3 +127,12 @@ def test_human_audit_sheet_allocation_is_stratified_seeded_and_unlabelled():
     assert len(chosen) == 28 and counts["Unknown"] == 3 and counts["Overlap-Group-1"] == 5 and counts["Normal"] == 4             # Unknown has only 3 narratives here
     assert chosen["flow"].is_unique and chosen.equals(pick_rows(rows, ALLOCATION))
     assert sum(ALLOCATION.values()) == 30 and not any(c in ("attack_cat", "true_label") for c in RATING_COLUMNS)
+
+
+def test_audit_shift_table_compares_the_two_sources_by_hand():
+    from scripts.xai_summary import render_audit_shift
+    def frame(f):
+        return pd.DataFrame([{"pool_label": "40f", "seed": s, "stratum": "all", "a_cited_in_top_k": 1.0, "b_cue_exact_cite": 1.0, "c_categorical_cite": 1.0, "d_action": 1.0, "e_label": 1.0,
+                              "f_consistent_of_determined": f, "f_share_typical_cue": 0.4, "f_share_no_monotone_relation": 0.05} for s in (42, 43)])
+    text = render_audit_shift(frame(0.70), frame(0.80))
+    assert "| (f) directional consistency | 40f | 0.700 +/- 0.000 | 0.800 +/- 0.000 | -0.100 |" in text
