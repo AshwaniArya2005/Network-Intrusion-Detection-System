@@ -25,6 +25,7 @@ from scipy.stats import spearmanr
 
 from pipelines.run_tier_study import ensure_pool_ranking, prepare
 from pipelines.train_pipeline import train_and_evaluate
+from src.fpr_methods import apply_temperature
 from src.models.open_set_wrapper import select_threshold
 from src.preprocessing import _clean_numeric, engineer_features
 from src.utils.config_loader import get_active_features, get_metrics_dir, load_config, load_feature_sets, pool_label, resolve_path
@@ -33,7 +34,8 @@ from src.xai.faithfulness import (
     KS, METHODS, additivity_error, bootstrap_mean_interval, faithfulness_curves, stratified_sample,
 )
 from src.xai.narrative_audit import (
-    check_action, check_categorical, check_cited_in_top, check_cue, check_label_statement, cue_direction, directional_consistency, parse_narrative,
+    check_action, check_categorical, check_category_clause, check_cited_in_top, check_cue, check_label_statement, check_numeric_clause, cue_direction, directional_consistency,
+    parse_narrative,
 )
 from src.xai.shap_explainer import SHAPExplainer
 
@@ -142,8 +144,9 @@ def correlation_matrix(model, pre, train_df: pd.DataFrame, features: list[str], 
 
 
 def audit_flows(frame: pd.DataFrame, results: list[dict], model, pre, cfg: dict, train_df: pd.DataFrame, rho: np.ndarray, features: list[str], seed: int, label: str,
-                strata: np.ndarray, flow_index: np.ndarray) -> tuple[list[dict], list[dict]]:
-    """Check every narrative of `results` (the dashboard's output for the rows of `frame`) against independent computations. Returns (one row per narrative, one row per failure)."""
+                strata: np.ndarray, flow_index: np.ndarray, relative_temperature: float | None = None) -> tuple[list[dict], list[dict]]:
+    """Check every narrative of `results` (the dashboard's output for the rows of `frame`) against independent computations. Returns (one row per narrative, one row per failure).
+    With `relative_temperature` (the class-relative style of Task 5.5) check (g) is added: every clause against the raw training frame, and the calibrated number against the temperature."""
     classes = list(pre.target_encoder.classes_)
     X = pre.transform_features(frame)
     proba = model.predict_proba(X)
@@ -174,9 +177,12 @@ def audit_flows(frame: pd.DataFrame, results: list[dict], model, pre, cfg: dict,
             fail.append(("a_cited_in_top_k", f"cited {cited}, positive top-{top_k}: {sorted(shap_row.reindex(shap_row.abs().sort_values(ascending=False).index[:top_k]).loc[lambda s: s > 0].index)}"
                          + (f"; unparsed {unparsed}" if unparsed else "")))
         b_exact = b_dir = n_num = c_ok_n = n_cat = f_cons = f_incons = f_nomono = f_nodir = 0
-        for feature, cue, category in parsed["reasons"]:
+        g_ok_n = g_n = n_outside = 0
+        class_rows = (train_df[cfg["data"]["target_column"]] == predicted).to_numpy() if relative_temperature is not None else None
+        for idx, (feature, cue, category) in enumerate(parsed["reasons"]):
             if feature is None:
                 continue
+            clause = parsed["clauses"][idx]
             if feature in pre.categorical_features:
                 n_cat += 1
                 raw_value = str(frame.iloc[i][feature]) if pd.notna(frame.iloc[i][feature]) else "unknown"
@@ -184,8 +190,20 @@ def audit_flows(frame: pd.DataFrame, results: list[dict], model, pre, cfg: dict,
                 c_ok_n += int(ok)
                 if not ok:
                     fail.append(("c_categorical", reason))
+                if relative_temperature is not None:
+                    train_cat = train_df[feature].fillna("unknown").astype(str).to_numpy()
+                    g_ok, g_reason = check_category_clause(clause, raw_value, train_cat, train_cat[class_rows], predicted, unknown)
+                    g_n, g_ok_n = g_n + 1, g_ok_n + int(g_ok)
+                    if not g_ok:
+                        fail.append(("g_clause", f"{feature}: {g_reason}"))
                 continue
             n_num += 1
+            if relative_temperature is not None:
+                column = _clean_numeric(engineer_features(train_df, allow_missing=True), [feature])[feature].to_numpy()
+                g_ok, outside, g_reason = check_numeric_clause(clause, cue, float(engineered.iloc[i][feature]), column, column[class_rows], predicted, unknown)
+                g_n, g_ok_n, n_outside = g_n + 1, g_ok_n + int(g_ok), n_outside + int(outside)
+                if not g_ok:
+                    fail.append(("g_clause", f"{feature}: {g_reason}"))
             z = float((engineered.iloc[i][feature] - means[feature]) / (stds[feature] or 1e-9))
             c = check_cue(cue, z)
             b_exact, b_dir = b_exact + int(c["exact"]), b_dir + int(c["direction"])
@@ -202,10 +220,18 @@ def audit_flows(frame: pd.DataFrame, results: list[dict], model, pre, cfg: dict,
         e_ok, e_reason = check_label_statement(parsed, predicted, unknown, text)
         if not e_ok:
             fail.append(("e_label", e_reason))
+        calibrated_ok = True
+        if relative_temperature is not None:
+            expected_cal = 100 * float(apply_temperature(proba[i:i + 1], relative_temperature)[0, pred_idx[i]])
+            calibrated_ok = parsed["calibrated_pct"] is not None and abs(parsed["calibrated_pct"] - expected_cal) <= 1.0 and res.get("calibrated_confidence") is not None \
+                and abs(100 * res["calibrated_confidence"] - expected_cal) <= 0.01
+            if not calibrated_ok:
+                fail.append(("g_calibrated", f"narrative says {parsed['calibrated_pct']}% but the temperature-scaled probability is {expected_cal:.1f}%"))
         rows.append({"pool_label": label, "seed": seed, "flow": int(flow_index[i]), "stratum": strata[i], "predicted": predicted, "is_unknown": unknown, "narrative": text,
                      "confidence_text_ok": quoted_ok, "confidence_json_ok": json_ok, "a_ok": a_ok, "n_cited_numeric": n_num, "b_exact": b_exact, "b_direction": b_dir,
                      "n_cited_categorical": n_cat, "c_ok": c_ok_n, "d_ok": d_ok, "e_ok": e_ok, "f_consistent": f_cons, "f_inconsistent": f_incons, "f_no_monotone_relation": f_nomono,
-                     "f_no_direction_claimed": f_nodir, "n_failures": len(fail), "diffuse": parsed["diffuse"]})
+                     "f_no_direction_claimed": f_nodir, "n_failures": len(fail), "diffuse": parsed["diffuse"], "g_clauses": g_n, "g_ok": g_ok_n, "calibrated_ok": calibrated_ok,
+                     "n_outside_class_iqr": n_outside, "confidence": float(proba[i, pred_idx[i]])})
         failures += [{"pool_label": label, "seed": seed, "flow": int(flow_index[i]), "stratum": strata[i], "predicted": predicted, "check": c, "reason": r, "narrative": text} for c, r in fail]
     return rows, failures
 

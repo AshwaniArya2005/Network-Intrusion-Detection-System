@@ -24,8 +24,9 @@ def parse_narrative(text: str, features: list[str]) -> dict:
     """{"label": the text after "flagged as" (up to " with"), "confidence_pct": float, "reasons": [(feature, cue or None, category value or None)], "action": text or None, "diffuse": bool}.
     A reason is matched to the feature with the LONGEST description that ends the phrase (categorical reasons read "<description>=<value>")."""
     m = re.match(r"This flow was flagged as (?P<label>.+?) with (?P<pct>[0-9.]+)% confidence\.", text)
-    out = {"label": m.group("label") if m else None, "confidence_pct": float(m.group("pct")) if m else None, "reasons": [], "action": None,
-           "diffuse": "No single feature dominated" in text}
+    cal = re.search(r"Calibrated estimate: about (\d+)%", text)
+    out = {"label": m.group("label") if m else None, "confidence_pct": float(m.group("pct")) if m else None, "reasons": [], "clauses": [], "action": None,
+           "calibrated_pct": float(cal.group(1)) if cal else None, "diffuse": "No single feature dominated" in text}
     if " Suggested action: " in text:
         out["action"] = text.split(" Suggested action: ", 1)[1]
         text = text.split(" Suggested action: ", 1)[0]
@@ -33,6 +34,10 @@ def parse_narrative(text: str, features: list[str]) -> dict:
         body = text.split(" Main reasons: ", 1)[1].rstrip(".")
         by_length = sorted(features, key=lambda f: -len(description_of(f)))
         for phrase in body.split(", "):
+            clause = None
+            parenthetical = re.match(r"^(?P<main>.*?) \((?P<clause>[^()]*)\)$", phrase)
+            if parenthetical:                                                      # the class-relative style adds "(<overall clause>; <class clause>)"
+                phrase, clause = parenthetical.group("main"), parenthetical.group("clause")
             feature, cue, category = None, None, None
             for f in by_length:
                 d = description_of(f)
@@ -44,6 +49,7 @@ def parse_narrative(text: str, features: list[str]) -> dict:
                     feature, category = f, phrase[len(d) + 1:]
                     break
             out["reasons"].append((feature, cue, category))
+            out["clauses"].append(clause)
     return out
 
 
@@ -109,3 +115,68 @@ def directional_consistency(cue: str | None, rho: float, min_abs: float = 0.10) 
     if abs(rho) < min_abs:
         return "no monotone relation"
     return "consistent" if (direction == "high") == (rho > 0) else "inconsistent"
+
+
+def _strictly(values, v: float, direction: str) -> float:
+    """100 x the share of `values` strictly smaller (direction "higher") or strictly larger ("lower") than v."""
+    import numpy as np
+    values = np.asarray(values, dtype=float)
+    return 100.0 * float((values < v).mean() if direction == "higher" else (values > v).mean())
+
+
+def check_numeric_clause(clause: str | None, cue: str | None, value: float, all_values, class_values, label: str, is_unknown: bool, tol_pct: float = 1.0) -> tuple[bool, bool, str]:
+    """(g) for a numeric reason of the class-relative style: the overall clause ("higher / lower than P% of all flows") and the class clause ("typical of <label> flows" or "higher / lower than Q% of <label>
+    flows") must equal an independent computation from the raw TRAINING values (`all_values`, `class_values`, the flow's raw `value`): the direction word agrees with the cue, P and Q within `tol_pct`
+    percentage points, "typical" exactly when the value lies in the class's interquartile range (a value within 1e-9 of a quartile accepts either statement), and no class clause for a flagged-Unknown flow.
+    Returns (ok, outside_class_iqr, reason)."""
+    import numpy as np
+    if clause is None:
+        return False, False, "no clause"
+    parts = clause.split("; ")
+    m = re.fullmatch(r"(higher|lower) than (\d+)% of all flows", parts[0])
+    if not m:
+        return False, False, f"unreadable overall clause {parts[0]!r}"
+    if m.group(1) != ("higher" if cue_direction(cue) == "high" else "lower"):
+        return False, False, f"overall clause says {m.group(1)!r} but the cue is {cue!r}"
+    expected = _strictly(all_values, value, m.group(1))
+    if abs(expected - float(m.group(2))) > tol_pct + 0.5:
+        return False, False, f"overall clause {m.group(2)}% but the training flows give {expected:.1f}%"
+    if is_unknown:
+        return (len(parts) == 1), False, ("" if len(parts) == 1 else "class clause on a flow flagged Unknown")
+    if len(parts) != 2:
+        return False, False, "no class clause"
+    class_values = np.asarray(class_values, dtype=float)
+    q25, q75 = float(np.quantile(class_values, 0.25)), float(np.quantile(class_values, 0.75))
+    near = min(abs(value - q25), abs(value - q75)) <= 1e-9 * max(1.0, abs(q25), abs(q75))
+    inside = q25 <= value <= q75
+    if parts[1] == f"typical of {label} flows":
+        return (inside or near), False, ("" if (inside or near) else f"says typical of {label} flows but the value {value:g} is outside [{q25:g}, {q75:g}]")
+    m2 = re.fullmatch(rf"(higher|lower) than (\d+)% of {re.escape(label)} flows", parts[1])
+    if not m2:
+        return False, True, f"unreadable class clause {parts[1]!r}"
+    expected_class = _strictly(class_values, value, m2.group(1))
+    side_ok = (value > q75) if m2.group(1) == "higher" else (value < q25)
+    ok = abs(expected_class - float(m2.group(2))) <= tol_pct + 0.5 and (side_ok or near) and not (inside and not near)
+    return ok, True, ("" if ok else f"class clause {parts[1]!r} but the class's flows give {expected_class:.1f}% and the interquartile range is [{q25:g}, {q75:g}] for {value:g}")
+
+
+def check_category_clause(clause: str | None, raw_value: str, all_values, class_values, label: str, is_unknown: bool, tol_pct: float = 1.0) -> tuple[bool, str]:
+    """(g) for a categorical reason: "seen in A% of all flows[; seen in B% of <label> flows]" against the shares among the raw TRAINING categories."""
+    import numpy as np
+    if clause is None:
+        return False, "no clause"
+    parts = clause.split("; ")
+    m = re.fullmatch(r"seen in (\d+)% of all flows", parts[0])
+    if not m:
+        return False, f"unreadable clause {parts[0]!r}"
+    expected = 100.0 * float((np.asarray(all_values, dtype=str) == str(raw_value)).mean())
+    if abs(expected - float(m.group(1))) > tol_pct + 0.5:
+        return False, f"overall share {m.group(1)}% but the training flows give {expected:.1f}%"
+    if is_unknown:
+        return (len(parts) == 1), ("" if len(parts) == 1 else "class clause on a flow flagged Unknown")
+    m2 = re.fullmatch(rf"seen in (\d+)% of {re.escape(label)} flows", parts[1]) if len(parts) == 2 else None
+    if not m2:
+        return False, "no readable class clause"
+    expected_class = 100.0 * float((np.asarray(class_values, dtype=str) == str(raw_value)).mean())
+    ok = abs(expected_class - float(m2.group(1))) <= tol_pct + 0.5
+    return ok, ("" if ok else f"class share {m2.group(1)}% but the class's training flows give {expected_class:.1f}%")

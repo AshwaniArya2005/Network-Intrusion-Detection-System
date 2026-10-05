@@ -27,6 +27,8 @@ from src.evaluation.metrics import (
 )
 from src.adaptation import adaptation_weights
 from src.evaluation.plots import plot_confusion_matrix_for_scheme, plot_roc_curve
+from src.fpr_methods import fit_temperature
+from src.xai.class_reference import ClassReference
 from src.feature_selection import compute_feature_ranking, data_signature, ranking_is_current, write_feature_ranking
 from src.models.model_factory import create_scheme_model
 from src.models.open_set_wrapper import OpenSetWrapper, select_threshold
@@ -345,6 +347,10 @@ def train_and_evaluate(
         model_dir.mkdir(parents=True, exist_ok=True)
         model.save(str(model_dir / f"{model_name}{artifact_suffix(model_cfg['type'])}"))
         joblib.dump(preprocessor, model_dir / f"preprocessor_{feature_set_name}{scheme_tag(config)}.pkl")
+        # Task 5.5: where flows sit among the training flows of each class, and a temperature fitted on the validation split, for the class-relative narrative and its calibrated confidence
+        ClassReference.fit(X_train, y_train, list(preprocessor.target_encoder.classes_), list(features), list(preprocessor.categorical_features)
+                           ).save(model_dir / f"class_reference_{feature_set_name}{scheme_tag(config)}.npz")
+        (model_dir / f"calibration_{feature_set_name}{scheme_tag(config)}.json").write_text(json.dumps({"temperature": fit_temperature(proba_val, y_val)}))
         (model_dir / f"open_set_{feature_set_name}{scheme_tag(config)}.json").write_text(json.dumps(
             {"confidence_threshold": threshold,
              "target_false_unknown_rate": config["open_set"]["target_false_unknown_rate"]}))

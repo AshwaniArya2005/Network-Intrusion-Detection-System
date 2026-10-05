@@ -175,6 +175,10 @@ xai:
   top_k_features: 5
 
 narrative:
+  # "classic": every cited feature gets a magnitude cue against the overall training mean / std. "class_relative" (Task 5.5, results/task_5_5_protocol.md): features that read "typical" are
+  # omitted, the rest are placed among all training flows and the predicted class's flows, and a calibrated confidence is shown next to the raw one (needs the class_reference / calibration
+  # files that training saves next to the model).
+  style: "classic"
   # Suggested remediation action per attack category, used by NarrativeGenerator.
   suggested_actions:
     DoS: "Consider rate-limiting or temporarily blocking this source IP."
