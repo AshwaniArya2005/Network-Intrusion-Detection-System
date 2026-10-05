@@ -54,6 +54,10 @@ The tables further down were written for the 34-feature data and a single seed. 
   in every seed and class, and as much on shifted test flows as on validation flows. The dashboard narratives passed every mechanical check on 2,000 audited flows (label, confidence, cited features, cues in the right units, category names, action) and match the pipeline exactly. They
   are weaker as explanations: 36-47% of cited features read "typical" and the cue direction agrees with the model's general use of the feature in 72-76% of cases (36-49% for Overlap-Group-1); the confidence quoted is the uncalibrated probability. Human ratings were not collected (`results/task_5_human_audit_sheet.csv`
   is a blank template). `scripts/check_explainability.py` had the double-standardisation defect and is fixed (`results/metrics/xgboost/task_5_conclusion.md`).
+- **Task 5.5 (class-relative narrative, false-positive explanations).** `narrative.style: class_relative` (classic stays the default) drops features that read "typical" and places the others among all training flows and the predicted class's flows, with a calibrated confidence next to the raw one:
+  on a fresh official-test sample the "typical" share falls from 45% / 37% to 0, cited features per narrative from 4.1 / 4.0 to 2.6 / 2.7, all checks stay at 1.000, the cue-direction agreement is unchanged (0.78 / 0.73) and ECE falls 0.093 -> 0.070 and 0.115 -> 0.086. The explanations of false-positive Normal flows are as faithful
+  to the model as those of true attacks (top-minus-random 0.35-0.51), but they cite the same features as true Fuzzers and are no more atypical for the predicted class, so a narrative alone gives no reason to doubt a false alarm (only a weak confidence difference). Faithful to the model, not the truth; confidence still
+  not calibrated on this split; no human study (blank A/B sheet `results/task_5_5_ab_sheet.csv`).
 - The 0.912 / 0.921 best-possible accuracy is an empirical feature-space ceiling (rows sharing a feature vector can only get one label), not a Bayes ceiling.
 
 ## Key findings (current results, XGBoost, 40 features, official UNSW-NB15 split)

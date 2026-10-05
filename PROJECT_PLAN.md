@@ -27,6 +27,8 @@
 - **Novelty 2 (Task 5, XGBoost):** the SHAP explanations are faithful (SHAP additivity error 1.4e-5; removing the top-5 SHAP features lowers the predicted-class probability 0.50-0.55 more than removing random ones on the whole pools, 0.33-0.34 at 15 features; unchanged on shifted test flows) and the
   narratives pass every mechanical check on 2,000 audited flows (label, confidence, cited features, cues in the right units, categories, action) and match the dashboard exactly; they are weaker as explanations (36-47% of cited features read "typical", cue direction agrees with the model's general behaviour in 72-76% of cases)
   and quote an uncalibrated confidence. The pipeline's own `check_explainability.py` standardised twice and was fixed. Human ratings are not collected (blank sheet `results/task_5_human_audit_sheet.csv`) (`results/metrics/xgboost/task_5_conclusion.md`).
+  **Task 5.5:** a `class_relative` narrative style (config switch, classic is the default) removes the "typical" reasons (45% / 37% of cited numeric features, now 0), cites about 2.6 instead of 4.1 features, adds a calibrated confidence (ECE 0.093 -> 0.070, 0.115 -> 0.086) and keeps every correctness check at 1.000; the cue-direction agreement
+  is unchanged (0.78 / 0.73). The explanations of false-positive Normal flows are faithful to the model (top-minus-random 0.35-0.51) but look like those of true attacks, so a narrative alone gives no reason to doubt a false alarm. No human study yet (blank A/B sheet `results/task_5_5_ab_sheet.csv`).
 - 0.912 / 0.921 is an empirical feature-space ceiling, not a Bayes ceiling.
 
 ## Overview
