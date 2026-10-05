@@ -76,6 +76,13 @@ def _magnitude_phrase(z_score: float) -> str:
     return "typical"
 
 
+def standardised_value_statistics(numeric_features: list[str]) -> tuple[pd.Series, pd.Series]:
+    """(means, stds) to pass to `NarrativeGenerator` together with feature values taken from `Preprocessor.transform`: those values are ALREADY standardised (training mean 0, std 1), so
+    they are the z-scores. Passing the scaler's raw mean / scale here would standardise a second time and make most flows read "typical" (the dashboard and scripts/check_explainability.py
+    both had this defect)."""
+    return pd.Series(0.0, index=numeric_features), pd.Series(1.0, index=numeric_features)
+
+
 class NarrativeGenerator:
     """Generates human-readable, actionable explanations from SHAP output."""
 

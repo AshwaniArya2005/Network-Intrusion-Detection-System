@@ -13,7 +13,7 @@ from src.models.model_factory import create_scheme_model
 from src.models.open_set_wrapper import OpenSetWrapper
 from src.utils.config_loader import get_dashboard_paths, get_label_scheme, load_config, scheme_tag
 from src.utils.logger import get_logger
-from src.xai.narrative_generator import NarrativeGenerator
+from src.xai.narrative_generator import NarrativeGenerator, standardised_value_statistics
 from src.xai.shap_explainer import SHAPExplainer
 
 logger = get_logger(__name__)
@@ -61,9 +61,7 @@ class PredictionService:
         # Preprocessor.transform already standardises numeric features, so the values the
         # narrative sees ARE z-scores: mean 0 / std 1. (Passing the raw training mean/std
         # here would z-score twice.)
-        numeric_features = self.preprocessor.numeric_features
-        self.feature_means = pd.Series(0.0, index=numeric_features)
-        self.feature_stds = pd.Series(1.0, index=numeric_features)
+        self.feature_means, self.feature_stds = standardised_value_statistics(self.preprocessor.numeric_features)
         logger.info(f"PredictionService ready: model={self.config['model']['type']} "
                     f"feature_set={self.feature_set_name} open_set={self.open_set_enabled}")
 
