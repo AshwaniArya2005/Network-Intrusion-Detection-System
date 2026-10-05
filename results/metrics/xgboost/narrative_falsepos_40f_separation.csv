@@ -1,0 +1,31 @@
+pool_label,seed,false_positive_group,compared_with,score,auroc
+40f,42,FP-Fuzzers,TP-Fuzzers,1 - raw confidence,0.6564055555555556
+40f,42,FP-Fuzzers,TP-Fuzzers,1 - calibrated confidence,0.6553944444444444
+40f,42,FP-Fuzzers,TP-Fuzzers,class-atypicality of the cited features,0.4663202651007529
+40f,42,FP-attack,TN,1 - raw confidence,0.8875444444444445
+40f,42,FP-attack,TN,1 - calibrated confidence,0.8888333333333334
+40f,42,FP-attack,TN,class-atypicality of the cited features,0.5368090105030403
+40f,43,FP-Fuzzers,TP-Fuzzers,1 - raw confidence,0.6132555555555554
+40f,43,FP-Fuzzers,TP-Fuzzers,1 - calibrated confidence,0.6123333333333334
+40f,43,FP-Fuzzers,TP-Fuzzers,class-atypicality of the cited features,0.48983650668304524
+40f,43,FP-attack,TN,1 - raw confidence,0.9165222222222222
+40f,43,FP-attack,TN,1 - calibrated confidence,0.9167555555555555
+40f,43,FP-attack,TN,class-atypicality of the cited features,0.5191750036247644
+40f,44,FP-Fuzzers,TP-Fuzzers,1 - raw confidence,0.6541111111111111
+40f,44,FP-Fuzzers,TP-Fuzzers,1 - calibrated confidence,0.6543222222222222
+40f,44,FP-Fuzzers,TP-Fuzzers,class-atypicality of the cited features,0.47986135486135484
+40f,44,FP-attack,TN,1 - raw confidence,0.8810555555555556
+40f,44,FP-attack,TN,1 - calibrated confidence,0.8816111111111111
+40f,44,FP-attack,TN,class-atypicality of the cited features,0.6071925473353095
+40f,45,FP-Fuzzers,TP-Fuzzers,1 - raw confidence,0.6101277777777778
+40f,45,FP-Fuzzers,TP-Fuzzers,1 - calibrated confidence,0.6102388888888889
+40f,45,FP-Fuzzers,TP-Fuzzers,class-atypicality of the cited features,0.4132580586414132
+40f,45,FP-attack,TN,1 - raw confidence,0.877288888888889
+40f,45,FP-attack,TN,1 - calibrated confidence,0.8793777777777778
+40f,45,FP-attack,TN,class-atypicality of the cited features,0.5210540973334261
+40f,46,FP-Fuzzers,TP-Fuzzers,1 - raw confidence,0.6273222222222222
+40f,46,FP-Fuzzers,TP-Fuzzers,1 - calibrated confidence,0.6256222222222222
+40f,46,FP-Fuzzers,TP-Fuzzers,class-atypicality of the cited features,0.5029184434968017
+40f,46,FP-attack,TN,1 - raw confidence,0.865588888888889
+40f,46,FP-attack,TN,1 - calibrated confidence,0.8670777777777778
+40f,46,FP-attack,TN,class-atypicality of the cited features,0.5803122730573711
