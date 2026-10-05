@@ -1,0 +1,31 @@
+sheet_id,flow,seed,stratum,group,classic_is
+1,46511,42,Unknown,Unknown,B
+2,32871,42,Generic,other attack classes,B
+3,48584,42,Unknown,Unknown,A
+4,34792,42,Overlap-Group-1,Overlap-Group-1,B
+5,30199,42,Overlap-Group-1,Overlap-Group-1,A
+6,45870,42,FP-Normal,FP-Normal,A
+7,32696,42,Overlap-Group-1,Overlap-Group-1,B
+8,23705,42,Normal,Normal,A
+9,35019,42,Fuzzers,Fuzzers,B
+10,25960,42,FP-Normal,FP-Normal,A
+11,37705,42,Fuzzers,Fuzzers,B
+12,13110,42,Normal,Normal,B
+13,32103,42,Overlap-Group-1,Overlap-Group-1,A
+14,32579,42,Reconnaissance,other attack classes,B
+15,6795,42,Exploits,other attack classes,A
+16,29201,42,Exploits,other attack classes,A
+17,39909,42,Fuzzers,Fuzzers,A
+18,31093,42,Fuzzers,Fuzzers,A
+19,39694,42,Reconnaissance,other attack classes,A
+20,15566,42,Normal,Normal,A
+21,20004,42,Normal,Normal,B
+22,54494,42,FP-Normal,FP-Normal,A
+23,25865,42,Unknown,Unknown,A
+24,48760,42,FP-Normal,FP-Normal,B
+25,52984,42,Unknown,Unknown,B
+26,20372,42,Normal,Normal,B
+27,7112,42,Overlap-Group-1,Overlap-Group-1,B
+28,921,42,Unknown,Unknown,A
+29,40162,42,Fuzzers,Fuzzers,A
+30,47954,42,FP-Normal,FP-Normal,B
