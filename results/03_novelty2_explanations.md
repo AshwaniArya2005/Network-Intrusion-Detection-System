@@ -1,6 +1,6 @@
 # Novelty 2: faithful, human-centred explanations
 
-Faithfulness, narrative audit, class-relative narratives and false-positive explanations: conclusions, tables and the declared protocols. The blank rating sheets are `task_5_5_ab_sheet.csv` (with its key and instructions) and `task_5_human_audit_sheet.csv` (with its key and instructions); samples are `xai_audit_40f_narratives.csv`, `xai_audit_40f_example_failures.csv` and `narrative_test_40f_narratives.csv`.
+Faithfulness, narrative audit, class-relative narratives and false-positive explanations: conclusions, tables and the declared protocols. The blank rating sheet is `task_5_5_ab_sheet.csv` (with its key and instructions); the 30-narrative human-audit template mentioned in the conclusion was removed (rebuild it with `scripts/make_human_audit_sheet.py`, or recover it from git tag `pre-lean-2026-10`); samples are `xai_audit_40f_narratives.csv`, `xai_audit_40f_example_failures.csv` and `narrative_test_40f_narratives.csv`.
 
 File names mentioned inside this file (for example `task_6_tables.md`, `results/task_5_protocol.md` or `xai_audit_40f_example_failures.csv`) are the `Source:` sections of this file or of one of the other numbered files, or files that were removed in the cleanup and are recoverable from the git tags `pre-cleanup-2026-10` and `pre-lean-2026-10`. Text under a `Source:` heading is the original file, unchanged except that its headings are demoted two levels.
 
