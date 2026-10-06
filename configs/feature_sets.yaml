@@ -3,7 +3,7 @@
 # `feature_pool` is the full set of candidate features. It is NOT a ranking: the
 # importance ranking is computed from the training split (mutual information with the
 # target) by src/feature_selection.compute_feature_ranking and written to
-# results/feature_ranking_mutual_info.csv by run_all_experiments; the 30/20/15 sets are the
+# results/rankings/feature_ranking_mutual_info.csv by run_all_experiments; the 30/20/15 sets are the
 # top-N of the ranking chosen by feature_selection.ranking_source (src/utils/config_loader.get_active_features).
 # The pool's list order carries no meaning (feature_curated_rank below is the hand-written
 # order); with no ranking file, get_active_features raises instead of guessing.

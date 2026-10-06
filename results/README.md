@@ -2,6 +2,9 @@
 
 Everything the report and a teammate need, and nothing else. XGBoost is the only model with results here.
 
+## Layout
+`results/` holds the six numbered files, `PROTOCOL.md`, `NUMBERS_LEDGER.md`, `REFERENCE_XGBOOST.csv`, `TEMPLATE_model_results.csv` and this file, plus four folders: `metrics/` (per-model CSVs; XGBoost: SHAP files and narrative samples), `plots/` (figures, one folder per model type), `rankings/` (shared feature rankings) and `rating/` (blank rating sheets and keys).
+
 ## For the report
 | file | content |
 |---|---|
@@ -14,7 +17,7 @@ Everything the report and a teammate need, and nothing else. XGBoost is the only
 | `NUMBERS_LEDGER.md` | every headline number the documents quote, with the file, section and cell it comes from (checked by program) |
 | `plots/xgboost/` | the figures: confusion matrix and ROC (40 features), open-set sweep, explanation stability, feature-set metrics, adaptation curves (40 and 48 features), dashboard screenshot |
 | `metrics/xgboost/xai_audit_40f_narratives.csv`, `xai_audit_40f_example_failures.csv`, `narrative_test_40f_narratives.csv` | narrative samples (1,000 audited narratives; ten example failures; the sample the A/B sheet is built from) |
-| `task_5_5_ab_sheet.csv`, `task_5_5_ab_key.csv`, `task_5_5_ab_instructions.md` | the blank A/B rating sheet with its key and instructions (no ratings collected yet). The separate 30-narrative human-audit template was removed; `scripts/make_human_audit_sheet.py` rebuilds it from `xai_audit_40f_narratives.csv`, and tag `pre-lean-2026-10` holds the old copy |
+| `rating/task_5_5_ab_sheet.csv`, `rating/task_5_5_ab_key.csv`, `rating/task_5_5_ab_instructions.md` | the blank A/B rating sheet with its key and instructions (no ratings collected yet). The separate 30-narrative human-audit template was removed; `scripts/make_human_audit_sheet.py` rebuilds it from `xai_audit_40f_narratives.csv`, and tag `pre-lean-2026-10` holds the old copy |
 
 Each numbered file holds the original conclusion, table and protocol files of its area unchanged, one `Source: <original file name>` section each (headings demoted two levels), followed by tables rendered from small CSV files that were removed. The file names mentioned inside them are those `Source:` sections.
 
@@ -25,13 +28,13 @@ Each numbered file holds the original conclusion, table and protocol files of it
 | `REFERENCE_XGBOOST.csv` | the XGBoost headline, tier and stability numbers to compare with (`not computed` / `not applicable` where a value does not exist in the XGBoost tables) |
 | `TEMPLATE_model_results.csv` | the same columns, blank: one row per (model, pool, tier, split, protocol) |
 | `../ONBOARDING.md` | how to add a model and run steps A-E (section "Reference results and how to compare") |
-| `feature_ranking_mutual_info*.csv` (+ `.meta.json`) | the shared feature rankings that define the tiers; read by the pipelines, never regenerate |
+| `rankings/feature_ranking_mutual_info*.csv` (+ `.meta.json`) | the shared feature rankings that define the tiers; read by the pipelines (`paths.feature_ranking`), never regenerate; the sidecars stop a committed ranking from being rewritten; a ranking for a new pool goes to the same folder |
 | `metrics/xgboost/shap_importance_xgboost_<N>f.csv`, `shap_boot_xgboost_<N>f.npz` | the XGBoost SHAP files used by the cross-model agreement step |
 
 Outputs of any model go to `results/metrics/<model.type>/`; plots to `results/plots/<model.type>/` (written by the pipelines, hence not moved).
 
 ## Data version
-All numbers are on the 42-feature UNSW-NB15 training and testing sets (257,673 rows, 162,745 after exact deduplication). `_48f` in a name: the 48-feature pool; no suffix: the 40-feature pool on the same rows and splits. Figures in older documents (78% F1, 67-75% zero-day detection, 0.97 ROC-AUC) are withdrawn. `feature_ranking_mutual_info.csv` was regenerated on the 42-feature data (commit `70a845d`); results produced before that commit are tied to the older ranking.
+All numbers are on the 42-feature UNSW-NB15 training and testing sets (257,673 rows, 162,745 after exact deduplication). `_48f` in a name: the 48-feature pool; no suffix: the 40-feature pool on the same rows and splits. Figures in older documents (78% F1, 67-75% zero-day detection, 0.97 ROC-AUC) are withdrawn. `rankings/feature_ranking_mutual_info.csv` was regenerated on the 42-feature data (commit `70a845d`); results produced before that commit are tied to the older ranking.
 
 ## What was removed, and where to recover it
 Per-seed, per-run and per-flow result files, per-trial lists, per-tier plots, scratch diagnostics, duplicate and superseded files, and the standalone copies of everything that now lives in the numbered files (the conclusion, table and protocol files, and about 50 small CSV and JSON files rendered into tables). Nothing quoted was dropped; the numbers that now exist only as markdown tables are listed in `NUMBERS_LEDGER.md`.

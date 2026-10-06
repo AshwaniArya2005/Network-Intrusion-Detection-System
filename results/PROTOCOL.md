@@ -12,7 +12,7 @@ One page. These rules make results of different models comparable with the XGBoo
 ## Seeds, pools and tiers
 6. **Seeds 42, 43, 44, 45, 46** (`tier_study.seeds`, `experiments.headline_seeds`). A seed changes the model seed and the block draw; the test file is fixed. Report mean and standard deviation (ddof = 1) over the five seeds.
 7. **Pools:** 40 features (34 raw + 6 engineered), 45 (the 48-feature pool without `sttl`, `dttl`, `ct_state_ttl`), 48 (42 raw + 6 engineered).
-8. **Tier grid:** the top-N of the committed mutual-information rankings (`results/feature_ranking_mutual_info_blockval*.csv`, shared by all models, never regenerated). Pool 48: 48 / 40 / 30 / 20 / 15; pool 45: 45 / 40 / 30 / 20 / 15; pool 40: 40 / 30 / 20 / 15. If a runner would rewrite a tracked ranking file, stop and ask.
+8. **Tier grid:** the top-N of the committed mutual-information rankings (`results/rankings/feature_ranking_mutual_info_blockval*.csv`, shared by all models, never regenerated). Pool 48: 48 / 40 / 30 / 20 / 15; pool 45: 45 / 40 / 30 / 20 / 15; pool 40: 40 / 30 / 20 / 15. If a runner would rewrite a tracked ranking file, stop and ask.
 9. **Do not change** `tier_study.seeds`, `tier_study.shap_rows` (1,000 explained rows), `tier_study.bootstrap` (100 resamples) or `evaluation.ece_bins` (15): otherwise the cross-model comparison is not paired.
 10. **Hyperparameters are declared, not tuned:** `model.params` for the headline run and `tier_study.model_params.<model type>` for the tier study (random forest: 150 trees, depth 10, min leaf 5; logistic regression: `max_iter` 300). A model run with other settings is not comparable; say so.
 

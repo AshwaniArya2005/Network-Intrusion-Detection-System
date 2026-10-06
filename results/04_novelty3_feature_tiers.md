@@ -2,7 +2,7 @@
 
 The tier study and the stability of SHAP explanations across tiers: conclusion, tables and the declared protocol. The shared rules and commands for running the same study with another model are in `PROTOCOL.md` and `ONBOARDING.md`; the XGBoost SHAP files used for the cross-model comparison are `metrics/xgboost/shap_importance_xgboost_<N>f.csv` and `shap_boot_xgboost_<N>f.npz`.
 
-File names mentioned inside this file (for example `task_6_tables.md`, `results/task_5_protocol.md` or `xai_audit_40f_example_failures.csv`) are the `Source:` sections of this file or of one of the other numbered files, or files that were removed in the cleanup and are recoverable from the git tags `pre-cleanup-2026-10` and `pre-lean-2026-10`. Text under a `Source:` heading is the original file, unchanged except that its headings are demoted two levels.
+File names mentioned inside this file (for example `task_6_tables.md`, `results/task_5_protocol.md` or `xai_audit_40f_example_failures.csv`) are the `Source:` sections of this file or of one of the other numbered files, or files that were removed in the cleanup and are recoverable from the git tags `pre-cleanup-2026-10` and `pre-lean-2026-10`. Text under a `Source:` heading is the original file, unchanged except that its headings are demoted two levels. Two kinds of file moved after the originals were written: the feature rankings are now in `results/rankings/` and the A/B rating sheet, key and instructions in `results/rating/`.
 
 ## Source: task_3_conclusion.md
 

@@ -3,7 +3,7 @@
     python pipelines/run_all_experiments.py
 
 - Ranks the feature pool by mutual information on the training split (written to
-  results/feature_ranking.csv); the 30/20/15 feature sets are the top-N of that ranking.
+  results/rankings/feature_ranking_<source>.csv); the 30/20/15 feature sets are the top-N of that ranking.
 - Trains XGBoost (or whatever model.type is configured) on all 4 feature sets
   (40/30/20/15), each in closed-set and open-set mode -> 8 models saved to
   models_saved/<model.type>/, metrics collected into

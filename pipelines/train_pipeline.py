@@ -151,7 +151,7 @@ def block_validation_splits(config: dict, splits: Splits, seed: int, block_size:
 
 def generate_feature_ranking(config: dict, feature_sets: dict, train_df: pd.DataFrame) -> pd.Series:
     """Write the ranking for `feature_selection.ranking_source` to its own file
-    (results/feature_ranking_<source>.csv): mutual information on the training split, or the
+    (results/rankings/feature_ranking_<source>.csv): mutual information on the training split, or the
     curated order. get_active_features builds the 30/20/15 sets from it."""
     fs_cfg = config["feature_selection"]
     if fs_cfg["ranking_source"] == "curated":
