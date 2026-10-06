@@ -1,6 +1,6 @@
 """Task 4.5: try to improve zero-day (open-set) detection (protocol: results/02_novelty1_open_set.md, section `Source: open_set_boost_protocol.md`). XGBoost, flat model, official split, ZERO-SHOT.
 
-    python pipelines/run_openset_boost.py --idea calibration|perclass|ensemble|distance|oe [--pools base full] [--seeds 42 43 44 45 46] [--specs ...]
+    python pipelines/run_openset_boost.py --idea calibration|perclass|ensemble|distance|oe [--pools full base]   (default: the primary pool 48 only) [--seeds 42 43 44 45 46] [--specs ...]
     python pipelines/run_openset_boost.py --idea selection   # pseudo-unknown validation of every individual score (inner models without Reconnaissance / Generic)
     python pipelines/run_openset_boost.py --idea combo       # rank-average of the two best individual scores by that selection
     python pipelines/run_openset_boost.py --idea iforest     # the isolation-forest sign check
@@ -376,7 +376,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--idea", required=True, choices=[*SCORE_NAMES, "selection", "combo", "iforest", "pass"],
                         help="pass = ideas 1-4, the isolation-forest check and (when the selection file exists and needs no Unknown-class model) the combination, from one base model per run")
-    parser.add_argument("--pools", nargs="*", default=["base", "full"])
+    parser.add_argument("--pools", nargs="*", default=["full"], help="default: the primary pool 48 (full); add base (40) or full_no_ttl (45) for the comparison pools")
     parser.add_argument("--seeds", nargs="*", type=int)
     parser.add_argument("--specs", nargs="*", help="held-out sets by name (default: Worms + Shellcode, the nine classes and the trio)")
     args = parser.parse_args()

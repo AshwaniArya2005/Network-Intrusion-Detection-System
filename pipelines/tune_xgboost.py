@@ -1,6 +1,6 @@
 """Capped hyperparameter search for XGBoost, tuned on VALIDATION only (xgboost model type):
 
-    python pipelines/tune_xgboost.py [--pools base full]
+    python pipelines/tune_xgboost.py [--pools full base]   (default: the primary pool 48 only)
 
 Per feature pool it draws `tuning.n_trials` random configurations from `tuning.space` (seeded), fits each on the
 training split with early stopping on the validation split's mlogloss, and scores it on validation: macro F1 and the
@@ -144,7 +144,7 @@ def load_tuned(config: dict, label: str, objective: str, stage1: bool = False, b
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--pools", nargs="*", default=["base", "full"], help="base, full, or an experiments.pool_variants name")
+    parser.add_argument("--pools", nargs="*", default=["full"], help="default: the primary pool 48 (full); add base (40) or an experiments.pool_variants name")
     parser.add_argument("--stage1", action="store_true", help="search the binary attack-vs-normal first stage of the hierarchical model")
     parser.add_argument("--block-validation", action="store_true", help="select on block-grouped validation with the regularised space (Task 2.7)")
     args = parser.parse_args()

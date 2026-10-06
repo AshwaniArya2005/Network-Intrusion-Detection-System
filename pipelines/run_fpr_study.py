@@ -1,6 +1,6 @@
 """Task 2.7: lower the official-split false-positive rate (protocol: results/06_fpr_and_adaptation.md, section `Source: fpr_reduction_protocol.md`).
 
-    python pipelines/run_fpr_study.py --step tuned    [--pools base full_no_ttl full] [--seeds 42 43 44 45 46]
+    python pipelines/run_fpr_study.py --step tuned    [--pools full base full_no_ttl]   (default: full) [--seeds 42 43 44 45 46]
     python pipelines/run_fpr_study.py --step prior    ...   TRANSDUCTIVE class-prior correction (+ ZERO-SHOT temperature scaling and a zero-shot control)
     python pipelines/run_fpr_study.py --step self     ...   TRANSDUCTIVE self-training
     python pipelines/run_fpr_study.py --step fewshot  [--pools full full_no_ttl full_no_ct_window]   FEW-SHOT label budget x selection strategy
@@ -336,7 +336,7 @@ def main() -> None:
     add_file_logging(str(resolve_path(config["logging"]["log_file"])))
     metrics_dir = get_metrics_dir(config)
     metrics_dir.mkdir(parents=True, exist_ok=True)
-    pools = args.pools or (["full", "full_no_ttl", "full_no_ct_window"] if args.step == "fewshot" else ["base", "full_no_ttl", "full"])
+    pools = args.pools or ["full"]   # the primary pool 48; --pools base full_no_ttl (or full_no_ct_window for fewshot) adds comparison pools
     for pool in pools:
         if args.step == "fewshot":
             df = run_fewshot(config, feature_sets, pool, len(args.seeds) if args.seeds else 5, tuple(args.ks) if args.ks else KS)

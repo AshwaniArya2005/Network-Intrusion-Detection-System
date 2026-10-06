@@ -1,7 +1,7 @@
 """Task 4: open-set / zero-day detection under an honest protocol (protocol: results/02_novelty1_open_set.md, section `Source: open_set_protocol.md`). XGBoost, flat model, official split, ZERO-SHOT.
 
-    python pipelines/run_open_set_study.py --step scores   [--pools base full_no_ttl full] [--seeds 42 43 44 45 46]
-    python pipelines/run_open_set_study.py --step rotation [--pools base full]
+    python pipelines/run_open_set_study.py --step scores   [--pools full base full_no_ttl]   (default: full) [--seeds 42 43 44 45 46]
+    python pipelines/run_open_set_study.py --step rotation [--pools full base]   (default: the primary pool 48 only)
     python pipelines/run_open_set_study.py --step ablation
 
 scores    Step 1 (+ the data for Steps 3 and 4): every candidate score (msp, entropy, margin, conformal, iforest and the iforest combinations) with the threshold fixed on the
@@ -259,7 +259,7 @@ def main() -> None:
             tables = run_scores(config, feature_sets, pool, seeds)
             save_tables(config, "scores", tables["runs"]["pool"].iloc[0], tables)
     elif args.step == "rotation":
-        for pool in args.pools or ["base", "full"]:
+        for pool in args.pools or ["full"]:
             label = pool_label(prepare(config, feature_sets, pool, "xgboost", 42)[1])
             tables = run_rotation(config, feature_sets, pool, seeds, CANDIDATES, args.classes)
             save_tables(config, "rotation", label, tables)

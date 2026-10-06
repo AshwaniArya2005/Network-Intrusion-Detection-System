@@ -230,7 +230,7 @@ def save(config: dict, name: str, label: str, tables: dict[str, pd.DataFrame]) -
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--part", required=True, choices=["narrative", "falsepos"])
-    parser.add_argument("--pools", nargs="*", default=["base", "full"])
+    parser.add_argument("--pools", nargs="*", default=["full"], help="default: the primary pool 48 (full); add base (40) or full_no_ttl (45) for the comparison pools")
     parser.add_argument("--seeds", nargs="*", type=int)
     parser.add_argument("--source", choices=["test", "validation"], default="test")
     args = parser.parse_args()

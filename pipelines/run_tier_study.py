@@ -13,8 +13,8 @@ All methods here are ZERO-SHOT. Parts:
   tiers      ranked tiers with SHAP                  -> tier_study_<model>_<N>f_runs.csv, shap_importance_<model>_<N>f.csv, shap_boot_<model>_<N>f.npz
   baselines  random subsets and worst-N (xgboost)    -> tier_baselines_<model>_<N>f.csv, tier_baselines_summary_<model>_<N>f.csv
   pooled     ranked tiers on the pooled random split (best case; neighbour-leaking) -> tier_study_<model>_<N>f_pooled.csv
-  plots      one confusion-matrix PNG and one ROC PNG per (pool, tier) -> results/plots/<model.type>/confusion_matrix_pool<N>_tier<T>.png and
-             roc_curve_pool<N>_tier<T>.png; seed 42 (tier_study.seeds[0]), block-grouped protocol; a model already saved in models_saved/<model.type>/ for
+  plots      one confusion-matrix PNG and one ROC PNG per (pool, tier) -> results/plots/<model.type>/confusion_matrix_<T>f.png and
+             roc_curve_<T>f.png (pool 48; a comparison pool N adds `pool<N>_`, e.g. confusion_matrix_pool40_30f.png); seed 42 (tier_study.seeds[0]), block-grouped protocol; a model already saved in models_saved/<model.type>/ for
              that (pool, tier) is reused, a missing one is trained (closed set) and saved. The `tiers` part writes the same plots by itself for seed 42
              from the model it trains anyway (no extra training); `--no-plots` turns that off.
 

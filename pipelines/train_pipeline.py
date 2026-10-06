@@ -387,7 +387,7 @@ def main() -> None:
     plots_dir = results_dir / "plots" / config["model"]["type"]
     scheme_name, merge_groups, _ = get_label_scheme(config)
     write_tier_plots(predictions_out, plots_dir, len(feature_sets["feature_pool"]), feature_set_name, scheme_name, merge_groups,
-                     config["data"]["normal_category"], config["model"]["type"])   # confusion_matrix_pool<N>_tier<T>.png, roc_curve_pool<N>_tier<T>.png
+                     config["data"]["normal_category"], config["model"]["type"])   # confusion_matrix_<T>f.png, roc_curve_<T>f.png
 
     metrics_dir = get_metrics_dir(config)
     metrics_dir.mkdir(parents=True, exist_ok=True)

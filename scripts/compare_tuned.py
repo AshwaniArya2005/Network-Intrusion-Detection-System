@@ -1,6 +1,6 @@
 """Tuned vs default hyperparameters on the official split (mean +/- std over seeds), per feature pool:
 
-    python scripts/compare_tuned.py [--pools base full] [--objectives f1 auc]
+    python scripts/compare_tuned.py [--pools full base]   (default: the primary pool 48 only) [--objectives f1 auc]
 
 Reads the default run (results/metrics/<model.type>/headline_summary.csv) and the tuned runs
 (headline_tuned_<objective>_official_summary.csv, from `pipelines/run_headline_seeds.py --tuned <objective> --protocols official`),
@@ -26,12 +26,15 @@ COLUMNS = ["accuracy", "f1", "detection_rate", "false_positive_rate", "normal_to
 def tuned_vs_default(metrics_dir: Path, pools: list[str], objectives: list[str]) -> pd.DataFrame:
     """Rows (pool, hyperparameters) with the official-split mean / std of each COLUMNS metric and `<metric>_vs_default`."""
     protocols = tuple(name for name, _ in PROTOCOLS)
-    sources = {"default": metrics_dir / f"{output_stem(None, protocols, DEFAULT_POOLS)}_summary.csv",
-               **{f"tuned_{o}": metrics_dir / f"{output_stem(o, ('official',), DEFAULT_POOLS)}_summary.csv" for o in objectives}}
+    sources = {"default": (None, protocols), **{f"tuned_{o}": (o, ("official",)) for o in objectives}}
     rows = []
     for pool in pools:
         default_means = {}
-        for variant, path in sources.items():
+        for variant, (tuned, protos) in sources.items():
+            # the headline run of several pools (older default) or of this pool alone (headline_<pool>_..., the default run now)
+            path = next((p for p in (metrics_dir / f"{output_stem(tuned, protos, pools_)}_summary.csv" for pools_ in (DEFAULT_POOLS, (pool,))) if p.exists()), None)
+            if path is None:
+                raise FileNotFoundError(f"no headline summary for pool {pool!r} and hyperparameters {variant!r} in {metrics_dir}; run pipelines/run_headline_seeds.py --pools {pool}")
             s = pd.read_csv(path)
             s = s[(s["pool"] == pool) & (s["split"] == "official") & (s["metric"].isin(COLUMNS))].set_index("metric")
             row = {"pool": pool, "hyperparameters": variant}
@@ -61,7 +64,7 @@ def render(df: pd.DataFrame) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--pools", nargs="*", default=["base", "full"])
+    parser.add_argument("--pools", nargs="*", default=["full"])
     parser.add_argument("--objectives", nargs="*", choices=["f1", "auc"], default=["f1", "auc"])
     args = parser.parse_args()
     metrics_dir = get_metrics_dir(load_config())

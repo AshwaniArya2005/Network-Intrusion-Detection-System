@@ -1,6 +1,7 @@
 """The headline metrics of several feature pools side by side (mean +/- std over seeds), from the headline runs:
 
-    python scripts/compare_pools.py [--pools base full full_no_ttl] [--protocol official]
+    python scripts/compare_pools.py [--pools base full full_no_ttl] [--protocol official]   (a comparison tool: needs the headline runs of each pool,
+    e.g. run_headline_seeds.py --pools full base; the other scripts default to pool 48 only)
 
 Reads results/metrics/<model.type>/headline_summary.csv (base + full) and headline_<pool>_summary.csv for any other
 pool (pipelines/run_headline_seeds.py --pools <pool>), and writes pool_comparison_<sizes>_<protocol>.csv / .md.

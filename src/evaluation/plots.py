@@ -329,12 +329,17 @@ def plot_roc_curve(y_test, y_proba, class_names, out_path: Path, normal_label: s
     _save(fig, out_path)
 
 
+PRIMARY_POOL = 48   # the primary feature pool; its plots carry no pool prefix
+
+
 def tier_plot_paths(plots_dir: Path, pool_size: int, tier: str, label_scheme: str = "current") -> tuple[Path, Path]:
-    """(confusion-matrix path, ROC path) of one tier of one pool. The pool size is in the name because the same tier number in
-    different pools is a different feature set; a non-default label scheme adds its name."""
+    """(confusion-matrix path, ROC path) of one tier of one pool: `confusion_matrix_<T>f.png` for the primary pool (48), and
+    `confusion_matrix_pool<N>_<T>f.png` for a comparison pool, because the same tier number in another pool is another feature set;
+    a non-default label scheme adds its name."""
     suffix = "" if label_scheme == "current" else f"_{label_scheme}"
+    stem = f"{tier}f{suffix}" if pool_size == PRIMARY_POOL else f"pool{pool_size}_{tier}f{suffix}"
     d = Path(plots_dir)
-    return d / f"confusion_matrix_pool{pool_size}_tier{tier}{suffix}.png", d / f"roc_curve_pool{pool_size}_tier{tier}{suffix}.png"
+    return d / f"confusion_matrix_{stem}.png", d / f"roc_curve_{stem}.png"
 
 
 def write_tier_plots(predictions: dict, plots_dir: Path, pool_size: int, tier: str, scheme_name: str, merge_groups: dict,

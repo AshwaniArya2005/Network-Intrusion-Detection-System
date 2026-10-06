@@ -1,6 +1,6 @@
 """Bootstrap intervals over the official test rows, and paired differences between feature pools:
 
-    python pipelines/run_bootstrap.py [--pools base full] [--resamples 1000] [--seed 42]
+    python pipelines/run_bootstrap.py [--pools full base]   (default: the primary pool 48 only) [--resamples 1000] [--seed 42]
 
 Trains the configured model once per pool (official split, scheme `current`, whole pool, default hyperparameters,
 `--seed` for the model and the train/validation split) and resamples the official test rows (and, independently, the
@@ -29,7 +29,7 @@ from src.utils.logger import add_file_logging, get_logger
 logger = get_logger(__name__)
 
 
-def run_bootstrap(config: dict, feature_sets: dict, pools=("base", "full"), n_boot: int = 1000, seed: int = 42):
+def run_bootstrap(config: dict, feature_sets: dict, pools=("full",), n_boot: int = 1000, seed: int = 42):
     models, labels, classes = {}, [], None
     for pool in pools:
         cfg = apply_pool_variant(config, pool)
@@ -58,7 +58,7 @@ def run_bootstrap(config: dict, feature_sets: dict, pools=("base", "full"), n_bo
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--pools", nargs="*", default=["base", "full"], help="base, full, or an experiments.pool_variants name")
+    parser.add_argument("--pools", nargs="*", default=["full"], help="default: the primary pool 48 (full); the paired differences need two or more pools, e.g. --pools base full")
     parser.add_argument("--resamples", type=int, default=1000)
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()

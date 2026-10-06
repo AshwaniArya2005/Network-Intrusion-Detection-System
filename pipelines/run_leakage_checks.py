@@ -1,6 +1,6 @@
 """Task 2.6: is the few-shot result adaptation or neighbour leakage? (protocol: results/06_fpr_and_adaptation.md, section `Source: leakage_check_protocol.md`)
 
-    python pipelines/run_leakage_checks.py [--pools base full] [--ks 1000 5000] [--runs 5] [--checks twins blocks validation]
+    python pipelines/run_leakage_checks.py [--pools full base]   (default: the primary pool 48 only) [--ks 1000 5000] [--runs 5] [--checks twins blocks validation]
 
 Method of record: `retrain_split_f0.5` (FEW-SHOT): k labelled rows from the official test file, half used to retrain with weight fraction
 0.5, the 95%-detection threshold chosen on the other half; reported as det95_test_fpr / det95_test_detection with accuracy and ECE.
@@ -232,7 +232,7 @@ def validation_filename(label: str, block_size: int) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--pools", nargs="*", default=["base", "full"])
+    parser.add_argument("--pools", nargs="*", default=["full"], help="default: the primary pool 48 (full); add base (40) or full_no_ttl (45) for the comparison pools")
     parser.add_argument("--ks", nargs="*", type=int, default=[1000, 5000])
     parser.add_argument("--runs", type=int, default=5)
     parser.add_argument("--checks", nargs="*", choices=["twins", "blocks", "validation", "shift_auc"], default=["twins", "blocks", "validation"])

@@ -1,6 +1,6 @@
 """Diagnostic (no model or protocol changes): why are Normal flows called Fuzzers on the official split?
 
-    python scripts/diagnose_normal_fuzzers.py [--pools base full]
+    python scripts/diagnose_normal_fuzzers.py [--pools full base]   (default: the primary pool 48 only)
 
 For each feature pool it trains the configured model once (scheme `current`, closed-set, whole pool
 as the tier, exactly like pipelines/run_label_scheme_comparison.py) and writes, under
@@ -209,7 +209,7 @@ def run_pool(config: dict, feature_sets: dict, pool: str) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--pools", nargs="*", choices=["base", "full"], default=["base", "full"])
+    parser.add_argument("--pools", nargs="*", choices=["base", "full"], default=["full"])
     args = parser.parse_args()
     config, feature_sets = load_config(), load_feature_sets()
     for pool in args.pools:

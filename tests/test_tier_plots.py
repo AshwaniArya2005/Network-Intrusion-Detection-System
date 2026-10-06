@@ -30,11 +30,11 @@ def _predictions(n=300, seed=0):
     return {"y_test": y, "y_pred": proba.argmax(axis=1), "y_proba": proba / proba.sum(axis=1, keepdims=True), "class_names": names}
 
 
-def test_plot_file_names_carry_the_pool_the_tier_and_a_non_default_scheme(tmp_path):
+def test_plot_file_names_carry_the_tier_the_pool_unless_primary_and_a_non_default_scheme(tmp_path):
     cm, roc = P.tier_plot_paths(tmp_path, 48, "30")
-    assert (cm.name, roc.name) == ("confusion_matrix_pool48_tier30.png", "roc_curve_pool48_tier30.png")
-    assert P.tier_plot_paths(tmp_path, 40, "30")[0].name != cm.name          # the same tier number in another pool is another feature set
-    assert P.tier_plot_paths(tmp_path, 48, "30", "wide")[1].name == "roc_curve_pool48_tier30_wide.png"
+    assert (cm.name, roc.name) == ("confusion_matrix_30f.png", "roc_curve_30f.png")
+    assert P.tier_plot_paths(tmp_path, 40, "30")[0].name == "confusion_matrix_pool40_30f.png"   # the same tier number in a comparison pool is another feature set
+    assert P.tier_plot_paths(tmp_path, 48, "30", "wide")[1].name == "roc_curve_30f_wide.png"
 
 
 def test_the_roc_figure_says_what_each_curve_is_and_gives_both_aucs(monkeypatch, tmp_path):
@@ -63,7 +63,7 @@ def test_a_small_tier_grid_writes_its_plots_into_the_model_named_folder_and_reus
     assert folder == tmp_path / "results" / "plots" / model_type
     written = run_tier_plots(config, fs, "base", model_type, tiers=["40", "15"])
     names = sorted(p.name for p in written)
-    assert names == ["confusion_matrix_pool40_tier15.png", "confusion_matrix_pool40_tier40.png", "roc_curve_pool40_tier15.png", "roc_curve_pool40_tier40.png"]
+    assert names == ["confusion_matrix_pool40_15f.png", "confusion_matrix_pool40_40f.png", "roc_curve_pool40_15f.png", "roc_curve_pool40_40f.png"]
     assert all(p.parent == folder and p.exists() for p in written)
     assert not (tmp_path / "results" / "plots" / ("random_forest" if model_type == "xgboost" else "xgboost")).exists()      # nothing in another model's folder
     saved = sorted(f.name for f in (tmp_path / "models" / model_type).iterdir())
@@ -84,4 +84,4 @@ def test_the_tiers_part_plots_only_the_declared_seed(config, monkeypatch, tmp_pa
     monkeypatch.setattr(rts, "write_tier_plots", lambda pred, d, n, tier, *a, **k: calls.append((n, tier)) or real(pred, d, n, tier, *a, **k))
     run_tiers(config, fs, "base", "xgboost", tiers=["15"], with_shap=False, plots_dir=plots_dir_for(config, "xgboost"))
     assert calls == [(40, "15")]                                                  # seeds [1, 2]: only the first (the declared seed) is plotted
-    assert (plots_dir_for(config, "xgboost") / "roc_curve_pool40_tier15.png").exists()
+    assert (plots_dir_for(config, "xgboost") / "roc_curve_pool40_15f.png").exists()

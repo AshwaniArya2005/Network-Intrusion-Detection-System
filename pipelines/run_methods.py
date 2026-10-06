@@ -1,6 +1,6 @@
 """Compare methods for the official-split false-positive problem, over seeds, per feature pool:
 
-    python pipelines/run_methods.py --tag <name> --methods flat_default hier_default hier_stage1_tuned [--pools base full]
+    python pipelines/run_methods.py --tag <name> --methods flat_default hier_default hier_stage1_tuned [--pools full base]   (default: the primary pool 48 only)
 
 Every method carries an ACCESS level: zero-shot (training data only), transductive (also the unlabelled official-test
 features) or few-shot (see pipelines/run_adaptation.py). For each (pool, method, seed) it trains on the official split,
@@ -97,7 +97,7 @@ def summarise(seeds_df: pd.DataFrame) -> pd.DataFrame:
             .round(4).reset_index())
 
 
-def run_methods(config: dict, feature_sets: dict, tag: str, methods: list[str], pools=("base", "full"), seeds=None) -> dict[str, pd.DataFrame]:
+def run_methods(config: dict, feature_sets: dict, tag: str, methods: list[str], pools=("full",), seeds=None) -> dict[str, pd.DataFrame]:
     seeds = list(seeds or config["experiments"]["headline_seeds"])
     metrics_dir = get_metrics_dir(config)
     metrics_dir.mkdir(parents=True, exist_ok=True)
@@ -121,7 +121,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--tag", required=True, help="name of this comparison, used in the file names")
     parser.add_argument("--methods", nargs="*", required=True, choices=list(METHODS))
-    parser.add_argument("--pools", nargs="*", default=["base", "full"])
+    parser.add_argument("--pools", nargs="*", default=["full"], help="default: the primary pool 48 (full); add base (40) or full_no_ttl (45) for the comparison pools")
     parser.add_argument("--seeds", nargs="*", type=int)
     args = parser.parse_args()
     config = load_config()
