@@ -1,6 +1,0 @@
-seed,spearman_importance,importance_rank_UNSW_dur,importance_rank_UNSW_spkts,importance_rank_UNSW_dpkts,importance_rank_UNSW_sbytes,importance_rank_UNSW_dbytes,importance_rank_UNSW_rate,importance_rank_UNSW_smean,importance_rank_UNSW_dmean,importance_rank_UNSW_total_bytes,importance_rank_UNSW_total_pkts,importance_rank_UNSW_byte_ratio,importance_rank_UNSW_pkt_ratio,importance_rank_UNSW_avg_pkt_size,importance_rank_UNSW_duration_log,importance_rank_CIC_dur,importance_rank_CIC_spkts,importance_rank_CIC_dpkts,importance_rank_CIC_sbytes,importance_rank_CIC_dbytes,importance_rank_CIC_rate,importance_rank_CIC_smean,importance_rank_CIC_dmean,importance_rank_CIC_total_bytes,importance_rank_CIC_total_pkts,importance_rank_CIC_byte_ratio,importance_rank_CIC_pkt_ratio,importance_rank_CIC_avg_pkt_size,importance_rank_CIC_duration_log
-42,0.5956043956043956,11,14,5,4,7,1,6,2,9,12,8,10,3,13,10,12,6,9,7,8,4,1,2,13,3,14,5,11
-43,0.5384615384615385,11,13,6,3,10,2,4,1,9,12,8,7,5,14,9,10,8,2,7,6,12,1,3,11,4,14,5,13
-44,0.4461538461538462,11,13,6,3,5,1,4,2,9,12,10,8,7,14,7,10,5,2,9,8,12,1,4,11,6,14,3,13
-45,0.49890109890109896,12,13,4,6,11,1,5,2,8,10,7,9,3,14,5,9,8,1,12,6,3,2,4,11,7,14,10,13
-46,0.5120879120879122,12,14,8,4,11,1,3,2,6,10,9,7,5,13,4,9,8,6,10,5,7,2,1,11,13,14,3,12

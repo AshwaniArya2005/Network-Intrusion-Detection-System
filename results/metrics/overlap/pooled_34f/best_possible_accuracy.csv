@@ -1,5 +1,0 @@
-label_scheme,n_classes,best_possible_accuracy_dups_kept,best_possible_accuracy_pairs_deduped
-original,8,0.9052,0.9565
-current,6,0.9117,0.9702
-none,8,0.9052,0.9565
-binary,2,0.9903,0.9971

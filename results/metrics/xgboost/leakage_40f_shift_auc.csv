@@ -1,2 +1,0 @@
-pool,pool_label,seed,block_size,n_train_normal,n_test_normal,auc_random_cv,auc_block_cv
-base,40f,42,1000,51890,33832,0.8987,0.814
