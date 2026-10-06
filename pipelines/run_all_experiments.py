@@ -3,7 +3,7 @@
     python pipelines/run_all_experiments.py
 
 - Ranks the feature pool by mutual information on the training split (written to
-  results/feature_ranking.csv); the 30/20/15 feature sets are the top-N of that ranking.
+  results/rankings/feature_ranking_<source>.csv); the 30/20/15 feature sets are the top-N of that ranking.
 - Trains XGBoost (or whatever model.type is configured) on all 4 feature sets
   (40/30/20/15), each in closed-set and open-set mode -> 8 models saved to
   models_saved/<model.type>/, metrics collected into
@@ -32,7 +32,7 @@ from pipelines.train_pipeline import (
 from src.data_loader import load_cic, load_unsw, stratified_subsample
 from src.evaluation.cross_dataset import feature_shift_table, run_cross_dataset_study
 from src.evaluation.metrics import build_overlap_diagnostics
-from src.evaluation.plots import generate_all_plots, plot_confusion_matrix_for_scheme, plot_roc_curve
+from src.evaluation.plots import generate_all_plots, write_tier_plots
 from src.models.model_factory import create_model
 from src.preprocessing import Preprocessor, balanced_sample_weight
 from src.utils.config_loader import (
@@ -75,13 +75,8 @@ def run_experiment_grid(config: dict, feature_sets: dict, splits: Splits) -> pd.
             rows.append(result)
 
             if predictions_out:
-                plot_confusion_matrix_for_scheme(predictions_out["y_test"], predictions_out["y_pred"],
-                                                  predictions_out["class_names"],
-                                                  plots_dir / tagged(config, f"confusion_matrix_{feature_set_name}.png"),
-                                                  scheme_name, merge_groups)
-                plot_roc_curve(predictions_out["y_test"], predictions_out["y_proba"],
-                                predictions_out["class_names"],
-                                plots_dir / tagged(config, f"roc_curve_{feature_set_name}.png"))
+                write_tier_plots(predictions_out, plots_dir, len(feature_sets["feature_pool"]), feature_set_name, scheme_name, merge_groups,
+                                 config["data"]["normal_category"], config["model"]["type"])   # confusion_matrix_pool<N>_tier<T>.png, roc_curve_pool<N>_tier<T>.png
 
                 diagnostics = build_overlap_diagnostics(predictions_out["fine_grained_true"],
                                                          predictions_out["y_pred_labels"],

@@ -53,7 +53,7 @@ NOT_AGGREGATED = {"seed", "n_features", "n_train", "n_val", "n_test"}
 
 def apply_method(cfg: dict, sets: dict, spec: dict) -> dict:
     """The config for one method after the pool is chosen: stage-1 hyperparameters selected on validation
-    (tuned_params_stage1_<N>f.json, objective = validation macro F1 as declared in results/task_2_5_protocol.md)."""
+    (tuned_params_stage1_<N>f.json, objective = validation macro F1 as declared in results/06_fpr_and_adaptation.md, section `Source: shift_and_fewshot_protocol.md`)."""
     if spec.get("stage1_tuned"):
         params, power = load_tuned(cfg, pool_label(sets), "f1", stage1=True)
         cfg["model"]["stage1_params"] = params

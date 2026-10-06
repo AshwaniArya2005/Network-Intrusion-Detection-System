@@ -67,7 +67,7 @@ def render(model: str, tables: dict[str, pd.DataFrame]) -> str:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--model", default="xgboost")
-    parser.add_argument("--pools", nargs="*", default=["40f", "45f", "48f"])
+    parser.add_argument("--pools", nargs="*", default=["48f"], help="pool sizes, default the primary pool 48f; add 40f 45f for the comparison pools")
     parser.add_argument("--in-dir", help="read and write under <in-dir>/<model>/ instead of results/metrics/<model>/")
     args = parser.parse_args()
     d = Path(args.in_dir) / args.model if args.in_dir else get_metrics_dir(dict(load_config(), model={"type": args.model}))

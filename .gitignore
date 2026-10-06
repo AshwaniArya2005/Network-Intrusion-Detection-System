@@ -37,3 +37,13 @@ dashboard/frontend/dist/
 .vscode/
 .claude/
 *.log
+
+# Generated per-tier plots (one confusion matrix and one ROC figure per pool and tier of every model, written by
+# pipelines/run_tier_study.py): ignored so results/ does not fill up again. The two headline-tier plots (primary pool 48, tier 48) stay tracked.
+results/plots/*/confusion_matrix_pool*_tier*.png
+results/plots/*/roc_curve_pool*_tier*.png
+!results/plots/xgboost/confusion_matrix_pool48_tier48.png
+!results/plots/xgboost/roc_curve_pool48_tier48.png
+
+# Screenshots of the dashboard are not kept in the repository, and no script generates one
+results/plots/*/dashboard_*.png

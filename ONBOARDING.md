@@ -34,7 +34,7 @@ broken" section below.
 
 To get a comparable result for your model: set `model.type`, run `python pipelines/run_all_experiments.py`,
 and read `results/metrics/<model.type>/` (outputs are namespaced by model type, so they never overwrite
-another model's). The feature ranking (`results/feature_ranking_mutual_info.csv`) is model-independent mutual
+another model's). The feature ranking (`results/rankings/feature_ranking_mutual_info_48f.csv` for the primary pool 48) is model-independent mutual
 information, so all models are compared on the same feature sets. Note that every result in the README is
 XGBoost-specific, and `model.params` is shared across tiers (no per-tier re-tuning).
 
@@ -160,14 +160,14 @@ rows, byte-for-byte identical to before the refactor (a one-off check of that re
 
 ## Reproducing the feature-tier and explanation-stability study for your own model
 
-XGBoost's Task 3 study (feature tiers, SHAP stability, cross-model agreement) is committed. Each teammate runs the **same** study for their own model
-so the numbers are comparable. The protocol is in `results/task_3_protocol.md` (read it first). The rules that make runs comparable:
+XGBoost's feature-tier and explanation-stability study (feature tiers, SHAP stability, cross-model agreement) is committed. Each teammate runs the **same** study for their own model
+so the numbers are comparable. The shared rules are on one page in `results/PROTOCOL.md` (read it first); the full declared protocol is inside `results/04_novelty3_feature_tiers.md` (section `Source: feature_tiers_protocol.md`). The rules that make runs comparable:
 
 - **Zero-shot, official split, scheme `current`.** Nothing is tuned on the official test file.
 - **Block-grouped validation.** Training / validation are rebuilt from contiguous blocks of the training file (`tier_study.block_size` / `tier_study.buffer` in
   `configs/config.yaml`) because a random validation split shares neighbouring flows with its training rows. The runner does this for you
   (`pipelines/train_pipeline.block_validation_splits`). Do not report a random-validation number as "validation".
-- **Shared rankings.** The mutual-information rankings are committed (`results/feature_ranking_mutual_info_blockval[_45f|_48f].csv`), so every model sees the same tiers.
+- **Shared rankings.** The mutual-information rankings of the primary pool 48 are committed (`results/rankings/feature_ranking_mutual_info_48f.csv` for the headline run and `feature_ranking_mutual_info_blockval_48f.csv` for the tier study, each with its `.meta.json` sidecar, which stops a committed ranking from being regenerated), so every model sees the same tiers. The rankings of the comparison pools 40 and 45 are not committed: the tier study regenerates them on its first run for that pool (`--pools base full_no_ttl`; `run_all_experiments.py` or `train_pipeline.py --write-ranking` for the plain pool-40 ranking), so a rerun may differ slightly from the committed comparison numbers. Any other study on pool 40 or 45 (headline seeds, FPR, open-set, narrative and similar) raises `FileNotFoundError` until that first run has happened.
   The runner only regenerates a ranking if the file is missing or the training data changed; if it rewrites a tracked ranking file, stop and ask.
 - **Same seeds and explained rows.** `tier_study.seeds` (42-46), `tier_study.shap_rows` and `tier_study.bootstrap` must be the same for every model, otherwise the
   cross-model agreement is not a paired comparison. Leave them alone.
@@ -203,6 +203,38 @@ so the numbers are comparable. The protocol is in `results/task_3_protocol.md` (
 - **Random forest** uses `n_jobs: -1`. At the declared settings the SHAP step takes several times longer than the fit (it grows with trees x depth), so keep the declared size; for logistic regression the fit dominates and SHAP is negligible.
 - Outputs of a model whose parameters you change are not comparable with the declared settings: say so in your write-up.
 - Tests that exercise all of this on synthetic data: `python -m pytest tests/test_pipelines.py -k "tier or cross_model or explainer_type"`.
+
+## Reference results and how to compare
+
+What to compare with, all under `results/`:
+
+| file | what it is |
+|---|---|
+| `PROTOCOL.md` | the one-page shared rules (official split primary, duplicate removal, block-grouped validation, seeds 42-46, tier grid, zero-shot, the pooled split labelled as optimistic) |
+| `REFERENCE_XGBOOST.csv` | the XGBoost headline, tier and explanation-stability numbers (mean and std over 5 seeds; the `role` column marks pool 48 as `primary` and pools 40 and 45 as comparison); a cell reads `not computed` where the XGBoost tables have no such number and `not applicable` where the quantity does not exist |
+| `TEMPLATE_model_results.csv` | blank, one row per (model, pool, tier, split, protocol), with the same columns: fill it and compare row by row |
+| `rankings/feature_ranking_mutual_info_48f.csv`, `rankings/feature_ranking_mutual_info_blockval_48f.csv` (+ `.meta.json`) | the shared rankings of the primary pool 48 that define the tiers (rankings of pools 40 and 45 are regenerated on their first run into the same folder) |
+| `metrics/xgboost/shap_importance_xgboost_<N>f.csv`, `shap_boot_xgboost_<N>f.npz` | the XGBoost SHAP files that step D needs |
+| `rating/` | the blank A/B rating sheet, its key and its instructions |
+| `01_...` to `06_...md` | XGBoost conclusions, tables and the declared protocols by research area (protocol and headline, open-set, explanations, feature tiers, cross-dataset, false-positive rate and adaptation); `NUMBERS_LEDGER.md` lists every quoted number with its source |
+
+**Primary pool.** Pool 48 (the full official 42-column feature set plus 6 engineered features) is the primary pool: compare your model with the `primary` rows of `REFERENCE_XGBOOST.csv` first. Pools 40 and 45 are comparison pools (their XGBoost rows stay in the reference). Pool 48 needs the full official files; a download with fewer columns only supports pool 40. The XGBoost pool-48 results are slightly worse than pool 40 on FPR at the argmax decision (0.2933 against 0.2853) and ECE (0.1093 against 0.0876); its higher open-set detection depends on the window-count `ct_*` columns (a within-capture effect), and its lower FPR at 95% detection is shared between those and the TTL columns, so do not expect either on another network.
+
+Steps (run from the repository root; `<type>` is your `model.type`):
+
+| step | command | writes | what a new model needs |
+|---|---|---|---|
+| A. headline metrics, 5 seeds, official split and the pooled split (best case, optimistic) | set `model.type: <type>` (and its `model.params`) in `configs/config.yaml`, then `python pipelines/run_headline_seeds.py --pools full` (add `base` for the comparison pool 40) | `results/metrics/<type>/headline_*` | a branch in `src/models/model_factory.py` (`elif model_type == "<type>": ...`); the declared parameters in `model.params` |
+| B. feature-tier study (primary pool 48: tiers 48 / 40 / 30 / 20 / 15; `--pools base full_no_ttl full` adds the comparison pools 40 and 45) | `python pipelines/run_tier_study.py --model <type>`, then `python scripts/tier_summary.py --model <type>` | `tier_study_<type>_<N>f_runs.csv`, `shap_importance_<type>_<N>f.csv`, `shap_boot_<type>_<N>f.npz`, `tier_summary_<type>*` | `tier_study.model_params.<type>` in `configs/config.yaml` (the runner stops with an error naming the key if it is missing), and the same `model_factory` branch |
+| C. explanation stability across tiers | `python scripts/explanation_stability_tiers.py --model <type>` | `stability_<type>_<N>f.csv`, `stability_<type>.md` | step B finished |
+| D. cross-model SHAP agreement, once two models have finished step B | `python scripts/cross_model_agreement.py --models xgboost <type>` | `results/metrics/cross_model/` | the XGBoost SHAP files above and your own from step B |
+| E. optional: open-set and explanation checks (XGBoost only for now) | `python pipelines/run_open_set_study.py --step scores`, `python pipelines/run_xai_study.py --part faithfulness` | `results/metrics/xgboost/` | not implemented for other models yet |
+
+Add `--out-dir results/_local_scratch` (step B) and `--in-dir results/_local_scratch` (steps B-D) to keep your runs local and untracked, as described above.
+
+**Plots for your model.** The tier run (step B) also writes, for every pool (40 / 45 / 48 features) and every tier of that pool, one confusion-matrix PNG and one ROC PNG of the seed-42 model, into `results/plots/<model.type>/`, named `confusion_matrix_pool<N>_tier<T>.png` and `roc_curve_pool<N>_tier<T>.png` (the pool size is in the name because the same tier number in another pool is another feature set). The confusion matrix is grouped by the label scheme; the ROC figure draws one bold attack-versus-normal curve (score 1 - P(Normal)) and one thin one-vs-rest curve per class, and its title gives both AUCs. No extra training is needed: the plots come from the models the tier run trains anyway; `--no-plots` turns them off. To make only the plots (for example for a model whose tier run already finished), run `python pipelines/run_tier_study.py --model <type> --parts plots`: it reuses a model saved in `models_saved/<type>/` for that pool and tier and trains and saves the missing ones (about 15 seconds per tier for XGBoost). The generated plots are git-ignored (`.gitignore`), so they do not fill `results/`; only the two headline plots `confusion_matrix_pool48_tier48.png` and `roc_curve_pool48_tier48.png` of XGBoost (primary pool, full tier) are tracked.
+
+**The repository is trimmed.** Per-seed, per-flow and per-trial result files were removed from `results/metrics/xgboost/` (they are in git tag `pre-cleanup-2026-10`). The summary scripts (`scripts/*_summary.py`, `tier_summary.py`, `final_table.py`, `leakage_table.py`, `accuracy_table.py`, `compare_pools.py`, `compare_tuned.py`, ...) read the outputs of their pipeline, so they will not run on the XGBoost side of the trimmed repository until that pipeline has been run first; for your own model they work as described because you run the pipeline yourself. Do not treat a missing XGBoost file as an error in your run: compare with `REFERENCE_XGBOOST.csv`.
 
 ## A concrete example
 

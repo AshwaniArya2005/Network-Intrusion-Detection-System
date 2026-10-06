@@ -1,4 +1,4 @@
-"""Task 2.6: is the few-shot result adaptation or neighbour leakage? (protocol: results/task_2_6_protocol.md)
+"""Task 2.6: is the few-shot result adaptation or neighbour leakage? (protocol: results/06_fpr_and_adaptation.md, section `Source: leakage_check_protocol.md`)
 
     python pipelines/run_leakage_checks.py [--pools base full] [--ks 1000 5000] [--runs 5] [--checks twins blocks validation]
 

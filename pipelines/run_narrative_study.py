@@ -1,4 +1,4 @@
-"""Task 5.5: a more informative narrative, and the explanations of false positives (protocol: results/task_5_5_protocol.md). XGBoost, official split, `current` scheme, ZERO-SHOT.
+"""Task 5.5: a more informative narrative, and the explanations of false positives (protocol: results/03_novelty2_explanations.md, section `Source: narratives_protocol.md`). XGBoost, official split, `current` scheme, ZERO-SHOT.
 
     python pipelines/run_narrative_study.py --part narrative --source validation --seeds 42 --pools base   # development on block-grouped validation flows only
     python pipelines/run_narrative_study.py --part narrative                                              # the one evaluation on a fresh official-test sample

@@ -1,4 +1,4 @@
-"""Task 4.5: try to improve zero-day (open-set) detection (protocol: results/task_4_5_protocol.md). XGBoost, flat model, official split, ZERO-SHOT.
+"""Task 4.5: try to improve zero-day (open-set) detection (protocol: results/02_novelty1_open_set.md, section `Source: open_set_boost_protocol.md`). XGBoost, flat model, official split, ZERO-SHOT.
 
     python pipelines/run_openset_boost.py --idea calibration|perclass|ensemble|distance|oe [--pools base full] [--seeds 42 43 44 45 46] [--specs ...]
     python pipelines/run_openset_boost.py --idea selection   # pseudo-unknown validation of every individual score (inner models without Reconnaissance / Generic)

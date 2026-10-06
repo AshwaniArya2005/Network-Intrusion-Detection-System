@@ -96,7 +96,7 @@ def render(tables: dict[str, pd.DataFrame]) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--pools", nargs="*", default=["40f", "45f", "48f"])
+    parser.add_argument("--pools", nargs="*", default=["48f"], help="pool sizes, default the primary pool 48f; add 40f 45f for the comparison pools")
     parser.add_argument("--models", nargs="*", default=list(MODELS), help="model types to compare (their SHAP files must exist)")
     parser.add_argument("--in-dir", help="look for <in-dir>/<model>/ first (local runs); XGBoost falls back to results/metrics/xgboost/")
     parser.add_argument("--out-dir", help="where to write the agreement tables (default results/metrics/cross_model, or <in-dir>/cross_model with --in-dir)")

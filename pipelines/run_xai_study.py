@@ -1,4 +1,4 @@
-"""Task 5: are the explanations faithful and are the narratives correct? (protocol: results/task_5_protocol.md). XGBoost, official split, `current` scheme, ZERO-SHOT.
+"""Task 5: are the explanations faithful and are the narratives correct? (protocol: results/03_novelty2_explanations.md, section `Source: explanations_protocol.md`). XGBoost, official split, `current` scheme, ZERO-SHOT.
 
     python pipelines/run_xai_study.py --part faithfulness [--pools base full_no_ttl full] [--seeds 42 43 44 45 46]
     python pipelines/run_xai_study.py --part audit        [--pools base full]

@@ -1,4 +1,4 @@
-"""Tables for Task 5 from results/metrics/xgboost/xai_*.csv (protocol: results/task_5_protocol.md).
+"""Tables for Task 5 from results/metrics/xgboost/xai_*.csv (protocol: results/03_novelty2_explanations.md, section `Source: explanations_protocol.md`).
 
     python scripts/xai_summary.py --pools 40f 45f 48f
 

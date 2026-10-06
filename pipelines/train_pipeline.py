@@ -26,7 +26,7 @@ from src.evaluation.metrics import (
     group_recall_from_diagnostics, per_class_metrics, probabilistic_metrics, threshold_sweep, unknown_auroc, unknown_detection_rate,
 )
 from src.adaptation import adaptation_weights
-from src.evaluation.plots import plot_confusion_matrix_for_scheme, plot_roc_curve
+from src.evaluation.plots import write_tier_plots
 from src.fpr_methods import fit_temperature
 from src.xai.class_reference import ClassReference
 from src.feature_selection import compute_feature_ranking, data_signature, ranking_is_current, write_feature_ranking
@@ -151,7 +151,7 @@ def block_validation_splits(config: dict, splits: Splits, seed: int, block_size:
 
 def generate_feature_ranking(config: dict, feature_sets: dict, train_df: pd.DataFrame) -> pd.Series:
     """Write the ranking for `feature_selection.ranking_source` to its own file
-    (results/feature_ranking_<source>.csv): mutual information on the training split, or the
+    (results/rankings/feature_ranking_<source>.csv): mutual information on the training split, or the
     curated order. get_active_features builds the 30/20/15 sets from it."""
     fs_cfg = config["feature_selection"]
     if fs_cfg["ranking_source"] == "curated":
@@ -386,11 +386,8 @@ def main() -> None:
     results_dir = resolve_path(config["paths"]["results_dir"])
     plots_dir = results_dir / "plots" / config["model"]["type"]
     scheme_name, merge_groups, _ = get_label_scheme(config)
-    plot_confusion_matrix_for_scheme(predictions_out["y_test"], predictions_out["y_pred"], predictions_out["class_names"],
-                                      plots_dir / tagged(config, f"confusion_matrix_{feature_set_name}.png"),
-                                      scheme_name, merge_groups)
-    plot_roc_curve(predictions_out["y_test"], predictions_out["y_proba"],
-                    predictions_out["class_names"], plots_dir / tagged(config, f"roc_curve_{feature_set_name}.png"))
+    write_tier_plots(predictions_out, plots_dir, len(feature_sets["feature_pool"]), feature_set_name, scheme_name, merge_groups,
+                     config["data"]["normal_category"], config["model"]["type"])   # confusion_matrix_pool<N>_tier<T>.png, roc_curve_pool<N>_tier<T>.png
 
     metrics_dir = get_metrics_dir(config)
     metrics_dir.mkdir(parents=True, exist_ok=True)

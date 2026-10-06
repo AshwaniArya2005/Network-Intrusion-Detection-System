@@ -1,4 +1,4 @@
-"""Where a flow's feature values sit among the training flows, overall and within each class (Task 5.5; protocol: results/task_5_5_protocol.md).
+"""Where a flow's feature values sit among the training flows, overall and within each class (Task 5.5; protocol: results/03_novelty2_explanations.md, section `Source: narratives_protocol.md`).
 
 `ClassReference` is fitted on the model's input matrix (numeric columns standardised, categorical columns integer codes) and the encoded training labels. For every numeric feature it keeps a
 1,001-point quantile grid of all training flows and of each class's flows (resolution 0.1 percentage point); for every categorical feature the share of flows with each code, overall and per class.

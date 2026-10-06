@@ -1,4 +1,4 @@
-"""Tables for Task 6 from results/metrics/xgboost/cross_dataset_*.csv (protocol: results/task_6_protocol.md).
+"""Tables for Task 6 from results/metrics/xgboost/cross_dataset_*.csv (protocol: results/05_novelty4_cross_dataset.md, section `Source: cross_dataset_protocol.md`).
 
     python scripts/cross_dataset_summary.py
 

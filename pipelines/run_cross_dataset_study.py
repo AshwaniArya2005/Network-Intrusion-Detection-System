@@ -1,4 +1,4 @@
-"""Task 6: cross-dataset generalisation UNSW-NB15 <-> CICIDS2017 under a leak-free protocol (protocol: results/task_6_protocol.md). XGBoost, binary, 14 common features.
+"""Task 6: cross-dataset generalisation UNSW-NB15 <-> CICIDS2017 under a leak-free protocol (protocol: results/05_novelty4_cross_dataset.md, section `Source: cross_dataset_protocol.md`). XGBoost, binary, 14 common features.
 
     python pipelines/run_cross_dataset_study.py --step zero_shot      # Step 1 (+ the block mix tables)
     python pipelines/run_cross_dataset_study.py --step diagnostic    # Step 2
@@ -32,7 +32,7 @@ DIRECTIONS = {"UNSW_to_CIC": ("UNSW", "CIC"), "CIC_to_UNSW": ("CIC", "UNSW")}
 
 @dataclass
 class Settings:
-    """The declared sizes (results/task_6_protocol.md); tests pass smaller ones."""
+    """The declared sizes (results/05_novelty4_cross_dataset.md, section `Source: cross_dataset_protocol.md`); tests pass smaller ones."""
     block: int = cdp.BLOCK
     buffer: int = cdp.BUFFER
     train_share: float = 0.6          # Steps 1-3: share of the target blocks that are "train blocks" (the rest are the evaluation blocks)

@@ -43,6 +43,13 @@ def ranking_path(config: dict[str, Any]) -> Path:
     return path.with_name(tagged(config, path.name))  # the target (hence MI ranking) depends on the label scheme
 
 
+def rating_dir(config: dict[str, Any]) -> Path:
+    """Where the blank rating sheets and their keys are written (`paths.rating_dir`, default results/rating/); created on demand."""
+    path = resolve_path(config["paths"].get("rating_dir", "results/rating"))
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
 def _ranked_pool(config: dict[str, Any], feature_sets: dict[str, Any]) -> list[str]:
     """Features ordered most -> least important for `feature_selection.ranking_source`:
     "curated" is the hand-written feature_curated_rank; "mutual_info" is the data-derived

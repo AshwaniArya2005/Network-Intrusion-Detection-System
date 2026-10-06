@@ -15,7 +15,8 @@ paths:
   unsw_train: "data/raw/unsw_nb15_train.csv"
   unsw_test: "data/raw/unsw_nb15_test.csv"
   cic_file: "data/raw/cicids2017_combined.csv"
-  feature_ranking: "results/feature_ranking_{source}.csv"   # one file per ranking_source (+ "_48f" for the full pool, see feature_selection.pool)
+  feature_ranking: "results/rankings/feature_ranking_{source}.csv"   # one file (+ .meta.json sidecar) per ranking_source (+ "_48f" for the full pool, see feature_selection.pool); the committed rankings live here
+  rating_dir: "results/rating"   # blank human-rating sheets and their keys (scripts/make_ab_sheet.py, make_human_audit_sheet.py)
 
 data:
   label_column: "label"                        # binary: 0 = normal, 1 = attack
@@ -116,7 +117,7 @@ tuning:
     reg_lambda: {loguniform: [0.5, 20.0]}
     reg_alpha: {choice: [0, 0.1, 1, 5]}
     class_weight_power: {uniform: [0.0, 1.0]}   # exponent of the balanced class weights (default model: 0.5)
-  # Task 2.7 (results/task_2_7_protocol.md): the same search on block-grouped validation with stronger regularisation
+  # Task 2.7 (results/06_fpr_and_adaptation.md, section `Source: fpr_reduction_protocol.md`): the same search on block-grouped validation with stronger regularisation
   space_regularised:
     max_depth: {int: [3, 7]}
     learning_rate: {loguniform: [0.03, 0.3]}
@@ -141,7 +142,7 @@ shift:
     ttl: [sttl, dttl, ct_state_ttl]
     connection_counts: [ct_src_dport_ltm, ct_dst_sport_ltm, ct_srv_src, ct_dst_ltm, ct_src_ltm, ct_srv_dst, ct_dst_src_ltm]
 
-# Task 3 tier study (pipelines/run_tier_study.py; protocol in results/task_3_protocol.md). Training / validation are built from contiguous
+# Task 3 tier study (pipelines/run_tier_study.py; protocol in results/04_novelty3_feature_tiers.md, section `Source: feature_tiers_protocol.md`). Training / validation are built from contiguous
 # blocks of the training file (a random validation split shares neighbouring flows with training and is optimistic).
 tier_study:
   block_size: 1000
@@ -151,7 +152,7 @@ tier_study:
   bootstrap: 100           # paired bootstrap resamples of the explained rows (cross-model agreement intervals)
   random_draws: 10
   random_tiers: ["30", "20", "15"]
-  pools: ["base", "full_no_ttl", "full"]   # 40, 45 and 48 features
+  pools: ["full"]   # the primary pool: 48 features (all 42 official columns + 6 engineered). Pass --pools base full_no_ttl full for the comparison pools 40 and 45
   model_params:            # declared settings for the other model families (no tuning)
     random_forest: {n_estimators: 150, max_depth: 10, min_samples_leaf: 5, n_jobs: -1}
     logistic_regression: {max_iter: 300}
@@ -175,7 +176,7 @@ xai:
   top_k_features: 5
 
 narrative:
-  # "classic": every cited feature gets a magnitude cue against the overall training mean / std. "class_relative" (Task 5.5, results/task_5_5_protocol.md): features that read "typical" are
+  # "classic": every cited feature gets a magnitude cue against the overall training mean / std. "class_relative" (Task 5.5, results/03_novelty2_explanations.md, section `Source: narratives_protocol.md`): features that read "typical" are
   # omitted, the rest are placed among all training flows and the predicted class's flows, and a calibrated confidence is shown next to the raw one (needs the class_reference / calibration
   # files that training saves next to the model).
   style: "classic"

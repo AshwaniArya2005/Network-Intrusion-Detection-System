@@ -1,4 +1,0 @@
-feature_set,n_features,ranked_f1,worst_f1,random_f1_mean,random_f1_std,random_f1_min,random_f1_max,n_random_draws,ranked_percentile_in_random,ranked_rank_among_draws,ranked_z_vs_random,ranked_beats_random_mean_plus_2std
-30,30,0.7378,0.6799,0.7323,0.0031,0.7272,0.736,10,100.0,1,1.79,False
-20,20,0.7307,0.6289,0.7189,0.0221,0.6615,0.7319,10,70.0,4,0.54,False
-15,15,0.7272,0.5905,0.7055,0.0374,0.6337,0.7316,10,60.0,5,0.58,False

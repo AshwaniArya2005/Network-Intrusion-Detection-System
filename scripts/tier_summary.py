@@ -4,7 +4,7 @@
 
 Reads results/metrics/<model>/tier_study_<model>_<N>f_runs.csv (and, when present, *_pooled.csv, tier_baselines_summary_*.csv and the earlier
 random-validation operating-point file for the full tier) and writes tier_summary_<model>_<N>f.csv and tier_summary_<model>.md.
-Claim tested (declared in results/task_3_protocol.md): shrinking the feature set costs no more than retraining noise. For every tier
+Claim tested (declared in results/04_novelty3_feature_tiers.md, section `Source: feature_tiers_protocol.md`): shrinking the feature set costs no more than retraining noise. For every tier
 `drop_f1` = full-pool mean macro F1 - tier mean, `meets_noise` = drop <= 2 x the full pool's seed-to-seed std, `meets_practical` = drop <= 0.02,
 `welch_z_f1` = drop / sqrt(var_full / n + var_tier / n).
 """
@@ -86,7 +86,7 @@ def render(model: str, tables: dict[str, pd.DataFrame], baselines: dict[str, pd.
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--model", default="xgboost")
-    parser.add_argument("--pools", nargs="*", default=["40f", "45f", "48f"])
+    parser.add_argument("--pools", nargs="*", default=["48f"], help="pool sizes, default the primary pool 48f; add 40f 45f for the comparison pools")
     parser.add_argument("--in-dir", help="read and write under <in-dir>/<model>/ instead of results/metrics/<model>/")
     args = parser.parse_args()
     config = load_config()

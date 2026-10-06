@@ -1,4 +1,4 @@
-"""Task 2.7: lower the official-split false-positive rate (protocol: results/task_2_7_protocol.md).
+"""Task 2.7: lower the official-split false-positive rate (protocol: results/06_fpr_and_adaptation.md, section `Source: fpr_reduction_protocol.md`).
 
     python pipelines/run_fpr_study.py --step tuned    [--pools base full_no_ttl full] [--seeds 42 43 44 45 46]
     python pipelines/run_fpr_study.py --step prior    ...   TRANSDUCTIVE class-prior correction (+ ZERO-SHOT temperature scaling and a zero-shot control)
@@ -40,7 +40,7 @@ from src.utils.logger import add_file_logging, get_logger
 logger = get_logger(__name__)
 
 SEEDS = (42, 43, 44, 45, 46)
-TAU, SELF_FRACTION, SELF_ROUNDS = 0.90, 0.2, 2          # declared in results/task_2_7_protocol.md
+TAU, SELF_FRACTION, SELF_ROUNDS = 0.90, 0.2, 2          # declared in results/06_fpr_and_adaptation.md, section `Source: fpr_reduction_protocol.md`
 KS = (100, 250, 500, 1000, 2500, 5000)
 STRATEGIES = ("random", "entropy", "diverse", "mix")
 FEWSHOT_FRACTION, BLOCK, BUFFER = 0.5, 1000, 200
@@ -292,7 +292,7 @@ def validation_auc(fit: SimpleNamespace) -> float:
 
 
 def run_combined(config: dict, feature_sets: dict, pool: str, seeds=SEEDS) -> pd.DataFrame:
-    """The recipe declared in results/task_2_7_protocol.md, per seed and chosen on that seed's validation rows only: the block-grouped-validation tuned configuration (objective: validation
+    """The recipe declared in results/06_fpr_and_adaptation.md, section `Source: fpr_reduction_protocol.md`, per seed and chosen on that seed's validation rows only: the block-grouped-validation tuned configuration (objective: validation
     attack AUC) if its validation AUC is at least the default's, else the default; temperature scaling always; the EM prior correction only if its validation gate passes (then the recipe is
     TRANSDUCTIVE, otherwise ZERO-SHOT). Evaluated on the whole official test file."""
     rows = []

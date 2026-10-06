@@ -1,4 +1,4 @@
-"""Automatic audit of generated narratives (Task 5; protocol: results/task_5_protocol.md).
+"""Automatic audit of generated narratives (Task 5; protocol: results/03_novelty2_explanations.md, section `Source: explanations_protocol.md`).
 
 A narrative reads "This flow was flagged as <label> with <p>% confidence. Main reasons: <cue> <feature>, ... Suggested action: <text>". `parse_narrative` takes it apart again and the
 `check_*` functions compare each claim with an independent computation (SHAP from a separate explainer, z-scores from the raw training frame, the configured actions).
