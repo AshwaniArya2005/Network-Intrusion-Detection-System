@@ -3,7 +3,7 @@
 Zero-shot throughout (training data only); official split, scheme `current`; seeds 42-46, mean +/- std. Training / validation come from contiguous
 blocks of the training file (1,000-row blocks, 200-row gaps), because a random validation split shares neighbouring flows with the training rows and is
 optimistic. Protocol declared before any result: `results/task_3_protocol.md` (two amendments: the other model families are teammates' and are not run here).
-Tables: `tier_summary_xgboost.md` (Step 1), `stability_xgboost.md` (Step 2). Steps 3 and 4 (other model families, cross-model agreement) are not part of
+Tables: `task_3_tables.md` (sections `tier_summary_xgboost.md` for Step 1 and `stability_xgboost.md` for Step 2; per-tier CSVs `tier_summary_xgboost_<N>f.csv`, `stability_xgboost_<N>f.csv`). Steps 3 and 4 (other model families, cross-model agreement) are not part of
 this work package; `pipelines/run_tier_study.py --model <type>` and `scripts/cross_model_agreement.py` are ready, with the same rankings, seeds and splits.
 
 ## The claim for novelty 3

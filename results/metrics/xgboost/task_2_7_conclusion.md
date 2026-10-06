@@ -2,7 +2,7 @@
 
 Official split, scheme `current`, flat model, seeds 42-46 (mean +/- std). Every selection used block-grouped validation (1,000-row blocks, 200-row gaps) or, for few-shot, the labelled sample. Protocol and the
 rule for "clearly beats the baseline" were declared before any result (`results/task_2_7_protocol.md`). Primary metric: official-test FPR at about 95% detection with the threshold chosen on validation (`det95 FPR`).
-Tables: `fpr_study_tuned_40f_45f_48f.md`, `fpr_study_prior_40f_45f_48f.md`, `fpr_study_self_40f_45f_48f.md`, `fpr_study_fewshot_48f_45f_41f.md`, `fpr_study_final_40f_45f_48f.md`.
+Tables: `task_2_7_tables.md` (one section per original table: `fpr_study_tuned_40f_45f_48f.md`, `fpr_study_prior_40f_45f_48f.md`, `fpr_study_self_40f_45f_48f.md`, `fpr_study_fewshot_48f_45f_41f.md`, `fpr_study_final_40f_45f_48f.md`; the per-seed rows behind them are in git tag `pre-cleanup-2026-10`).
 
 ## Result against the hypothesis
 Hypothesis (a guess): zero-shot methods reach about 0.20-0.22, and 0.15 or below needs labels. **Zero-shot: not reached.** No zero-shot or transductive method lowered the det95 FPR by the declared 0.02 (the best mean paired

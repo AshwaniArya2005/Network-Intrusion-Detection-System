@@ -1,7 +1,7 @@
 # Task 5 conclusion: are the explanations faithful and are the narratives correct? (novelty 2), XGBoost
 
 Official split, scheme `current`, flat model, ZERO-SHOT, models trained as in Task 3 (block-grouped training / validation), seeds 42-46 (mean +/- std), pools 40 / 45 / 48 and the 30- and 15-feature tiers of each. Protocol, primary metrics and readings were declared
-before any result (`results/task_5_protocol.md`). Tables: `xai_faithfulness_40f_45f_48f.md` (Steps 1-2), `xai_audit_40f_48f.md` (Steps 1 and 3, with the shift comparison), `dashboard_end_to_end_40f.csv` (Step 4), `results/task_5_human_audit_sheet.csv` (Step 5).
+before any result (`results/task_5_protocol.md`). Tables: `task_5_tables.md` (sections `xai_faithfulness_40f_45f_48f.md` for Steps 1-2 and `xai_audit_40f_48f.md` for Steps 1 and 3, with the shift comparison; a 1,000-narrative sample `xai_audit_40f_narratives.csv` and ten example failures `xai_audit_40f_example_failures.csv`), `dashboard_end_to_end_40f.csv` (Step 4), `results/task_5_human_audit_sheet.csv` (Step 5).
 Explanation stability was measured in Task 3 and is not repeated.
 
 ## The claim for novelty 2
@@ -43,7 +43,7 @@ Unknown 0.22-0.24 and Normal 0.18 (40 features), 0.26 (45) and 0.65 (48).
 | share of cited numeric features read "typical" | 46.9% | 35.7% |
 Caption. The two defects found earlier (a magnitude cue on a categorical feature; standardising twice) do not occur: (b) and (c) are 1.000 and the cue is computed in the right units. The narrative generator never misnames the prediction, including Overlap-Group-1 and Unknown flows. The
 weaknesses are in what is said, not in whether it is true: (f) is 0.25-0.36 for Generic and Overlap-Group-1 on some pools (Overlap-Group-1 0.36 / 0.49, Generic 0.61 / 0.25, flows flagged Unknown 0.69 / 0.68; Normal 0.89, Reconnaissance 0.99-1.00). A typical failure is "reduced average packet size" cited as a reason for
-Overlap-Group-1 although higher values usually push towards that class on training flows (rho 0.4-0.55); the cue describes the flow's value correctly and the SHAP value is positive for this flow, so the sentence is true locally but would mislead a reader who assumes "reduced" is the reason. 403 (40 features) and 622 (48 features) cited
+Overlap-Group-1 although higher values usually push towards that class on training flows (rho 0.4-0.55; ten examples, with the narrative text, are in `xai_audit_40f_example_failures.csv`: its `reason` column was written by a failure-list template that always read "falls as the value rises" whatever the sign of rho; the template is fixed in the code (`shap_trend_phrase`), but this committed file keeps the old wording, so read the `shap_trend_on_training_rows` column, which states the real sign); the cue describes the flow's value correctly and the SHAP value is positive for this flow, so the sentence is true locally but would mislead a reader who assumes "reduced" is the reason. 403 (40 features) and 622 (48 features) cited
 features were listed as inconsistent, every one in check (f). "Typical" cues make up 36-47% of cited numeric features, and in 7.5% / 2.7% of the narratives no cited numeric feature carries any direction. A category of "-" (UNSW's "none") is printed as "network service=-".
 **Under the shift:** on validation flows the same audit gives (a)-(e) = 1.000 and (f) = 0.788 / 0.731 against 0.757 / 0.722 on official-test flows (test minus validation -0.030 and -0.009), "typical" 47.9% / 36.3% against 46.9% / 35.7%. The shift does not change the narrative's correctness.
 
@@ -73,7 +73,7 @@ understandable and actionable is not measured here; the 30-narrative sheet is re
 # Task 5.5: a more informative narrative, and the explanations of false positives (novelty 2)
 
 Official split, XGBoost, ZERO-SHOT, seeds 42-46, pools 40 and 48, models trained as in Task 5. Protocol, rule and primary metrics were declared before any result (`results/task_5_5_protocol.md`). The rule was inspected only on block-grouped validation flows (model seed 42, 40 features) and
-**not changed** after that inspection; it was then evaluated once on a fresh official-test sample (sampling seed 5000 + the model seed, so the flows differ from Task 5's). Tables: `narrative_test_40f_48f.md` (Step 1), `narrative_falsepos_40f_48f.md` (Step 2), `results/task_5_5_ab_sheet.csv` (Step 3).
+**not changed** after that inspection; it was then evaluated once on a fresh official-test sample (sampling seed 5000 + the model seed, so the flows differ from Task 5's). Tables: `task_5_tables.md` (sections `narrative_test_40f_48f.md` for Step 1 and `narrative_falsepos_40f_48f.md` for Step 2), `results/task_5_5_ab_sheet.csv` (Step 3).
 The classic generator is kept (`narrative.style: classic`, the default); `class_relative` is switched on in `configs/config.yaml`.
 
 ## The updated claim for novelty 2

@@ -1,7 +1,7 @@
 # XIDS Capstone — Project Plan (updated to match the repository)
 
 > This revises the earlier plan so that its findings, numbers and open items match what the code and
-> `results/` currently show. Numbers are XGBoost, 40 features, official UNSW-NB15 train/test split,
+> `results/` currently show. Every headline number is listed with its source file and column in `results/NUMBERS_LEDGER.md`. Numbers are XGBoost, 40 features, official UNSW-NB15 train/test split,
 > duplicates removed, single seed unless stated. Reproduce with `python pipelines/run_all_experiments.py`.
 > Items that cannot be derived from the repository (team progress, review dates) are left as they were and marked.
 
@@ -91,15 +91,15 @@ split vs. 0.112 on a pooled random split, which is optimistic because it shares 
 train/test shift plus dedup (dedup removes recurring easy rows and reshapes the class mix: Generic 18,871 → 1,257
 test rows, DoS 4,089 → 1,504), not the model.
 
-**Taxonomy.** Analysis, Backdoor and DoS cannot be reliably separated from the flow features: **72–80% of their rows
-have an exact feature-vector twin in another class**. (The earlier justification — identical medians, extra features
+**Taxonomy.** Analysis, Backdoor and DoS cannot be reliably separated from the flow features: **77–85% of their rows
+have an exact feature-vector twin in another class** on the tracked pooled partition (duplicates kept; `results/metrics/overlap/pooled_34f/summary.md` and `pooled_42f/summary.md`: Analysis 77.0%, Backdoor 84.9%, DoS 77.4–77.8%); an earlier deduplicated 34-feature run gave 72–80% (output not committed). (The earlier justification — identical medians, extra features
 absent — was incomplete: the official release does have the 8 missing columns, and restoring them does *not* remove the
-overlap: twin share Analysis 72.0 → 72.0%, Backdoor 78.9 → 76.7%, DoS 79.7 → 79.5%.) They are merged into
+overlap. Tracked figures, 34 → 42 features: Analysis 77.0 → 77.0%, Backdoor 84.9 → 84.9%, DoS 77.8 → 77.4%, Fuzzers 23.9 → 14.9%, Reconnaissance 33.8 → 16.1%; the earlier, untracked 34-feature run read Analysis 72.0 → 72.0%, Backdoor 78.9 → 76.7%, DoS 79.7 → 79.5%.) They are merged into
 `Overlap-Group-1`; recall into the group is 0.83 (Analysis), 0.94 (Backdoor), 0.50 (DoS). Exploits is the class
 sharing the most vectors with the group (78% of the group's rows have an Exploits twin). Label schemes compared
-(`current`, `none` 8-class, `wide` = merge + Exploits, `hierarchical`): `wide` has the best fine-grained recall (0.83)
-but lumps 56% of attack rows into one class; `hierarchical` has the lowest false-positive rate (0.208) and the lowest
-detection (0.925). Best-possible accuracy rises mechanically with coarser labels (0.905 / 0.912 / 0.969), so it measures
+(`current`, `none` 8-class, `wide` = merge + Exploits, `hierarchical`; 40 features, official split): `wide` has the best fine-grained recall (0.859,
+`label_scheme_comparison.csv`) but lumps 48% of attack rows into one class; `hierarchical` has the lowest false-positive rate (0.214) and the lowest
+detection (0.935) (5-seed Task 2.5 B1 result, `methods_zero_shot_b1_40f_summary.csv`, method `hier_default`; full table in README, section Label schemes). Best-possible accuracy rises mechanically with coarser labels (0.905 / 0.912 / 0.969), so it measures
 what a merge discards, not which merge is right. The choice of scheme is a team decision.
 
 **Feature tiers.** Tier size (40 → 15) changes macro F1 by only about 0.015 (0.672–0.687). Against 10 random subsets per
@@ -135,7 +135,7 @@ it is not an honest operating point. Where the false alarms concentrate (previou
 - Random-feature-set and worst-N baselines (10 draws per tier) with a significance statement; same-set/different-seed noise floor
 - Per-class precision/recall, attack-vs-normal view at several operating points, fine-grained recall under every label scheme
 - Exact-twin and best-possible-accuracy analysis of class overlap (`scripts/overlap_analysis.py`)
-- Real-data explainability spot checks (`scripts/check_explainability.py`) plus 140 automated tests
+- Real-data explainability spot checks (`scripts/check_explainability.py`) plus 328 automated tests
 
 ## Remaining Work / Open Items
 

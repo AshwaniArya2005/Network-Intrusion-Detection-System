@@ -3,7 +3,7 @@ import pandas as pd
 import pytest
 
 from src.xai.narrative_audit import (
-    UNRECOGNIZED, check_action, check_categorical, check_cited_in_top, check_cue, check_label_statement, cue_direction, directional_consistency, parse_narrative,
+    UNRECOGNIZED, check_action, check_categorical, check_cited_in_top, check_cue, check_label_statement, cue_direction, directional_consistency, parse_narrative, shap_trend_phrase,
 )
 from src.xai.narrative_generator import NarrativeGenerator
 
@@ -82,6 +82,13 @@ def test_directional_consistency_rule():
     assert directional_consistency("reduced", -0.4) == "consistent" and directional_consistency("reduced", 0.4) == "inconsistent"
     assert directional_consistency("unusually high", 0.05) == "no monotone relation"
     assert directional_consistency("typical", 0.9) == "no direction claimed" and directional_consistency("notable", 0.9) == "no direction claimed"
+
+
+def test_failure_reason_states_the_real_shap_trend():
+    """Regression test: the (f) failure reason always said 'falls as the value rises', which is wrong for a 'reduced' cue (those fail because SHAP RISES with the value)."""
+    assert shap_trend_phrase(0.4) == "rises" and shap_trend_phrase(-0.4) == "falls"
+    assert directional_consistency("reduced", 0.4) == "inconsistent" and shap_trend_phrase(0.4) == "rises"      # a failing low cue: the trend is upward
+    assert directional_consistency("unusually high", -0.4) == "inconsistent" and shap_trend_phrase(-0.4) == "falls"
 
 
 def test_standardised_values_need_mean_zero_std_one_and_the_check_script_uses_them():

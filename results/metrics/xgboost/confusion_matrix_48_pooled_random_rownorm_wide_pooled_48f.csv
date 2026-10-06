@@ -1,6 +1,0 @@
-true,Fuzzers,Generic,Normal,Overlap-Group-2,Reconnaissance
-Fuzzers,0.7278,0.0029,0.1651,0.1,0.0043
-Generic,0.0053,0.8908,0.0033,0.0974,0.0033
-Normal,0.0861,0.0002,0.9028,0.0103,0.0006
-Overlap-Group-2,0.0147,0.0084,0.0178,0.9207,0.0384
-Reconnaissance,0.0035,0.0035,0.002,0.2387,0.7523
