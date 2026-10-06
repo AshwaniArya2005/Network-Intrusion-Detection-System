@@ -603,3 +603,20 @@ For every conclusion and for README / PROJECT_PLAN, each quoted number with two 
 | `PROJECT_PLAN.md` | 98 | 96 | 0 | 2 |
 
 The few numbers flagged "only in a file proposed for deletion" are artefacts of the checker, each checked by hand: comma formatting (1,627 is in the kept `open_set_step1_40f_45f_48f.md`); round-half-up against the checker's round-half-even (0.768, 0.789 and 0.773 are 0.7675, 0.7885 / 0.7895 and 0.7725 in the kept `tier_summary_xgboost.md`); and a mean recomputed from a kept file (0.815 is the mean of `open_set_boost_selection_40f_scores.csv`). The stronger check is the ledger (`results/NUMBERS_LEDGER.md`): 280 headline numbers, each verified against a cell of a KEEP or MERGE file.
+
+## 8. Verification (Task 7, Step 4)
+
+| check | result |
+|---|---|
+| tracked files / size | 575 files, 30.00 MB (30,001,760 bytes) before; **350 files, 5.65 MB (5,647,446 bytes)** after, including the ledger, this manifest, the 7 merged files and the example-failures file |
+| test suite | **327 passed before (202 s) and 327 passed after (136 s)**; no test or code file was removed |
+| ledger | **316 of 316 entries verified** against the committed tree (source file exists, column or table row exists, value matches at the quoted precision); 47 distinct source files, none missing |
+| merges | all **2,304 non-empty source lines** of the 37 sources (read from tag `pre-cleanup-2026-10`) are present, in order, in their 7 targets |
+| markdown links | 5 relative links in 38 tracked `.md` files, none broken |
+| referenced paths | 684 backticked file / directory references in the kept documents checked; the only ones that do not resolve are intentional (original table names that are now sections of the merged files, runtime outputs such as `experiment_results_wide.csv`, gitignored inputs under `data/raw`, `data/processed`, `results/diagnostics`, template names in ONBOARDING, and this manifest naming removed files) |
+| commands in README / ONBOARDING / PROJECT_PLAN | every script they name exists (12 files); `pytest`, `python -m pytest ...`, `uvicorn dashboard.backend.main:app` (the module imports and builds the FastAPI app) checked |
+| entry points | `--help` runs for all 31 pipelines and scripts that have an argument parser; the 11 without one import cleanly and keep their `__main__` guard (not executed) |
+| protected paths | `data/raw`, `models_saved`, `results/_local_scratch`, `results/diagnostics`, `results/pipeline.log`: 164 files, **identical to the snapshot taken before the cleanup** (paths, sizes, modification times). None of them is tracked by git; no other gitignored path was touched |
+| `git status` | clean on `cleanup/prune-results` |
+| restored from the tag | nothing; no file was deleted by mistake |
+| backup | `D:\Github Projects\_backups\xai-ids-results-pre-cleanup.zip`, 147.7 MB, 578 files (the whole `results/` folder including the untracked ones), opens, every member passes the CRC test, file list equals the folder, 10 sampled members match the originals byte for byte |
