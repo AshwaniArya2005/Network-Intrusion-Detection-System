@@ -44,3 +44,6 @@ results/plots/*/confusion_matrix_pool*_tier*.png
 results/plots/*/roc_curve_pool*_tier*.png
 !results/plots/xgboost/confusion_matrix_pool48_tier48.png
 !results/plots/xgboost/roc_curve_pool48_tier48.png
+
+# Screenshots of the dashboard are not kept in the repository, and no script generates one
+results/plots/*/dashboard_*.png

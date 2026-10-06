@@ -6,16 +6,20 @@ import pandas as pd
 from src.feature_selection import ranking_is_current, write_feature_ranking
 from src.utils.config_loader import load_config, rating_dir, ranking_path, resolve_path
 
-COMMITTED_RANKINGS = ["feature_ranking_mutual_info", "feature_ranking_mutual_info_48f", "feature_ranking_mutual_info_blockval_40f",
-                      "feature_ranking_mutual_info_blockval_45f", "feature_ranking_mutual_info_blockval_48f"]
 
-
-def test_default_ranking_path_is_the_rankings_folder_and_the_committed_files_are_there():
+def test_default_ranking_path_is_the_rankings_folder_and_the_two_pool_48_rankings_are_committed():
     config = load_config()
     path = ranking_path(config)
-    assert path.parent == resolve_path("results/rankings") and path.name == "feature_ranking_mutual_info.csv"
-    for stem in COMMITTED_RANKINGS:   # a fresh clone must find every committed ranking and the sidecar that stops it being regenerated
-        assert (path.parent / f"{stem}.csv").exists() and (path.parent / f"{stem}.meta.json").exists(), stem
+    assert path.parent == resolve_path("results/rankings") and path.name == "feature_ranking_mutual_info.csv"   # pool 40's default: regenerated on its first run, not committed
+    full = copy.deepcopy(config)
+    full["feature_selection"]["pool_tag"] = "_48f"                       # what choose_pool sets for the 48-feature pool
+    blockval = copy.deepcopy(full)
+    blockval["feature_selection"]["variant_tag"] = "_blockval"           # what the tier study sets
+    for cfg, stem in ((full, "feature_ranking_mutual_info_48f"), (blockval, "feature_ranking_mutual_info_blockval_48f")):
+        ranking = ranking_path(cfg)
+        # a fresh clone must find the committed ranking and the sidecar that stops it being regenerated
+        assert ranking.parent == path.parent and ranking.name == f"{stem}.csv" and ranking.exists() and ranking.with_suffix(".meta.json").exists(), stem
+        assert len(pd.read_csv(ranking)["feature"]) == 48
     assert not list(resolve_path("results").glob("feature_ranking_*"))   # nothing left in the root
 
 

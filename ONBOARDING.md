@@ -34,7 +34,7 @@ broken" section below.
 
 To get a comparable result for your model: set `model.type`, run `python pipelines/run_all_experiments.py`,
 and read `results/metrics/<model.type>/` (outputs are namespaced by model type, so they never overwrite
-another model's). The feature ranking (`results/rankings/feature_ranking_mutual_info.csv`) is model-independent mutual
+another model's). The feature ranking (`results/rankings/feature_ranking_mutual_info_48f.csv` for the primary pool 48) is model-independent mutual
 information, so all models are compared on the same feature sets. Note that every result in the README is
 XGBoost-specific, and `model.params` is shared across tiers (no per-tier re-tuning).
 
@@ -167,7 +167,7 @@ so the numbers are comparable. The shared rules are on one page in `results/PROT
 - **Block-grouped validation.** Training / validation are rebuilt from contiguous blocks of the training file (`tier_study.block_size` / `tier_study.buffer` in
   `configs/config.yaml`) because a random validation split shares neighbouring flows with its training rows. The runner does this for you
   (`pipelines/train_pipeline.block_validation_splits`). Do not report a random-validation number as "validation".
-- **Shared rankings.** The mutual-information rankings are committed (`results/rankings/feature_ranking_mutual_info_blockval[_40f|_45f|_48f].csv`, each with its `.meta.json` sidecar, which stops a committed ranking from being regenerated), so every model sees the same tiers.
+- **Shared rankings.** The mutual-information rankings of the primary pool 48 are committed (`results/rankings/feature_ranking_mutual_info_48f.csv` for the headline run and `feature_ranking_mutual_info_blockval_48f.csv` for the tier study, each with its `.meta.json` sidecar, which stops a committed ranking from being regenerated), so every model sees the same tiers. The rankings of the comparison pools 40 and 45 are not committed: the tier study regenerates them on its first run for that pool (`--pools base full_no_ttl`; `run_all_experiments.py` or `train_pipeline.py --write-ranking` for the plain pool-40 ranking), so a rerun may differ slightly from the committed comparison numbers. Any other study on pool 40 or 45 (headline seeds, FPR, open-set, narrative and similar) raises `FileNotFoundError` until that first run has happened.
   The runner only regenerates a ranking if the file is missing or the training data changed; if it rewrites a tracked ranking file, stop and ask.
 - **Same seeds and explained rows.** `tier_study.seeds` (42-46), `tier_study.shap_rows` and `tier_study.bootstrap` must be the same for every model, otherwise the
   cross-model agreement is not a paired comparison. Leave them alone.
@@ -213,7 +213,7 @@ What to compare with, all under `results/`:
 | `PROTOCOL.md` | the one-page shared rules (official split primary, duplicate removal, block-grouped validation, seeds 42-46, tier grid, zero-shot, the pooled split labelled as optimistic) |
 | `REFERENCE_XGBOOST.csv` | the XGBoost headline, tier and explanation-stability numbers (mean and std over 5 seeds; the `role` column marks pool 48 as `primary` and pools 40 and 45 as comparison); a cell reads `not computed` where the XGBoost tables have no such number and `not applicable` where the quantity does not exist |
 | `TEMPLATE_model_results.csv` | blank, one row per (model, pool, tier, split, protocol), with the same columns: fill it and compare row by row |
-| `rankings/feature_ranking_mutual_info*.csv` (+ `.meta.json`) | the shared feature rankings that define the tiers (a ranking for a new pool is written to the same folder) |
+| `rankings/feature_ranking_mutual_info_48f.csv`, `rankings/feature_ranking_mutual_info_blockval_48f.csv` (+ `.meta.json`) | the shared rankings of the primary pool 48 that define the tiers (rankings of pools 40 and 45 are regenerated on their first run into the same folder) |
 | `metrics/xgboost/shap_importance_xgboost_<N>f.csv`, `shap_boot_xgboost_<N>f.npz` | the XGBoost SHAP files that step D needs |
 | `rating/` | the blank A/B rating sheet, its key and its instructions |
 | `01_...` to `06_...md` | XGBoost conclusions, tables and the declared protocols by research area (protocol and headline, open-set, explanations, feature tiers, cross-dataset, false-positive rate and adaptation); `NUMBERS_LEDGER.md` lists every quoted number with its source |
