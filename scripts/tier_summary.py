@@ -86,7 +86,7 @@ def render(model: str, tables: dict[str, pd.DataFrame], baselines: dict[str, pd.
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--model", default="xgboost")
-    parser.add_argument("--pools", nargs="*", default=["40f", "45f", "48f"])
+    parser.add_argument("--pools", nargs="*", default=["48f"], help="pool sizes, default the primary pool 48f; add 40f 45f for the comparison pools")
     parser.add_argument("--in-dir", help="read and write under <in-dir>/<model>/ instead of results/metrics/<model>/")
     args = parser.parse_args()
     config = load_config()

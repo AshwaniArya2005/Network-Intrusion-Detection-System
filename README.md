@@ -25,8 +25,9 @@ abstract `BaseModel` interface — see [Swapping the model](#swapping-the-model)
 
 The tables further down were written for the 34-feature data and a single seed. What has since been established (details in `results/metrics/xgboost/`; every headline number of the bullets below is listed with its source file and column in `results/NUMBERS_LEDGER.md`; the conclusions, tables and declared protocols by research area are the numbered files `results/01_protocol_and_headline.md` to `results/06_fpr_and_adaptation.md`):
 
-- **Data and pools.** The loader now uses the 42-feature UNSW-NB15 training/testing files (257,673 rows, 162,745 after exact deduplication) and two pools: 40 features (34 raw + 6 engineered)
-  and 48 features (42 raw + 6 engineered). Official split, 5 seeds, XGBoost, scheme `current`: accuracy 0.743 / 0.740, FPR 0.285 / 0.293 (40 / 48 features).
+- **Data and pools.** The loader uses the 42-feature UNSW-NB15 training/testing files (257,673 rows, 162,745 after exact deduplication) and the pools described next.
+- **Primary pool.** The primary feature pool is **48**: the full official feature set (42 raw columns + 6 engineered features). Pools 40 (34 raw + 6 engineered, with only two window-count `ct_*` columns) and 45 (pool 48 without the three TTL columns `sttl`, `dttl`, `ct_state_ttl`) are comparison pools: their numbers stay in the tables, the ledger and `results/REFERENCE_XGBOOST.csv`. Pool 48 needs the full official files with all 42 feature columns; a download with fewer columns (the older 34-feature copy) only supports pool 40.
+  Official split, 5 seeds, XGBoost, scheme `current`, pool 48 / pool 40: accuracy 0.7401 / 0.7427, macro F1 0.7130 / 0.7125, FPR at the argmax decision 0.2933 / 0.2853, FPR at 95% detection 0.2375 / 0.2588, ECE 0.1093 / 0.0876, open-set detection 0.3770 / 0.2585. Read plainly: pool 48 is slightly worse than pool 40 on FPR at the argmax decision and on ECE. Its higher open-set detection depends on the seven window-count `ct_*` columns (0.195 for the pool without them, against 0.2585 for pool 40); the leakage check showed these columns to be a within-capture effect, so the gain should not be expected on another network. Its lower FPR at 95% detection is shared between the extra columns (0.2446 without the window-count columns, 0.2523 without the TTL columns, 0.2375 with both, 0.2588 for pool 40), so only part of it is that within-capture effect; whether the TTL part carries over to another network has not been tested.
 - **Random splits are optimistic.** Consecutive rows of the official files are not shuffled: neighbouring flows share sliding-window `ct_*` values and often a class. A random validation split or the pooled
   random split therefore shares neighbours with its training rows. The pooled-split figures quoted below (and the random-validation FPR) are best cases. A validation set built from contiguous blocks
   predicts the test FPR to within 0.03-0.05 at the 95%-detection point; the random validation under-predicts it by 0.15-0.17 (`results/06_fpr_and_adaptation.md` (section `Source: leakage_check_conclusion.md`), `results/04_novelty3_feature_tiers.md` (section `Source: feature_tiers_conclusion.md`)).
@@ -66,7 +67,7 @@ The tables further down were written for the 34-feature data and a single seed. 
 ## Key findings (current results, XGBoost, 40 features, official UNSW-NB15 split)
 
 These are the numbers to quote; every row is reproducible with `python pipelines/run_all_experiments.py`
-(details and caveats in the sections below).
+(details and caveats in the sections below). The primary pool is now 48 (see the updates above); this table is the earlier single-seed run on the 40-feature pool.
 
 | Topic | Result |
 |---|---|
@@ -128,7 +129,7 @@ prints the links and the exact file paths to place them at
 (`data/raw/unsw_nb15_train.csv`, `data/raw/unsw_nb15_test.csv`,
 `data/raw/cicids2017_combined.csv`).
 
-The official UNSW-NB15 training/testing set has 42 feature columns. The files this project was developed
+**Pool 48, the primary pool, needs the full official files with all 42 feature columns; a download with fewer columns only supports pool 40.** The official UNSW-NB15 training/testing set has 42 feature columns. The files this project was developed
 on (`data/raw`, both train and test) lack 8 of them (`sttl, dttl, ct_state_ttl, ct_srv_src, ct_dst_ltm,
 ct_src_ltm, ct_srv_dst, ct_dst_src_ltm`); `python scripts/download_datasets.py` reports which are missing,
 and the loader switches to a 48-feature pool automatically when all 8 are present (see

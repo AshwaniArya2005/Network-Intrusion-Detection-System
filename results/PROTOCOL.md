@@ -11,8 +11,8 @@ One page. These rules make results of different models comparable with the XGBoo
 
 ## Seeds, pools and tiers
 6. **Seeds 42, 43, 44, 45, 46** (`tier_study.seeds`, `experiments.headline_seeds`). A seed changes the model seed and the block draw; the test file is fixed. Report mean and standard deviation (ddof = 1) over the five seeds.
-7. **Pools:** 40 features (34 raw + 6 engineered), 45 (the 48-feature pool without `sttl`, `dttl`, `ct_state_ttl`), 48 (42 raw + 6 engineered).
-8. **Tier grid:** the top-N of the committed mutual-information rankings (`results/rankings/feature_ranking_mutual_info_blockval*.csv`, shared by all models, never regenerated). Pool 48: 48 / 40 / 30 / 20 / 15; pool 45: 45 / 40 / 30 / 20 / 15; pool 40: 40 / 30 / 20 / 15. If a runner would rewrite a tracked ranking file, stop and ask.
+7. **Pools:** pool **48** is the primary pool (42 raw official columns + 6 engineered; it needs the full official files). Pool 40 (34 raw + 6 engineered; the only pool a download with fewer columns supports) and pool 45 (pool 48 without `sttl`, `dttl`, `ct_state_ttl`) are comparison pools. Read the primary pool with its caveat: it is slightly worse than pool 40 on FPR at the argmax decision (0.2933 against 0.2853) and on ECE (0.1093 against 0.0876); its higher open-set detection depends on the window-count `ct_*` columns, a within-capture effect shown by the leakage check; its lower FPR at 95% detection is shared between those columns and the TTL columns. Do not assume either carries over to another network.
+8. **Tier grid:** the top-N of the committed mutual-information rankings (`results/rankings/feature_ranking_mutual_info_blockval*.csv`, shared by all models, never regenerated). Pool 48 (primary): 48 / 40 / 30 / 20 / 15; pool 45: 45 / 40 / 30 / 20 / 15; pool 40: 40 / 30 / 20 / 15. If a runner would rewrite a tracked ranking file, stop and ask.
 9. **Do not change** `tier_study.seeds`, `tier_study.shap_rows` (1,000 explained rows), `tier_study.bootstrap` (100 resamples) or `evaluation.ece_bins` (15): otherwise the cross-model comparison is not paired.
 10. **Hyperparameters are declared, not tuned:** `model.params` for the headline run and `tier_study.model_params.<model type>` for the tier study (random forest: 150 trees, depth 10, min leaf 5; logistic regression: `max_iter` 300). A model run with other settings is not comparable; say so.
 
@@ -28,8 +28,8 @@ Outputs of a model go to `results/metrics/<model.type>/` only; never edit or ove
 ## Commands (details and the config key for a new model: `ONBOARDING.md`)
 | step | command |
 |---|---|
-| A headline, 5 seeds, official and pooled | `python pipelines/run_headline_seeds.py` (with `model.type` set to your model) |
-| B tier study | `python pipelines/run_tier_study.py --model <type>` then `python scripts/tier_summary.py --model <type>` |
+| A headline, 5 seeds, official and pooled | `python pipelines/run_headline_seeds.py --pools full` (primary pool; add `base` for pool 40; `model.type` set to your model) |
+| B tier study | `python pipelines/run_tier_study.py --model <type>` (default: the primary pool 48; `--pools base full_no_ttl full` for all three) then `python scripts/tier_summary.py --model <type>` |
 | C explanation stability across tiers | `python scripts/explanation_stability_tiers.py --model <type>` |
 | D cross-model SHAP agreement (after two models finished) | `python scripts/cross_model_agreement.py --models xgboost <type>` |
 | E open-set and explanation checks (XGBoost only for now) | `python pipelines/run_open_set_study.py --step scores`, `python pipelines/run_xai_study.py --part faithfulness` |

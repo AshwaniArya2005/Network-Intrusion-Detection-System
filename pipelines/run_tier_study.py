@@ -1,6 +1,7 @@
 """Feature-tier study: accuracy and SHAP explanations as the feature set shrinks (protocol: results/04_novelty3_feature_tiers.md, section `Source: feature_tiers_protocol.md`).
 
-    python pipelines/run_tier_study.py --model xgboost [--pools base full_no_ttl full] [--parts tiers baselines pooled plots] [--no-plots]
+    python pipelines/run_tier_study.py --model xgboost [--pools full base full_no_ttl] [--parts tiers baselines pooled plots] [--no-plots]   (default pool: full = 48 features, the primary pool;
+    base = 40 and full_no_ttl = 45 features are the comparison pools)
 
 For every pool (40 / 45 / 48 features) and tier (the top-N of a mutual-information ranking of the pool, computed once on the seed-42
 block-grouped training split and shared by every model type and seed) and seed 42..46 it trains the model ONCE and records the official-split

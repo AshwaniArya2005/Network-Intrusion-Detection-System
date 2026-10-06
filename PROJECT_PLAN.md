@@ -8,7 +8,7 @@
 ## Corrections since this plan was written (the earlier studies)
 
 - The repository now runs on the 42-feature UNSW-NB15 files (40- and 48-feature pools); the "obtain the official files with all 42 features" open item is done. Numbers below that say 34 raw features / 0.742 / 0.685 are the earlier single-seed figures.
-  Current official-split figures (XGBoost, 5 seeds): accuracy 0.743 / 0.740 and FPR 0.285 / 0.293 for 40 / 48 features.
+  Current official-split figures (XGBoost, 5 seeds), primary pool 48 / pool 40: accuracy 0.740 / 0.743 and FPR 0.293 / 0.285. Pool 48 (the full official 42-column feature set plus 6 engineered features) is the primary pool, 40 and 45 are comparison pools, and pool 48 needs the full official files (a download with fewer columns only supports pool 40). Pool 48 is slightly worse than pool 40 on FPR at the argmax decision and on ECE (0.1093 against 0.0876); its higher open-set detection depends on the window-count `ct_*` columns (a within-capture effect shown by the leakage check) and its lower FPR at 95% detection is shared between the window-count and the TTL columns, so neither should be expected on another network without testing (README, bullet Primary pool).
 - **Random splits leak through neighbouring flows** (the official files are in capture order; `ct_*` window counts and class labels are shared by consecutive rows). The pooled-split and random-validation figures in this document are
   best cases; block-grouped validation is used for any new selection.
 - **Train-vs-test shift:** block-grouped AUC 0.81-0.84 (not 0.90-0.93). Its cause is undetermined; the TTL columns do not explain the Normal -> Fuzzers errors.

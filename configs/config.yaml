@@ -152,7 +152,7 @@ tier_study:
   bootstrap: 100           # paired bootstrap resamples of the explained rows (cross-model agreement intervals)
   random_draws: 10
   random_tiers: ["30", "20", "15"]
-  pools: ["base", "full_no_ttl", "full"]   # 40, 45 and 48 features
+  pools: ["full"]   # the primary pool: 48 features (all 42 official columns + 6 engineered). Pass --pools base full_no_ttl full for the comparison pools 40 and 45
   model_params:            # declared settings for the other model families (no tuning)
     random_forest: {n_estimators: 150, max_depth: 10, min_samples_leaf: 5, n_jobs: -1}
     logistic_regression: {max_iter: 300}

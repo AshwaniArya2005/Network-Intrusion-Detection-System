@@ -1042,3 +1042,42 @@ Rendered from the CSV of this name (removed in the cleanup; recoverable from git
 |---|---|---|---|---|---|---|---|---|
 | 40f | 34 | 33832 | 0.0288 | 0.0021 | 0.9263 | 0.0059 | 0.0291 | 0.0446 |
 | 48f | 42 | 33832 | 0.0001 | 0 | 0.9951 | 0.0049 | 0.0049 | 0 |
+
+## Source: methods_leak_zero_38f_summary.csv (rendered table: 48 features without every ct_* column (38 features), zero-shot flat default model)
+
+Rendered from the CSV of this name (removed in the cleanup; recoverable from git tag `pre-lean-2026-10`); numbers rounded to 6 decimals; only the flat default model and six metrics are shown, over five seeds (42-46). Used to see which extra columns of pool 48 carry its advantages over pool 40: compare with the pool 40 and pool 48 rows of the headline tables.
+
+| pool | method | access | metric | mean | std | min | max | n_seeds |
+|---|---|---|---|---|---|---|---|---|
+| full_no_ct_any | flat_default | zero-shot | accuracy | 0.7381 | 0.0014 | 0.7366 | 0.7403 | 5 |
+| full_no_ct_any | flat_default | zero-shot | false_positive_rate | 0.296 | 0.0022 | 0.2927 | 0.2986 | 5 |
+| full_no_ct_any | flat_default | zero-shot | fpr_at_95_detection | 0.2425 | 0.0009 | 0.2411 | 0.2434 | 5 |
+| full_no_ct_any | flat_default | zero-shot | det95_test_fpr | 0.2473 | 0.0026 | 0.2442 | 0.2498 | 5 |
+| full_no_ct_any | flat_default | zero-shot | unknown_detection_rate | 0.1881 | 0.0102 | 0.1789 | 0.1998 | 5 |
+| full_no_ct_any | flat_default | zero-shot | ece | 0.0908 | 0.0012 | 0.0888 | 0.0918 | 5 |
+
+## Source: methods_leak_zero_41f_summary.csv (rendered table: 48 features without the 7 window-count ct_* columns (41 features), zero-shot flat default model)
+
+Rendered from the CSV of this name (removed in the cleanup; recoverable from git tag `pre-lean-2026-10`); numbers rounded to 6 decimals; only the flat default model and six metrics are shown, over five seeds (42-46). Used to see which extra columns of pool 48 carry its advantages over pool 40: compare with the pool 40 and pool 48 rows of the headline tables.
+
+| pool | method | access | metric | mean | std | min | max | n_seeds |
+|---|---|---|---|---|---|---|---|---|
+| full_no_ct_window | flat_default | zero-shot | accuracy | 0.739 | 0.0013 | 0.738 | 0.7411 | 5 |
+| full_no_ct_window | flat_default | zero-shot | false_positive_rate | 0.2945 | 0.0017 | 0.2916 | 0.2959 | 5 |
+| full_no_ct_window | flat_default | zero-shot | fpr_at_95_detection | 0.2446 | 0.0037 | 0.2383 | 0.2474 | 5 |
+| full_no_ct_window | flat_default | zero-shot | det95_test_fpr | 0.2475 | 0.0007 | 0.2468 | 0.2483 | 5 |
+| full_no_ct_window | flat_default | zero-shot | unknown_detection_rate | 0.195 | 0.0038 | 0.1905 | 0.2004 | 5 |
+| full_no_ct_window | flat_default | zero-shot | ece | 0.09 | 0.0012 | 0.0881 | 0.0911 | 5 |
+
+## Source: methods_leak_zero_45f_summary.csv (rendered table: 48 features without the 3 TTL columns sttl, dttl, ct_state_ttl (45 features), zero-shot flat default model)
+
+Rendered from the CSV of this name (removed in the cleanup; recoverable from git tag `pre-lean-2026-10`); numbers rounded to 6 decimals; only the flat default model and six metrics are shown, over five seeds (42-46). Used to see which extra columns of pool 48 carry its advantages over pool 40: compare with the pool 40 and pool 48 rows of the headline tables.
+
+| pool | method | access | metric | mean | std | min | max | n_seeds |
+|---|---|---|---|---|---|---|---|---|
+| full_no_ttl | flat_default | zero-shot | accuracy | 0.7367 | 0.0015 | 0.7342 | 0.7383 | 5 |
+| full_no_ttl | flat_default | zero-shot | false_positive_rate | 0.294 | 0.0021 | 0.2914 | 0.2971 | 5 |
+| full_no_ttl | flat_default | zero-shot | fpr_at_95_detection | 0.2523 | 0.0067 | 0.2465 | 0.2603 | 5 |
+| full_no_ttl | flat_default | zero-shot | det95_test_fpr | 0.2455 | 0.0074 | 0.235 | 0.2538 | 5 |
+| full_no_ttl | flat_default | zero-shot | unknown_detection_rate | 0.3833 | 0.0163 | 0.3602 | 0.4014 | 5 |
+| full_no_ttl | flat_default | zero-shot | ece | 0.1093 | 0.0017 | 0.1073 | 0.112 | 5 |
