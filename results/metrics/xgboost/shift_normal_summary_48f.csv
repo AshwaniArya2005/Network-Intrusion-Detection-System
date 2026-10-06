@@ -1,0 +1,11 @@
+metric,value
+pool,48f
+n_features,48
+n_seeds,5
+auc_mean,0.9301
+auc_std,0.0002
+shap_rank_spearman_across_seeds,0.9846
+shap_top10_jaccard_across_seeds,0.7909
+shap_vs_ks_rank_spearman,0.5022
+top5_shap_features,"ct_dst_src_ltm, sttl, ackdat, dbytes, ct_dst_ltm"
+top5_ks_features,"sttl, ct_state_ttl, ackdat, dload, dttl"

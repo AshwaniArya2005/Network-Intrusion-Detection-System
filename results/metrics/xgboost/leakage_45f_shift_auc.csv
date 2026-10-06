@@ -1,0 +1,2 @@
+pool,pool_label,seed,block_size,n_train_normal,n_test_normal,auc_random_cv,auc_block_cv
+full_no_ttl,45f,42,1000,51890,33832,0.9291,0.8356

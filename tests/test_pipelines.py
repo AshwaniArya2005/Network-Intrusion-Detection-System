@@ -2,6 +2,9 @@
 selection, experiment grid, stability study. Nothing here touches data/raw, models_saved or results."""
 from __future__ import annotations
 
+import copy
+import io
+
 import joblib
 import numpy as np
 import pandas as pd
@@ -163,6 +166,7 @@ def test_stability_models_match_evaluated_models(config, feature_sets, splits, m
 
 
 def test_run_all_writes_every_output(config, feature_sets):
+    config["feature_selection"]["pool"] = "base"  # synthetic data has the 8 extra columns; base keeps the untagged file names
     out = rae.run_all(config, feature_sets)
     metrics_dir = rae.get_metrics_dir(config)
 
@@ -180,6 +184,7 @@ def test_run_all_writes_every_output(config, feature_sets):
     summary = pd.read_csv(metrics_dir / "feature_selection_baselines_summary.csv")
     assert summary.loc[0, "n_random_draws"] == 2 and {"random_f1_mean", "random_f1_std", "worst_f1"} <= set(summary.columns)
     assert (metrics_dir / "split_summary.csv").exists()
+    assert (metrics_dir / "confusion_matrix_15_pooled_random.csv").exists()  # synthetic data always splits randomly
     assert set(out["pooled_split"]["split"]) == {"pooled_random"}
     comparison = pd.read_csv(metrics_dir / "split_comparison.csv")
     assert set(comparison["split"]) == {"official", "pooled_random"} and set(comparison["feature_set"].astype(str)) == {"40", "15"}
@@ -277,3 +282,1064 @@ def test_feature_set_metrics_plot_draws_numeric_tiers(tmp_path):
         plots._save = real_save
     # categorical (str) x-values sit at positions 0..3, inside the forced xlim; ints would sit at 15..40, off-screen
     assert all(isinstance(v, str) for v in seen["x"])
+
+
+def test_confusion_matrix_tables_counts_and_row_shares():
+    import numpy as np
+    from src.evaluation.metrics import confusion_matrix_tables
+    true = np.array(["Normal"] * 4 + ["DoS"] * 2)
+    pred = np.array(["Normal", "Normal", "Fuzzers", "Fuzzers", "DoS", "Normal"])
+    counts, share = confusion_matrix_tables(true, pred, ["DoS", "Fuzzers", "Normal", "Worms"])
+    assert counts.loc["Normal", "Fuzzers"] == 2 and counts.loc["DoS", "Normal"] == 1
+    assert counts.to_numpy().sum() == 6 and list(counts.columns) == ["DoS", "Fuzzers", "Normal", "Worms"]  # empty class kept
+    assert share.loc["Normal", "Fuzzers"] == 0.5 and share.loc["Worms"].sum() == 0 and abs(share.loc["DoS"].sum() - 1) < 1e-9
+
+
+def test_train_and_evaluate_writes_the_confusion_csvs(config, feature_sets, splits):
+    import pandas as pd
+    from src.utils.config_loader import get_metrics_dir
+    train_and_evaluate(config, feature_sets, "15", False, splits, save_artifacts=False, write_confusion=True)
+    d = get_metrics_dir(config)
+    counts = pd.read_csv(d / f"confusion_matrix_15_{splits.name}.csv", index_col=0)
+    share = pd.read_csv(d / f"confusion_matrix_15_{splits.name}_rownorm.csv", index_col=0)
+    assert counts.to_numpy().sum() == len(splits.test) and list(counts.index) == list(counts.columns)
+    assert abs(share.loc["Normal"].sum() - 1) < 1e-3
+
+
+def test_probabilistic_metrics_by_hand():
+    from src.evaluation.metrics import brier_score, expected_calibration_error, probabilistic_metrics
+    classes = ["Fuzzers", "Normal", "Worms"]  # Worms has no test rows
+    y = np.array([0, 0, 1, 1])
+    proba = np.array([[0.9, 0.1, 0.0], [0.2, 0.8, 0.0], [0.1, 0.9, 0.0], [0.6, 0.4, 0.0]])
+    out = probabilistic_metrics(y, proba, classes, ece_bins=10)
+    # Fuzzers vs rest: scores .9 .2 .1 .6, positives are rows 0,1 -> 3 of 4 (pos, neg) pairs ranked right
+    assert out["roc_auc_Fuzzers"] == 0.75 and out["roc_auc_Normal"] == 0.75
+    assert np.isnan(out["roc_auc_Worms"]) and np.isnan(out["pr_auc_Worms"])
+    assert out["roc_auc_macro"] == 0.75  # NaN class skipped
+    # AP of Fuzzers: ranking by score = rows 0 (pos), 3 (neg), 1 (pos), 2 (neg) -> (1/1 + 2/3) / 2
+    assert out["pr_auc_Fuzzers"] == round((1 + 2 / 3) / 2, 4)
+    # attack-vs-normal: "attack" = class != Normal(=1): rows 0,1 attack; score 1-P(Normal) = .9,.2 vs .1,.6 -> AUC .75
+    assert out["roc_auc_attack_vs_normal"] == 0.75
+    # Brier per row (squared distance to the one-hot label): .02, 1.28, .02, .72 -> mean .51
+    assert abs(brier_score(y, proba) - 0.51) < 1e-9 and out["brier"] == 0.51
+    # one bin: predictions are 0,1,1,0 -> 2 of 4 correct; mean confidence (.9+.8+.9+.6)/4 = .8 -> |.5 - .8| = .3
+    assert abs(expected_calibration_error(y, proba, n_bins=1) - 0.3) < 1e-9
+    perfect = np.eye(3)[[0, 1, 1]]
+    assert expected_calibration_error(np.array([0, 1, 1]), perfect) == 0.0 and brier_score(np.array([0, 1, 1]), perfect) == 0.0
+
+
+def test_ece_matches_a_hand_computed_value():
+    from src.evaluation.metrics import expected_calibration_error
+    # two bins: confidences .6,.6 (1 of 2 correct: gap .1) and .9,.9 (both correct: gap .1) -> ECE = .5*.1 + .5*.1
+    proba = np.array([[0.6, 0.4], [0.6, 0.4], [0.1, 0.9], [0.1, 0.9]])
+    y = np.array([0, 1, 1, 1])
+    assert abs(expected_calibration_error(y, proba, n_bins=10) - 0.1) < 1e-9
+
+
+def test_run_headline_seeds_reports_mean_and_std_per_pool_and_protocol(config, feature_sets):
+    from pipelines.run_headline_seeds import run_headline_seeds
+    config["experiments"]["headline_seeds"] = [1, 2]
+    seeds_df, summary = run_headline_seeds(config, feature_sets, pools=("base", "full"))
+    assert len(seeds_df) == 2 * 2 * 2  # pools x protocols x seeds
+    assert set(seeds_df["pool"]) == {"base", "full"} and set(seeds_df["split"]) == {"official", "pooled_random"}
+    assert {"roc_auc_macro", "pr_auc_macro", "ece", "brier", "normal_to_Fuzzers"} <= set(seeds_df.columns)
+    acc = summary[(summary["metric"] == "accuracy") & (summary["pool"] == "base")].iloc[0]
+    vals = seeds_df.loc[(seeds_df["pool"] == "base") & (seeds_df["split"] == acc["split"]), "accuracy"]
+    assert abs(acc["mean"] - round(vals.mean(), 4)) < 1e-9 and acc["n_seeds"] == 2
+    d = rae.get_metrics_dir(config)
+    assert (d / "headline_seeds.csv").exists() and "mean +/-" not in (d / "headline_summary.csv").read_text()
+    assert "+/-" in (d / "headline_summary.md").read_text()
+
+
+def test_select_attack_threshold_and_rates_by_hand():
+    from src.evaluation.metrics import attack_rates, select_attack_threshold
+    is_attack = np.array([1, 1, 1, 1, 0, 0, 0, 0], dtype=bool)
+    score = np.array([0.9, 0.8, 0.6, 0.3, 0.7, 0.4, 0.2, 0.1])
+    # 75% detection needs the third attack (0.6); the 0.7 normal outranks it -> FPR 1/4
+    t = select_attack_threshold(is_attack, score, target_detection=0.75)
+    assert t == 0.6 and attack_rates(is_attack, score, t) == (0.75, 0.25)
+    # 50% detection is reached at 0.8, where no normal flow scores that high: FPR 0
+    t = select_attack_threshold(is_attack, score, target_detection=0.5)
+    assert t == 0.8 and attack_rates(is_attack, score, t) == (0.5, 0.0)
+    # FPR budget 25% (one of four normals): the 0.7 normal is allowed and the next one enters only at 0.4,
+    # so the lowest admissible threshold is 0.6 (detection .75); a 50% budget also admits the 0.4 normal -> 0.3 (detection 1)
+    t = select_attack_threshold(is_attack, score, target_fpr=0.25)
+    assert t == 0.6 and attack_rates(is_attack, score, t) == (0.75, 0.25)
+    t = select_attack_threshold(is_attack, score, target_fpr=0.5)
+    assert t == 0.3 and attack_rates(is_attack, score, t) == (1.0, 0.5)
+    with pytest.raises(ValueError):
+        select_attack_threshold(is_attack, score)
+    with pytest.raises(ValueError):
+        select_attack_threshold(is_attack, score, target_detection=0.9, target_fpr=0.1)
+
+
+def test_operating_points_are_chosen_on_validation_and_reported_on_both(config, feature_sets, splits):
+    from pipelines.run_operating_point import operating_points
+    pred = {}
+    train_and_evaluate(config, feature_sets, "15", False, splits, save_artifacts=False, predictions_out=pred)
+    rows = {r["rule"]: r for r in operating_points(pred, "Normal")}
+    assert set(rows) == {"argmax", "det95", "fpr10"}
+    assert rows["det95"]["val_detection"] >= 0.95 and rows["fpr10"]["val_fpr"] <= 0.10  # the targets hold on validation
+    for r in rows.values():
+        assert abs(r["fpr_gap"] - (r["test_fpr"] - r["val_fpr"])) < 1e-3
+
+
+def test_sample_params_is_seeded_and_stays_inside_the_space(config):
+    from pipelines.tune_xgboost import sample_params
+    space = config["tuning"]["space"]
+    a = [sample_params(space, np.random.default_rng(7)) for _ in range(2)]
+    assert a[0] == a[1]  # same seed, same draw
+    rng = np.random.default_rng(0)
+    for _ in range(200):
+        p = sample_params(space, rng)
+        assert 3 <= p["max_depth"] <= 10 and 0.03 <= p["learning_rate"] <= 0.3 and 0.0 <= p["class_weight_power"] <= 1.0
+        assert p["min_child_weight"] in space["min_child_weight"]["choice"] and p["reg_alpha"] in space["reg_alpha"]["choice"]
+        assert 0.6 <= p["subsample"] <= 1.0 and 0.5 <= p["colsample_bytree"] <= 1.0 and 0.5 <= p["reg_lambda"] <= 20.0
+
+
+def test_class_weight_power_changes_the_weights():
+    from src.preprocessing import balanced_sample_weight
+    y = np.array([0] * 90 + [1] * 10)
+    assert np.allclose(balanced_sample_weight(y, 0.0), 1.0)                       # unweighted
+    w1, w05 = balanced_sample_weight(y, 1.0), balanced_sample_weight(y)           # default power is 0.5
+    assert np.allclose(w05, w1 ** 0.5) and w1[-1] / w1[0] == 9.0                  # fully balanced: 90/10
+
+
+def test_tune_pool_uses_validation_only_and_writes_search_and_selection(config, feature_sets):
+    import json
+    from pipelines.tune_xgboost import OBJECTIVES, load_tuned, tune_pool
+    config["tuning"].update(n_trials=3, max_estimators=30, early_stopping_rounds=5)
+    config["feature_selection"]["pool"] = "base"
+    trials = tune_pool(config, feature_sets, "base")
+    d = rae.get_metrics_dir(config)
+    assert len(trials) == 4 and trials["is_default"].sum() == 1  # 3 budgeted trials + the default reference
+    assert (d / "hyperparameter_search_40f.csv").exists()
+    saved = json.loads((d / "tuned_params_40f.json").read_text())
+    search = trials[~trials["is_default"]]
+    for obj, col in OBJECTIVES.items():
+        assert saved[obj]["trial"] == int(search.loc[search[col].idxmax(), "trial"])      # best by that validation metric
+        params, power = load_tuned(config, "40f", obj)
+        assert params["n_estimators"] == int(search.loc[search[col].idxmax(), "best_iteration"]) + 1
+        assert 0.0 <= power <= 1.0
+    assert saved["n_trials"] == 3 and "validation mlogloss" in saved["early_stopping"]
+
+
+def test_block_validation_tuning_uses_the_regularised_space_and_its_own_files(config, feature_sets):
+    import json
+    from pipelines.tune_xgboost import load_tuned, tune_pool
+    config["tuning"].update(n_trials=3, max_estimators=30, early_stopping_rounds=5)
+    config["tier_study"].update(block_size=100, buffer=20)
+    config["feature_selection"]["pool"] = "base"
+    trials = tune_pool(config, feature_sets, "base", block_validation=True)
+    d = rae.get_metrics_dir(config)
+    space = config["tuning"]["space_regularised"]
+    search = trials[~trials["is_default"]]
+    assert (d / "hyperparameter_search_blockval_40f.csv").exists() and not (d / "hyperparameter_search_40f.csv").exists()   # earlier files are never written
+    assert search["min_child_weight"].isin(space["min_child_weight"]["choice"]).all() and search["max_depth"].between(3, 7).all()
+    assert search["reg_lambda"].between(2.0, 100.0).all()
+    params, power = load_tuned(config, "40f", "auc", block_validation=True)
+    assert 0.0 <= power <= 1.0 and params["n_estimators"] >= 1
+    assert json.loads((d / "tuned_params_blockval_40f.json").read_text())["n_trials"] == 3
+
+
+def test_headline_runner_can_use_tuned_parameters_and_tags_its_files(config, feature_sets):
+    from pipelines.run_headline_seeds import output_stem, run_headline_seeds
+    from pipelines.tune_xgboost import tune_pool
+    config["tuning"].update(n_trials=2, max_estimators=20, early_stopping_rounds=5)
+    config["experiments"]["headline_seeds"] = [1]
+    tune_pool(config, feature_sets, "base")
+    seeds_df, _ = run_headline_seeds(config, feature_sets, pools=("base",), tuned="f1", protocols=("official",))
+    assert len(seeds_df) == 1 and output_stem("f1", ("official",)) == "headline_tuned_f1_official"  # both pools: no pool tag
+    assert output_stem(None, ("official", "pooled_random")) == "headline" and output_stem(None, ("official", "pooled_random"), ("full_no_ttl",)) == "headline_full_no_ttl"
+    d = rae.get_metrics_dir(config)
+    assert (d / "headline_tuned_f1_official_base_seeds.csv").exists() and not (d / "headline_seeds.csv").exists()
+
+
+def test_tuned_vs_default_table_reports_the_difference_to_the_default(config, feature_sets):
+    from pipelines.run_headline_seeds import run_headline_seeds
+    from pipelines.tune_xgboost import tune_pool
+    from scripts.compare_tuned import render, tuned_vs_default
+    config["tuning"].update(n_trials=2, max_estimators=20, early_stopping_rounds=5)
+    config["experiments"]["headline_seeds"] = [1, 2]
+    for pool in ("base", "full"):
+        tune_pool(config, feature_sets, pool)
+    run_headline_seeds(config, feature_sets)                                                  # default, both pools
+    for objective in ("f1", "auc"):
+        run_headline_seeds(config, feature_sets, tuned=objective, protocols=("official",))   # tuned, both pools
+    df = tuned_vs_default(rae.get_metrics_dir(config), ["base", "full"], ["f1", "auc"])
+    assert list(df["hyperparameters"]) == ["default", "tuned_f1", "tuned_auc"] * 2
+    base = df[df["pool"] == "base"].set_index("hyperparameters")
+    assert abs(base.loc["tuned_f1", "accuracy_vs_default"] - round(base.loc["tuned_f1", "accuracy_mean"] - base.loc["default", "accuracy_mean"], 4)) < 1e-9
+    assert "tuned_f1" in render(df) and "(" in render(df)
+
+
+def test_confusion_metrics_match_sklearn_and_hand_values():
+    from sklearn.metrics import accuracy_score, f1_score
+    from src.evaluation.bootstrap import confusion_metrics
+    rng = np.random.default_rng(3)
+    y = rng.integers(0, 4, 500)
+    pred = np.where(rng.random(500) < 0.7, y, rng.integers(0, 4, 500))
+    cm = np.bincount(y * 4 + pred, minlength=16).reshape(4, 4)
+    m = confusion_metrics(cm, normal=1, fuzzers=2)
+    assert abs(m["accuracy"] - accuracy_score(y, pred)) < 1e-12 and abs(m["f1"] - f1_score(y, pred, average="macro")) < 1e-12
+    normal = y == 1
+    assert abs(m["false_positive_rate"] - (pred[normal] != 1).mean()) < 1e-12
+    assert abs(m["detection_rate"] - (pred[~normal] != 1).mean()) < 1e-12
+    assert abs(m["normal_to_Fuzzers"] - (pred[normal] == 2).mean()) < 1e-12
+
+
+def test_bootstrap_is_paired_seeded_and_brackets_the_estimate():
+    from src.evaluation.bootstrap import bootstrap, intervals, paired_differences
+    rng = np.random.default_rng(1)
+    y = rng.integers(0, 3, 400)
+    good = np.where(rng.random(400) < 0.9, y, rng.integers(0, 3, 400))
+    bad = np.where(rng.random(400) < 0.5, y, rng.integers(0, 3, 400))
+    flags = rng.random(60) < 0.4
+    models = {"a": dict(y_true=y, y_pred=good, unknown_flags=flags), "b": dict(y_true=y, y_pred=bad, unknown_flags=flags),
+              "a2": dict(y_true=y, y_pred=good, unknown_flags=flags)}
+    point, draws = bootstrap(models, 3, normal=0, fuzzers=1, n_boot=300, seed=5)
+    again = bootstrap(models, 3, normal=0, fuzzers=1, n_boot=300, seed=5)[1]
+    assert draws["a"].equals(again["a"])                                  # fixed seed -> identical draws
+    ci = intervals(point, draws).query("model == 'a' and metric == 'accuracy'").iloc[0]
+    assert ci["ci_low"] <= ci["estimate"] <= ci["ci_high"] and ci["ci_high"] - ci["ci_low"] < 0.08
+    diff = paired_differences(point, draws, [("a", "b"), ("a", "a2")])
+    acc = diff[diff["metric"] == "accuracy"].set_index("comparison")
+    assert acc.loc["b - a", "difference"] < 0 and bool(acc.loc["b - a", "excludes_zero"])    # clearly worse, interval excludes 0
+    assert acc.loc["a2 - a", "difference"] == 0 and acc.loc["a2 - a", "ci_low"] == acc.loc["a2 - a", "ci_high"] == 0  # identical models: paired diff is exactly 0
+    with pytest.raises(ValueError):
+        bootstrap({"a": models["a"], "c": dict(y_true=y[::-1], y_pred=good, unknown_flags=flags)}, 3, 0, 1, n_boot=2)
+
+
+def test_run_bootstrap_writes_ci_and_paired_difference_files(config, feature_sets):
+    from pipelines.run_bootstrap import run_bootstrap
+    cis, diffs = run_bootstrap(config, feature_sets, pools=("base", "full"), n_boot=20, seed=1)
+    d = rae.get_metrics_dir(config)
+    assert (d / "bootstrap_ci_40f_48f.csv").exists() and (d / "bootstrap_paired_diff_40f_48f.csv").exists()
+    assert set(cis["model"]) == {"40f", "48f"} and set(diffs["comparison"]) == {"48f - 40f"}
+
+
+def test_exclude_removes_features_from_pool_ranking_model_and_shap(config, feature_sets):
+    from src.utils.config_loader import apply_pool_variant, choose_pool, ranking_path, scheme_tag
+    ttl = ["sttl", "dttl", "ct_state_ttl"]
+    config["experiments"]["pool_variants"] = {"no_ttl": {"pool": "full", "exclude": ttl}}
+    cfg = apply_pool_variant(config, "no_ttl")
+    splits = load_split_data(cfg)
+    cfg, sets = choose_pool(cfg, feature_sets, splits.train.columns)
+    # the pool: 48 - 3, tagged, with its own tier list
+    assert len(sets["feature_pool"]) == 45 and not set(ttl) & set(sets["feature_pool"])
+    assert scheme_tag(cfg) == "_45f" and cfg["experiments"]["feature_sets"][0] == "45"
+    # the ranking never contains them
+    generate_feature_ranking(cfg, sets, splits.train)
+    ranking = pd.read_csv(ranking_path(cfg))["feature"].tolist()
+    assert len(ranking) == 45 and not set(ttl) & set(ranking) and ranking_path(cfg).name.endswith("_45f.csv")
+    # nor the model's feature list or saved preprocessor
+    pre_cols = rae.Preprocessor(feature_list=get_active_features(cfg, sets, "45"), target_column=cfg["data"]["target_column"]).fit(splits.train).feature_list
+    assert len(pre_cols) == 45 and not set(ttl) & set(pre_cols)
+    result = train_and_evaluate(cfg, sets, "45", False, splits, save_artifacts=True)
+    saved = joblib.load(rae.resolve_path(cfg["paths"]["models_dir"]) / "xgboost" / "preprocessor_45_45f.pkl")
+    assert result["n_features"] == 45 and not set(ttl) & set(saved.metadata["features"])
+    # nor the SHAP output
+    importance = rae._fit_importance(cfg, get_active_features(cfg, sets, "45"), splits.train)
+    assert len(importance) == 45 and not set(ttl) & set(importance.index)
+    # the 48-pool and plain 40-pool are unaffected
+    assert len(choose_pool(apply_pool_variant(config, "full"), feature_sets, splits.train.columns)[1]["feature_pool"]) == 48
+    assert len(choose_pool(apply_pool_variant(config, "base"), feature_sets, splits.train.columns)[1]["feature_pool"]) == 40
+
+
+def test_exclude_rejects_names_outside_the_pool_and_unknown_variants(config, feature_sets):
+    from src.utils.config_loader import apply_pool_variant, choose_pool
+    splits = load_split_data(config)
+    bad = apply_pool_variant(config, "full")
+    bad["feature_selection"]["exclude"] = ["not_a_feature"]
+    with pytest.raises(ValueError, match="not in the full pool"):
+        choose_pool(bad, feature_sets, splits.train.columns)
+    base_with_ttl = apply_pool_variant(config, "base")
+    base_with_ttl["feature_selection"]["exclude"] = ["sttl"]  # sttl exists only in the full pool
+    with pytest.raises(ValueError, match="not in the base pool"):
+        choose_pool(base_with_ttl, feature_sets, splits.train.columns)
+    with pytest.raises(KeyError, match="Unknown pool"):
+        apply_pool_variant(config, "nope")
+
+
+def test_accuracy_three_numbers_combines_headline_runs_and_the_ceiling(config, feature_sets):
+    from pipelines.run_headline_seeds import run_headline_seeds
+    from scripts.accuracy_table import accuracy_rows, render
+    config["experiments"]["headline_seeds"] = [1, 2]
+    seeds_df, _ = run_headline_seeds(config, feature_sets)
+    df = accuracy_rows(config, feature_sets, ["base", "full"], tuned=[])
+    assert list(df["pool"]) == ["40f", "48f"] and set(df["hyperparameters"]) == {"default"}
+    by = df.set_index("pool")
+    assert by.loc["48f", "ceiling"] >= by.loc["40f", "ceiling"]                  # more columns can only split more vectors apart
+    for label, pool in (("40f", "base"), ("48f", "full")):
+        official = seeds_df[(seeds_df["pool"] == pool) & (seeds_df["split"] == "official")]["accuracy"]
+        assert abs(by.loc[label, "official_mean"] - round(official.mean(), 4)) < 1e-9
+        assert by.loc[label, "ceiling"] >= by.loc[label, "official_mean"] - 1e-9  # no classifier beats the ceiling (in expectation)
+        assert abs(by.loc[label, "official_minus_ceiling"] - round(by.loc[label, "official_mean"] - by.loc[label, "ceiling"], 4)) < 1e-4
+    assert "ceiling" in render(df) and "+/-" in render(df)
+
+
+def test_pool_variant_runs_never_overwrite_the_default_headline_files_and_compare_side_by_side(config, feature_sets):
+    from pipelines.run_headline_seeds import run_headline_seeds
+    from scripts.compare_pools import compare
+    config["experiments"]["headline_seeds"] = [1]
+    config["experiments"]["pool_variants"] = {"no_ttl": {"pool": "full", "exclude": ["sttl", "dttl", "ct_state_ttl"]}}
+    run_headline_seeds(config, feature_sets)                                    # base + full: headline_*.csv
+    variant, _ = run_headline_seeds(config, feature_sets, pools=("no_ttl",))   # headline_no_ttl_*.csv
+    d = rae.get_metrics_dir(config)
+    assert set(pd.read_csv(d / "headline_seeds.csv")["pool"]) == {"base", "full"}      # untouched by the variant run
+    assert set(variant["pool"]) == {"no_ttl"} and variant["n_features"].eq(45).all()
+    table = compare(d, {"base": "40f", "full": "48f", "no_ttl": "45f"}, "official")
+    assert list(table.columns) == ["40f", "48f", "45f"] and "accuracy" in table.index and table.notna().all().all()
+
+
+def test_shift_feature_groups_partition_the_48_feature_pool():
+    cfg, fsets = load_config(), load_feature_sets()
+    names = [f for fs in cfg["shift"]["feature_groups"].values() for f in fs]
+    assert len(names) == len(set(names)) and set(names) == set(fsets["feature_pool_full"])
+
+
+def test_shift_classifier_finds_a_shifted_feature_and_is_chance_without_one():
+    from scripts.characterize_shift import rank_stability, shift_classifier
+    rng = np.random.default_rng(0)
+    make = lambda shift: pd.DataFrame({"a": rng.normal(shift, 1, 700), "b": rng.normal(0, 1, 700), "c": rng.normal(0, 1, 700)})  # noqa: E731
+    auc, importance = shift_classifier(make(0), make(2.5), ["a", "b", "c"], seed=1, shap_rows=200)
+    assert auc > 0.9 and importance.idxmax() == "a" and importance["a"] > 5 * importance["b"]
+    assert abs(shift_classifier(make(0), make(0), ["a", "b", "c"], seed=1)[0] - 0.5) < 0.08
+    # rank agreement by hand
+    v = pd.Series({"x": 4.0, "y": 3.0, "z": 2.0, "w": 1.0})
+    out = rank_stability({"p": v, "q": v * 2, "r": v[::-1].set_axis(v.index)}, top=2)
+    pq, pr = out[(out.a == "p") & (out.b == "q")].iloc[0], out[(out.a == "p") & (out.b == "r")].iloc[0]
+    assert pq["spearman"] == 1.0 and pq["top2_jaccard"] == 1.0
+    assert pr["spearman"] == -1.0 and pr["top2_jaccard"] == 0.0
+
+
+def test_shift_steps_run_end_to_end_and_report_every_group(config, feature_sets):
+    from scripts.characterize_shift import run_a1, run_a2, run_a3
+    config["shift"].update(seeds=[1, 2, 3], shap_rows=100)
+    table, summary = run_a1(config, feature_sets, "full")
+    assert len(table) == 48 and set(table["group"]) == set(config["shift"]["feature_groups"]) and 0.3 < summary["auc_mean"] < 0.7
+    assert summary["n_seeds"] == 3 and -1 <= summary["shap_rank_spearman_across_seeds"] <= 1
+    groups = run_a2(config, feature_sets, "base", top_features=list(table["feature"].head(5)))
+    assert "all_features" in set(groups["feature_set"]) and "top5_shift_ranked" in set(groups["feature_set"])
+    assert "ttl" not in set(groups["feature_set"])                                  # the 40-feature pool has no TTL columns
+    ablation = run_a3(config, feature_sets, "base")
+    assert ablation["removed_group"].iloc[0] == "none_removed" and ablation["shift_auc_vs_all"].iloc[0] == 0
+    assert set(ablation["removed_group"]) == {"none_removed", "volume_size", "rate_load", "timing", "tcp_window_loss",
+                                              "protocol_state", "connection_counts"}
+    removed = ablation.set_index("removed_group")
+    assert (removed["n_kept"] + removed["n_removed"] == 40).all()
+    d = rae.get_metrics_dir(config)
+    assert (d / "shift_normal_features_48f.csv").exists() and (d / "shift_nf_groups_40f.csv").exists() and (d / "shift_group_ablation_40f.csv").exists()
+
+
+def test_hierarchical_stage1_can_have_its_own_params_and_weight_exponent(tmp_path):
+    from src.models.hierarchical_model import HierarchicalModel
+    from src.models.model_factory import create_model, create_scheme_model
+    rng = np.random.default_rng(0)
+    y = rng.integers(0, 4, 800)
+    X = rng.normal(size=(800, 6)) + y[:, None] * 0.7
+    base = {"n_estimators": 5, "max_depth": 2, "random_state": 0, "n_jobs": 1}
+    plain = create_scheme_model("xgboost", base, True, normal_index=0).fit(X, y)
+    own = create_scheme_model("xgboost", base, True, normal_index=0, stage1_params={"n_estimators": 40, "max_depth": 4}, stage1_power=1.0).fit(X, y)
+    assert plain.stage1.underlying_model.get_params()["n_estimators"] == 5 == plain.stage2.underlying_model.get_params()["n_estimators"]
+    assert own.stage1.underlying_model.get_params()["n_estimators"] == 40 and own.stage2.underlying_model.get_params()["n_estimators"] == 5
+    assert not np.allclose(plain.predict_proba(X), own.predict_proba(X))
+    assert np.allclose(own.predict_proba(X).sum(axis=1), 1.0, atol=1e-5)
+    own.save(str(tmp_path / "hier.json"))
+    loaded = HierarchicalModel(lambda: create_model("xgboost", base), 0, make_stage1=lambda: create_model("xgboost", dict(base, n_estimators=40, max_depth=4))).load(str(tmp_path / "hier.json"))
+    assert np.allclose(loaded.predict_proba(X), own.predict_proba(X), atol=1e-6)
+
+
+def test_stage1_search_scores_the_binary_task_and_run_methods_labels_access(config, feature_sets):
+    import json
+    from pipelines.run_methods import run_methods
+    from pipelines.tune_xgboost import load_tuned, tune_pool
+    config["tuning"].update(n_trials=2, max_estimators=20, early_stopping_rounds=5)
+    config["experiments"]["headline_seeds"] = [1, 2]
+    trials = tune_pool(config, feature_sets, "base", stage1=True)
+    d = rae.get_metrics_dir(config)
+    assert (d / "hyperparameter_search_stage1_40f.csv").exists() and not (d / "hyperparameter_search_40f.csv").exists()
+    saved = json.loads((d / "tuned_params_stage1_40f.json").read_text())
+    search = trials[~trials["is_default"]]
+    assert saved["f1"]["trial"] == int(search.loc[search["val_macro_f1"].idxmax(), "trial"])      # declared objective: validation macro F1
+    assert load_tuned(config, "40f", "f1", stage1=True)[0]["n_estimators"] >= 1
+    out = run_methods(config, feature_sets, "unit", ["flat_default", "hier_default", "hier_stage1_tuned"], pools=("base",))["40f"]
+    assert set(out["method"]) == {"flat_default", "hier_default", "hier_stage1_tuned"}
+    assert set(out.loc[out["method"] == "hier_default", "access"]) == {"zero-shot"}
+    acc = out[(out["method"] == "flat_default") & (out["metric"] == "accuracy")].iloc[0]
+    assert acc["n_seeds"] == 2 and {"det95_test_fpr", "det95_fpr_gap"} <= set(out["metric"])
+    seeds_df = pd.read_csv(d / "methods_unit_40f_seeds.csv")
+    assert (d / "methods_unit_40f_summary.csv").exists() and len(seeds_df) == 6
+    assert "recall_Analysis" in seeds_df.columns and "recall_Overlap-Group-1" in seeds_df.columns  # 8 classes (hierarchical) and 6 (flat) side by side
+
+
+def test_draw_adaptation_sample_is_stratified_reproducible_and_disjoint():
+    from src.adaptation import draw_adaptation_sample
+    df = pd.DataFrame({"cls": ["a"] * 600 + ["b"] * 300 + ["c"] * 90 + ["d"] * 10, "x": np.arange(1000)})
+    adapt, rest = draw_adaptation_sample(df, 100, "cls", seed=3)
+    assert len(adapt) == 100 and len(rest) == 900 and not set(adapt.index) & set(rest.index)
+    counts = adapt["cls"].value_counts()
+    assert counts["a"] == 60 and counts["b"] == 30 and counts["c"] == 9 and counts["d"] == 1       # proportional, every class present
+    again, _ = draw_adaptation_sample(df, 100, "cls", seed=3)
+    assert adapt.index.equals(again.index)                                                           # reproducible
+    assert not adapt.index.equals(draw_adaptation_sample(df, 100, "cls", seed=4)[0].index)           # another draw differs
+    tiny, _ = draw_adaptation_sample(df, 8, "cls", seed=0)
+    assert len(tiny) == 8 and set(tiny["cls"]) == {"a", "b", "c", "d"}                               # the one-per-class floor, still k rows
+    with pytest.raises(ValueError):
+        draw_adaptation_sample(df, 0, "cls", seed=0)
+    with pytest.raises(ValueError):
+        draw_adaptation_sample(df, 1000, "cls", seed=0)
+
+
+def test_adaptation_weights_give_the_adaptation_rows_the_requested_share():
+    from src.adaptation import adaptation_weights
+    w = np.array([1.0, 1.0, 2.0, 4.0, 3.0, 1.0])
+    flag = np.array([False, False, False, False, True, True])
+    out = adaptation_weights(w, flag, 0.5)
+    assert np.allclose(out[:4], w[:4]) and abs(out[flag].sum() - out[~flag].sum()) < 1e-12           # half of the total weight
+    assert abs(out[4] / out[5] - 3.0) < 1e-12                                                          # their relative weights are kept
+    assert abs(adaptation_weights(w, flag, 0.2)[flag].sum() / adaptation_weights(w, flag, 0.2).sum() - 0.2) < 1e-12
+    assert np.array_equal(adaptation_weights(w, np.zeros(6, bool), 0.3), w)
+    with pytest.raises(ValueError):
+        adaptation_weights(w, flag, 1.0)
+
+
+def test_adaptation_rows_leave_the_evaluation_set_and_enter_training(config, feature_sets, splits):
+    from src.adaptation import draw_adaptation_sample, with_adaptation
+    adapt, remaining = draw_adaptation_sample(splits.test, 60, config["data"]["target_column"], seed=1)
+    adapted = with_adaptation(splits, adapt, remaining, 0.3)
+    assert len(adapted.test) == len(splits.test) - 60 and len(adapted.train) == len(splits.train) + 60
+    assert int(adapted.train["adapt_flag"].sum()) == 60 and adapted.adapt_fraction == 0.3 and splits.adapt_fraction is None
+    result = train_and_evaluate(config, feature_sets, "15", False, adapted, save_artifacts=False)
+    assert result["n_test"] == len(splits.test) - 60 and result["n_train"] == len(splits.train) + 60
+
+
+def test_run_adaptation_pool_scores_zero_shot_and_adapted_methods_on_the_same_remaining_rows(config, feature_sets):
+    from pipelines.run_adaptation import run_adaptation_pool, summarise
+    runs = run_adaptation_pool(config, feature_sets, "base", ks=(40,), fractions=(0.3,), runs=2)
+    assert set(runs["method"]) == {"zero_shot", "thr_adapt", "retrain_f0.3"} and len(runs) == 6
+    assert set(runs.loc[runs["method"] == "zero_shot", "access"]) == {"zero-shot"} and set(runs.loc[runs["method"] != "zero_shot", "access"]) == {"few-shot"}
+    for _, g in runs.groupby("run"):
+        assert g["n_eval"].nunique() == 1 and (g["n_adapt"] == 40).all()                              # the same remaining rows for every method
+    zero, thr = (runs[runs["method"] == m].sort_values("run") for m in ("zero_shot", "thr_adapt"))
+    assert np.allclose(zero["accuracy"], thr["accuracy"])                                              # threshold adaptation leaves the argmax model unchanged
+    assert summarise(runs).query("method == 'zero_shot' and metric == 'accuracy'")["n_runs"].iloc[0] == 2
+
+
+def test_domain_weights_favour_target_like_rows_and_never_read_labels():
+    from src.adaptation import domain_importance_weights, unlabelled_shift_ranking
+    rng = np.random.default_rng(0)
+    frame = lambda mu, n: pd.DataFrame({"dur": np.abs(rng.normal(mu, 1, n)), "sbytes": np.abs(rng.normal(0, 1, n)), "dbytes": rng.random(n),  # noqa: E731
+                                        "spkts": rng.integers(1, 9, n).astype(float), "dpkts": rng.integers(1, 9, n).astype(float),
+                                        "attack_cat": rng.choice(["Normal", "Fuzzers"], n), "label": rng.integers(0, 2, n)})
+    source, target = frame(0, 1500), frame(2.0, 1500)
+    feats = ["dur", "sbytes", "dbytes"]
+    w = domain_importance_weights(source, target, feats, clip=5, seed=1)
+    assert len(w) == len(source) and abs(w.mean() - 1) < 1e-9 and w.min() >= 0
+    assert np.corrcoef(w, source["dur"])[0, 1] > 0.3                      # rows that look like the target (large dur) weigh more
+    shuffled = target.assign(attack_cat=rng.permutation(target["attack_cat"].to_numpy()), label=rng.permutation(target["label"].to_numpy()))
+    assert np.allclose(w, domain_importance_weights(source, shuffled, feats, clip=5, seed=1))   # target labels play no part
+    unclipped_max = domain_importance_weights(source, target, feats, clip=1000, seed=1).max()
+    assert w.max() < unclipped_max                                         # clipping bites
+    ranking = unlabelled_shift_ranking(source, target, feats)
+    assert ranking.index[0] == "dur" and ranking["dur"] > 0.5 and ranking["sbytes"] < 0.1
+    assert unlabelled_shift_ranking(source, shuffled, feats).equals(ranking)
+
+
+def test_transductive_methods_run_with_their_access_label(config, feature_sets):
+    from pipelines.run_methods import METHODS, run_methods
+    config["experiments"]["headline_seeds"] = [1]
+    out = run_methods(config, feature_sets, "unit_tx", ["flat_default", "domain_weights_clip5", "drop_top5_shifted"], pools=("base",))["40f"]
+    access = out.drop_duplicates("method").set_index("method")["access"]
+    assert access["flat_default"] == "zero-shot" and access["domain_weights_clip5"] == "transductive" == access["drop_top5_shifted"]
+    used = out[out["metric"] == "n_features_used"].set_index("method")["mean"]
+    assert used["flat_default"] == 40 and used["drop_top5_shifted"] == 35 and used["domain_weights_clip5"] == 40
+    assert "val_macro_f1" in set(out["metric"]) and all(METHODS[m]["access"] in ("zero-shot", "transductive") for m in METHODS)
+
+
+def test_final_table_assembles_every_method_with_its_access_level(tmp_path):
+    from scripts.final_table import COLUMNS, render, rows_for
+    def summary(rows, extra):
+        return pd.DataFrame([{**extra, "metric": m, "mean": mean, "std": 0.01} for m, mean in rows])
+    metrics = [(m, 0.5) for m in COLUMNS]
+    pd.concat([summary(metrics, {"pool": "base", "method": m, "access": "zero-shot"}) for m in ("flat_default", "hier_default", "hier_stage1_tuned")]).to_csv(
+        tmp_path / "methods_zero_shot_b1_40f_summary.csv", index=False)
+    for obj in ("f1", "auc"):
+        summary(metrics, {"pool": "base", "split": "official"}).to_csv(tmp_path / f"headline_tuned_{obj}_official_summary.csv", index=False)
+    pd.concat([summary(metrics, {"pool": "base", "k": k, "method": m, "access": "few-shot"}) for k in (100, 500, 1000, 5000)
+               for m in ("zero_shot", "thr_adapt", "retrain_f0.3", "retrain_f0.5")]).to_csv(tmp_path / "adaptation_40f_summary.csv", index=False)
+    pd.concat([summary(metrics, {"pool": "base", "method": m, "access": "transductive"}) for m in ("domain_weights_clip5", "drop_top5_shifted")]).to_csv(
+        tmp_path / "methods_transductive_b3_40f_summary.csv", index=False)
+    pd.concat([summary(metrics, {"pool": "base", "k": k, "method": "retrain_split_f0.5", "access": "few-shot"}) for k in (1000, 5000)]).to_csv(
+        tmp_path / "adaptation_40f_split_summary.csv", index=False)
+    pd.concat([summary(metrics, {"pool": "base", "k": 5000, "method": "retrain_f0.5_domain5", "access": "few-shot+transductive"})]).to_csv(
+        tmp_path / "adaptation_40f_domain5_summary.csv", index=False)
+    df = pd.DataFrame(rows_for(tmp_path, "40f", "base"))
+    assert set(df["access"]) == {"zero-shot", "few-shot", "transductive", "few-shot+transductive"}
+    few = df[df["access"] == "few-shot"]
+    assert set(few["k_labelled"]) == {100, 500, 1000, 5000} and "zero_shot" not in set(few["method"])   # the baseline is a row of its own
+    assert len(df) == 3 + 2 + 4 * 3 + 2 + 2 + 1 and (df["accuracy_mean"] == 0.5).all()
+    text = render(df)
+    assert "| retrain_f0.3 |" in text and "| retrain_f0.1 |" not in text and "| domain_weights_clip5 |" in text   # the .md omits the f=0.1 rows
+
+
+def test_adaptation_with_domain_weights_labels_the_combined_access_level(config, feature_sets):
+    from pipelines.run_adaptation import run_adaptation_pool
+    runs = run_adaptation_pool(config, feature_sets, "base", ks=(40,), fractions=(0.3,), runs=2, domain_clip=5)
+    assert set(runs["method"]) == {"retrain_f0.3_domain5"} and set(runs["access"]) == {"few-shot+transductive"} and len(runs) == 2
+    assert (runs["n_adapt"] == 40).all() and runs["accuracy"].between(0, 1).all()
+
+
+def test_split_threshold_never_scores_the_threshold_rows_in_training(config, feature_sets):
+    from pipelines.run_adaptation import run_adaptation_pool
+    runs = run_adaptation_pool(config, feature_sets, "base", ks=(60,), fractions=(0.3,), runs=2, split_threshold=True)
+    assert set(runs["method"]) == {"retrain_split_f0.3"} and set(runs["access"]) == {"few-shot"} and len(runs) == 2
+    assert (runs["n_adapt"] == 60).all() and runs["det95_test_fpr"].between(0, 1).all() and runs["det95_test_detection"].between(0, 1).all()
+    assert set(runs["threshold_source"]) == {"held-out half of the adaptation sample"}
+
+
+def test_block_split_leaves_a_gap_between_adaptation_and_evaluation_rows():
+    from src.neighbours import block_split
+    adapt, evaluation = block_split(200, block_size=20, buffer=3, adapt_share=0.4, seed=1)
+    assert not set(adapt) & set(evaluation) and len(adapt) > 0 and len(evaluation) > 0
+    gaps = np.abs(adapt[:, None] - evaluation[None, :])
+    assert gaps.min() >= 2 * 3 + 1                                        # buffer rows dropped on each side of every boundary
+    assert 20 * 3 <= len(adapt) <= 20 * 5                                  # about 40% of the 10 blocks (minus the dropped edges)
+    again = block_split(200, 20, 3, 0.4, 1)
+    assert np.array_equal(adapt, again[0]) and np.array_equal(evaluation, again[1])   # reproducible
+    assert not np.array_equal(block_split(200, 20, 3, 0.4, 2)[0], adapt)               # another seed, another blocks
+    # an adaptation block is contiguous apart from its dropped edges
+    runs = np.split(adapt, np.flatnonzero(np.diff(adapt) > 1) + 1)
+    assert all(len(r) == r[-1] - r[0] + 1 for r in runs)
+
+
+def test_embedding_distance_uses_the_training_scale_and_exact_categoricals():
+    from src.neighbours import Embedder, exact_twin_mask, nearest_distance, twin_shares
+    train = pd.DataFrame({"dur": [0.0, 1.0, 3.0, 7.0], "sbytes": [10.0, 20.0, 40.0, 80.0], "dbytes": [1.0, 1.0, 2.0, 2.0],
+                          "spkts": [1.0, 2.0, 3.0, 4.0], "dpkts": [1.0, 1.0, 1.0, 1.0], "proto": ["tcp", "tcp", "udp", "udp"]})
+    feats = ["dur", "proto"]
+    emb = Embedder(feats).fit(train)
+    sd = np.log1p(train["dur"]).std(ddof=0)
+    query = pd.DataFrame({"dur": [3.0, 3.5, 3.0, 100.0], "sbytes": [40.0] * 4, "dbytes": [2.0] * 4, "spkts": [3.0] * 4, "dpkts": [1.0] * 4,
+                          "proto": ["udp", "udp", "tcp", "udp"]})
+    d = nearest_distance(emb.transform(query), emb.transform(train), cutoff=0.5)
+    assert d[0] == 0.0                                                    # identical row
+    assert abs(d[1] - (np.log1p(3.5) - np.log1p(3.0)) / sd) < 1e-9         # distance in the TRAINING standard deviations
+    assert d[2] == np.inf and d[3] == np.inf                               # another protocol never matches; a far value exceeds the cutoff
+    exact = exact_twin_mask(query, train, ["dur", "proto"])
+    assert exact.tolist() == [True, False, False, False]
+    shares = twin_shares(d, exact, thresholds=(0.1, 0.25))
+    assert shares["exact_twin"] == 0.25 and shares["near_twin_0.1"] >= 0.25
+
+
+def test_composition_counts_rows_by_source_file_and_share():
+    from scripts.pooled_reference_composition import composition
+    frame = lambda a, b: pd.DataFrame({"split": ["train"] * a + ["test"] * b})  # noqa: E731
+    table = composition({"pooled": {"train": frame(60, 30), "val": frame(10, 5), "test": frame(30, 15)}, "official": {"train": frame(100, 0), "test": frame(0, 50)}})
+    pooled = table[table["protocol"] == "pooled"].set_index(["part", "source_file"])
+    assert pooled.loc[("train", "test"), "rows"] == 30 and pooled.loc[("train", "test"), "share_of_source_file"] == 0.6      # 30 of the 50 test-file rows
+    assert pooled.loc[("train", "test"), "share_of_part"] == round(30 / 90, 4)
+    off = table[table["protocol"] == "official"].set_index(["part", "source_file"])
+    assert off.loc[("train", "test"), "rows"] == 0 and off.loc[("test", "test"), "share_of_source_file"] == 1.0
+
+
+def test_subset_metrics_by_hand():
+    from pipelines.run_leakage_checks import subset_metrics
+    # classes: 0 = Normal, 1 = attack. Rows: two Normal (scores .1, .6), two attacks (scores .9, .4)
+    proba = np.array([[0.9, 0.1], [0.4, 0.6], [0.1, 0.9], [0.6, 0.4]])
+    y = np.array([0, 0, 1, 1])
+    full = subset_metrics(proba, y, normal_index=0, threshold=0.5, mask=np.ones(4, bool), ece_bins=10)
+    assert full["det95_test_fpr"] == 0.5 and full["det95_test_detection"] == 0.5 and full["accuracy"] == 0.5 and full["n_eval"] == 4
+    only_first_three = subset_metrics(proba, y, 0, 0.5, np.array([True, True, True, False]), 10)
+    assert only_first_three["det95_test_fpr"] == 0.5 and only_first_three["det95_test_detection"] == 1.0 and only_first_three["n_eval"] == 3
+    assert np.isnan(subset_metrics(proba, y, 0, 0.5, np.array([True, True, False, False]), 10)["det95_test_fpr"])   # no attacks in the subset
+
+
+def test_leakage_runs_report_twin_shares_subsets_and_block_conditions(config, feature_sets):
+    from pipelines.run_leakage_checks import run_runs, summarise
+    runs = run_runs(config, feature_sets, "base", ks=(40,), runs=2, block_size=60, buffer=5, adapt_share=0.4)
+    cond = set(runs["condition"])
+    assert {"twin_share_vs_adaptation_rows", "twin_share_vs_random_training_subset", "twin_share_vs_whole_training_set", "all_eval",
+            "no_near_twin_0.1", "has_near_twin_0.1", "zero_shot_E", "within_E", "block_disjoint"} <= cond
+    for _, g in runs[runs["check"] == "twins"].groupby("run"):
+        sub = g[(g["method"] == "retrain_split_f0.5")].set_index("condition")["n_eval"]
+        assert sub["no_near_twin_0.1"] + sub["has_near_twin_0.1"] == sub["all_eval"]            # the two subsets partition the evaluation rows
+    shares = runs[runs["condition"] == "twin_share_vs_adaptation_rows"]
+    assert shares["twin_exact_twin"].between(0, 1).all() and (shares["twin_near_twin_0.25"] >= shares["twin_near_twin_0.1"]).all()
+    assert set(runs.loc[runs["method"] == "zero_shot", "access"]) == {"zero-shot"} and set(runs.loc[runs["method"] == "retrain_split_f0.5", "access"]) == {"few-shot"}
+    assert summarise(runs).query("condition == 'block_disjoint' and metric == 'accuracy'")["n_runs"].iloc[0] == 2
+
+
+def test_validation_blocks_compare_random_and_block_validation(config, feature_sets):
+    from pipelines.run_leakage_checks import ordered_training_rows, run_validation_blocks
+    config["data"]["val_size"] = 0.2
+    assert len(ordered_training_rows(config)) > 0
+    val = run_validation_blocks(config, feature_sets, "base", seeds=(1,), block_size=50, buffer=5)
+    assert set(val["validation"]) == {"random_validation", "block_validation"}
+    assert (val["fpr_gap"] == (val["test_fpr"] - val["val_fpr"]).round(4)).all() and (val["n_val"] > 0).all()
+    blocks = val.set_index("validation")
+    assert blocks.loc["block_validation", "n_train"] < len(ordered_training_rows(config))   # the gap rows leave training as well
+
+
+def test_validation_file_names_never_collide_across_block_sizes():
+    from pipelines.run_leakage_checks import validation_filename
+    assert validation_filename("48f", 1000) == "leakage_48f_validation_blocks.csv"
+    assert validation_filename("48f", 200) == "leakage_48f_validation_blocks_b200.csv"
+
+
+def test_leakage_table_reads_the_original_and_the_check_files_without_inventing_rows(tmp_path):
+    from scripts.leakage_table import METRICS, build, render
+    def summary(rows):
+        return pd.DataFrame([{**keys, "metric": m, "mean": v, "std": 0.01, "n_runs": 5} for keys, vals in rows for m, v in vals.items()])
+    vals = lambda fpr: {"det95_test_fpr": fpr, "det95_test_detection": 0.95, "accuracy": 0.8, "ece": 0.05, "n_eval": 100.0}  # noqa: E731
+    pd.concat([summary([({"k": k, "method": "retrain_split_f0.5"}, vals(0.09))]) for k in (1000, 5000)]).to_csv(tmp_path / "adaptation_48f_split_summary.csv", index=False)
+    leak = []
+    for k in (1000, 5000):
+        for cond, fpr in (("all_eval", 0.09), ("no_near_twin_0.1", 0.2), ("has_near_twin_0.1", 0.05), ("within_E", 0.08), ("block_disjoint", 0.22)):
+            leak.append(({"k": k, "check": "x", "condition": cond, "method": "retrain_split_f0.5", "access": "few-shot"}, vals(fpr)))
+        for cond in ("all_eval", "no_near_twin_0.1", "has_near_twin_0.1", "zero_shot_E"):
+            leak.append(({"k": k, "check": "x", "condition": cond, "method": "zero_shot", "access": "zero-shot"}, vals(0.25)))
+    summary(leak).to_csv(tmp_path / "leakage_48f_summary.csv", index=False)
+    df = build(tmp_path, {"48f": "48 features", "40f": "40 features"}, {"45f": "no ttl"}, ks=(1000, 5000))
+    assert set(df["pool"]) == {"48f"}                                          # 40f and 45f files do not exist: no rows are made up
+    by = df.set_index(["k_labelled", "row"])
+    assert by.loc[(5000, "original Task 2.5 result (retrain_split_f0.5, random adaptation rows)"), "det95_test_fpr_mean"] == 0.09
+    assert by.loc[(5000, "twins: rows with NO near twin (<= 0.1) in the adaptation set"), "det95_test_fpr_mean"] == 0.2
+    assert by.loc[(5000, "blocks: adaptation rows from other blocks (neighbourhood-disjoint)"), "det95_test_fpr_mean"] == 0.22
+    assert {"few-shot", "zero-shot"} <= set(df["access"]) and all(f"{m}_mean" in df.columns for m in METRICS)
+    assert "0.2200 +/- 0.0100" in render(df)
+
+
+def test_ct_ablation_pools_exclude_exactly_the_declared_columns():
+    from src.utils.config_loader import apply_pool_variant, choose_pool
+    cfg, fsets = load_config(), load_feature_sets()
+    cols = fsets["feature_pool_full"]
+    window = {"ct_src_dport_ltm", "ct_dst_sport_ltm", "ct_srv_src", "ct_dst_ltm", "ct_src_ltm", "ct_srv_dst", "ct_dst_src_ltm"}
+    a = choose_pool(apply_pool_variant(cfg, "full_no_ct_window"), fsets, cols)[1]["feature_pool"]
+    b = choose_pool(apply_pool_variant(cfg, "full_no_ct_any"), fsets, cols)[1]["feature_pool"]
+    assert len(a) == 41 and set(fsets["feature_pool_full"]) - set(a) == window
+    assert len(b) == 38 and {f for f in fsets["feature_pool_full"] if f.startswith("ct_")} == set(fsets["feature_pool_full"]) - set(b)
+    assert "ct_state_ttl" not in b and "ct_flw_http_mthd" not in b and "ct_ftp_cmd" not in b and "sttl" in b   # every ct_* column goes, the TTL columns stay
+
+
+def test_shift_auc_by_cv_reports_random_and_block_grouped_auc(config, feature_sets):
+    from pipelines.run_leakage_checks import shift_auc_by_cv
+    out = shift_auc_by_cv(config, feature_sets, "base", seed=1, block_size=50)
+    assert 0 <= out["auc_random_cv"] <= 1 and 0 <= out["auc_block_cv"] <= 1 and out["n_train_normal"] > 0 and out["n_test_normal"] > 0
+
+
+def test_block_validation_splits_leave_a_gap_and_keep_the_test_part(config, feature_sets, splits):
+    from pipelines.train_pipeline import block_validation_splits, ordered_training_rows
+    config["data"]["val_size"] = 0.2
+    out = block_validation_splits(config, splits, seed=3, block_size=50, buffer=5)
+    ordered = ordered_training_rows(config)
+    assert out.test is splits.test and out.unknown is splits.unknown                                  # only train / val are rebuilt
+    from src.neighbours import block_split
+    val_pos, train_pos = block_split(len(ordered), 50, 5, 0.2, 3)                                    # the same positions the helper used
+    assert len(out.val) == len(val_pos) and len(out.train) == len(train_pos)
+    assert len(out.train) + len(out.val) < len(ordered)                                              # the gap rows leave both parts
+    assert out.val["attack_cat"].tolist() == ordered.iloc[val_pos]["attack_cat"].tolist()           # validation = those file rows, in file order
+    assert np.abs(val_pos[:, None] - train_pos[None, :]).min() >= 2 * 5 + 1                          # no training row within the gap of a validation row
+
+
+def test_family_counts_reports_which_extra_columns_survive():
+    from pipelines.run_tier_study import family_counts
+    groups = load_config()["shift"]["feature_groups"]
+    out = family_counts(["rate", "sttl", "ct_state_ttl", "ct_srv_src", "ct_dst_ltm", "ct_flw_http_mthd", "dur"], groups)
+    assert out["n_ct_window"] == 2 and out["n_ttl"] == 2 and out["n_ct_other"] == 1                 # ct_state_ttl counts as TTL, not as "other ct_"
+    assert out["ct_window_cols"] == "ct_srv_src;ct_dst_ltm" and out["ttl_cols"] == "sttl;ct_state_ttl" and out["ct_other_cols"] == "ct_flw_http_mthd"
+    assert family_counts(["rate", "dur"], groups)["n_ct_window"] == 0
+
+
+def test_model_config_sets_the_declared_parameters_per_model_family():
+    from pipelines.run_tier_study import model_config
+    base = load_config()
+    xgb = model_config(copy.deepcopy(base), "xgboost", 44)
+    assert xgb["model"]["type"] == "xgboost" and xgb["model"]["params"]["random_state"] == 44 and xgb["model"]["params"]["max_depth"] == 8
+    rf = model_config(copy.deepcopy(base), "random_forest", 45)
+    assert rf["model"]["params"] == {"n_estimators": 150, "max_depth": 10, "min_samples_leaf": 5, "n_jobs": -1, "random_state": 45}
+    lr = model_config(copy.deepcopy(base), "logistic_regression", 46)
+    assert lr["model"]["params"] == {"max_iter": 300, "random_state": 46} and lr["project"]["seed"] == 46
+    assert base["model"]["type"] == "xgboost"                                                        # the input config is not modified
+
+
+def test_shap_with_bootstrap_is_paired_deterministic_and_centred_on_the_importance():
+    from pipelines.run_tier_study import shap_with_bootstrap
+    from src.models.model_factory import create_model
+    from src.preprocessing import Preprocessor
+    df = make_synthetic_unsw(n_rows=900, seed=2)
+    feats = ["rate", "sbytes", "dbytes", "dur", "spkts", "proto"]
+    pre = Preprocessor(feature_list=feats, target_column="attack_cat").fit(df)
+    X, y = pre.transform(df)
+    out = {}
+    for name in ("xgboost", "random_forest"):
+        m = create_model(name, {"n_estimators": 10, "max_depth": 3, "random_state": 0, "n_jobs": 1}).fit(X, y)
+        out[name] = shap_with_bootstrap(m, pre, df, feats, n_rows=200, n_boot=30, seed=7)
+    imp, boot = out["xgboost"]
+    assert list(imp.index) == feats and (imp >= 0).all() and boot.shape == (30, 6)
+    assert np.allclose(boot.mean(axis=0), imp.to_numpy(), rtol=0.25, atol=0.02)                      # resamples centre on the point estimate
+    again = shap_with_bootstrap(create_model("xgboost", {"n_estimators": 10, "max_depth": 3, "random_state": 0, "n_jobs": 1}).fit(X, y), pre, df, feats, 200, 30, 7)
+    assert np.allclose(again[1], boot)                                                               # deterministic
+    assert not np.allclose(shap_with_bootstrap(create_model("xgboost", {"n_estimators": 10, "max_depth": 3, "random_state": 0, "n_jobs": 1}).fit(X, y), pre, df, feats, 200, 30, 8)[1], boot)
+    # a second model family goes through the same path (same row count, hence the same resample indices for a given seed)
+    assert out["random_forest"][1].shape == boot.shape and (out["random_forest"][0] >= 0).all()
+
+
+def test_run_tiers_trains_once_per_run_and_writes_metrics_and_shap(config, feature_sets):
+    from pipelines.run_tier_study import run_tiers, save
+    config["tier_study"].update(block_size=50, buffer=5, shap_rows=60, bootstrap=5, seeds=[1, 2])
+    runs, imps, boots = run_tiers(config, feature_sets, "base", "xgboost", tiers=["40", "15"])
+    assert len(runs) == 4 and set(runs["tier"]) == {"40", "15"} and set(runs["seed"]) == {1, 2}
+    assert {"det95_test_fpr", "det95_val_fpr", "n_ct_window", "n_ttl", "roc_auc_attack_vs_normal", "ece"} <= set(runs.columns)
+    assert runs["pool_label"].eq("40f").all() and (runs["n_features"].isin([40, 15])).all()
+    assert len(imps) == 2 * (40 + 15) and set(imps["tier"]) == {"40", "15"} and boots["15__1"].shape == (5, 15)
+    assert list(boots["15__features"]) == list(imps[(imps.tier == "15") & (imps.seed == 1)]["feature"])      # bootstrap columns follow the stored feature order
+    from src.utils.config_loader import resolve_path
+    save(config, "xgboost", "40f", runs, imps, boots)
+    d = rae.get_metrics_dir(config)
+    assert (d / "tier_study_xgboost_40f_runs.csv").exists() and (d / "shap_importance_xgboost_40f.csv").exists() and (d / "shap_boot_xgboost_40f.npz").exists()
+    import glob
+    assert any("blockval_40f" in f for f in glob.glob(str(resolve_path(config["paths"]["feature_ranking"]).parent / "*")))  # its own ranking file
+
+
+def test_tier_baselines_and_pooled_runs(config, feature_sets):
+    from pipelines.run_tier_study import run_baselines, run_tiers
+    config["tier_study"].update(block_size=50, buffer=5, shap_rows=60, bootstrap=3, seeds=[1, 2])
+    runs, _, _ = run_tiers(config, feature_sets, "base", "xgboost", tiers=["15"], with_shap=False)
+    csv_runs = pd.read_csv(io.StringIO(runs.to_csv(index=False)))                                       # as main() reads it: tier names come back as integers
+    df, summary, summary_acc = run_baselines(config, feature_sets, "base", csv_runs, draws=3, tiers=["15"])
+    assert set(df["ranking"]) == {"ranked", "random", "worst"} and (df["ranking"] == "random").sum() == 3
+    assert {"ranked_f1", "worst_f1", "random_f1_mean", "ranked_z_vs_random", "ranked_percentile_in_random"} <= set(summary.columns) and len(summary) == 1
+    assert df.loc[df["ranking"] == "ranked", "f1"].iloc[0] == round(float(runs["f1"].mean()), 4)       # the ranked row is the seed mean
+    pooled, imps, _ = run_tiers(config, feature_sets, "base", "xgboost", tiers=["15"], with_shap=True, pooled=True)
+    assert set(pooled["split"]) == {"pooled_random"} and "det95_test_fpr" not in pooled.columns and imps.empty
+
+
+def test_tier_table_computes_the_drop_welch_z_and_the_declared_criteria():
+    from scripts.tier_summary import tier_table
+    rows = []
+    for tier, n, f1s in (("48", 48, [0.72, 0.721, 0.719, 0.72, 0.72]), ("30", 30, [0.715, 0.716, 0.714, 0.715, 0.715]), ("15", 15, [0.68, 0.681, 0.679, 0.68, 0.68])):
+        for seed, f1 in zip(range(42, 47), f1s):
+            rows.append({"tier": tier, "n_features": n, "seed": seed, "f1": f1, "accuracy": f1 + 0.03, "n_ct_window": 7 if n == 48 else 0, "n_ct_other": 0, "n_ttl": 3 if n == 48 else 0})
+    t = tier_table(pd.DataFrame(rows)).set_index("tier")
+    assert abs(t.loc["30", "drop_f1"] - 0.005) < 1e-9 and abs(t.loc["15", "drop_f1"] - 0.04) < 1e-9 and t.loc["48", "drop_f1"] == 0
+    full_std = np.std([0.72, 0.721, 0.719, 0.72, 0.72], ddof=1)
+    assert bool(t.loc["30", "meets_noise"]) == (0.005 <= 2 * full_std)                                    # compared with 2 x the full pool's std
+    assert t.loc["30", "meets_practical"] and not t.loc["15", "meets_practical"]                          # 0.005 <= 0.02 < 0.04
+    se = np.sqrt(full_std ** 2 / 5 + np.std([0.715, 0.716, 0.714, 0.715, 0.715], ddof=1) ** 2 / 5)
+    assert abs(t.loc["30", "welch_z_f1"] - round(0.005 / se, 4)) < 1e-3 and t.loc["48", "n_ct_window"] == 7
+
+
+def test_stability_table_compares_tiers_per_seed_and_seeds_per_tier():
+    from scripts.explanation_stability_tiers import stability_table
+    feats = [f"f{i}" for i in range(12)]
+    rng = np.random.default_rng(0)
+    base = np.linspace(1, 0.05, 12)
+    rows = []
+    for tier, keep in (("12", feats), ("8", feats[:8])):
+        for seed in (1, 2, 3):
+            noise = rng.normal(0, 0.001, 12)
+            for f, v in zip(keep, (base + noise)[: len(keep)]):
+                rows.append({"tier": tier, "seed": seed, "feature": f, "importance": v})
+    t = stability_table(pd.DataFrame(rows)).set_index(["comparison", "a", "b"])
+    assert t.loc[("tier_pair", "12", "8"), "n_common_features"] == 8 and t.loc[("tier_pair", "12", "8"), "n"] == 3
+    assert t.loc[("tier_pair", "12", "8"), "rank_correlation_mean"] > 0.99                                    # same ordering up to tiny noise
+    assert t.loc[("same_tier_seeds", "12", "12"), "n"] == 3 and t.loc[("same_tier_seeds", "12", "12"), "cosine_similarity_mean"] > 0.999   # 3 seeds -> 3 pairs
+
+
+def test_cross_model_agreement_intervals_by_hand():
+    from scripts.cross_model_agreement import agreement_with_intervals
+    feats = list("abcdef")
+    v = pd.Series([6.0, 5, 4, 3, 2, 1], index=feats)
+    reversed_v = pd.Series(v.to_numpy()[::-1], index=feats)
+    vectors = {"m1": {1: v, 2: v}, "m2": {1: v * 2, 2: v * 2}, "m3": {1: reversed_v, 2: reversed_v}}
+    boots = {m: {s: np.tile(vec.to_numpy(), (4, 1)) for s, vec in d.items()} for m, d in vectors.items()}
+    same = agreement_with_intervals(vectors, boots, feats, "m1", "m2")
+    assert same["rank_correlation_mean"] == 1.0 and same["rank_correlation_ci_low"] == same["rank_correlation_ci_high"] == 1.0 and same["topk_overlap_mean"] == 1.0
+    opposite = agreement_with_intervals(vectors, boots, feats, "m1", "m3")
+    assert opposite["rank_correlation_mean"] == -1.0 and opposite["n_seeds"] == 2 and opposite["n_bootstrap"] == 4
+    noisy = {"m1": {1: boots["m1"][1][:1].repeat(50, axis=0) + np.random.default_rng(0).normal(0, 0.8, (50, 6))}, "m2": {1: boots["m2"][1][:1].repeat(50, axis=0)}}
+    out = agreement_with_intervals({"m1": {1: v}, "m2": {1: v * 2}}, noisy, feats, "m1", "m2")
+    assert out["rank_correlation_ci_low"] < out["rank_correlation_ci_high"] <= 1.0                           # resampling noise gives a real interval
+
+
+def test_operating_point_summary_for_other_pools_does_not_overwrite_the_40f_48f_table(config, feature_sets):
+    from pipelines.run_operating_point import run_operating_point
+    d = rae.get_metrics_dir(config)
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "operating_point_summary.md").write_text("original table")
+    config["experiments"]["pool_variants"] = {"no_ttl": {"pool": "full", "exclude": ["sttl", "dttl", "ct_state_ttl"]}}
+    run_operating_point(config, feature_sets, pools=("no_ttl",), seeds=[1])
+    assert (d / "operating_point_summary.md").read_text() == "original table" and (d / "operating_point_summary_45f.md").exists()
+
+
+def test_shap_explainer_type_matches_the_model_family():
+    import shap
+    from src.models.model_factory import create_model
+    from src.preprocessing import Preprocessor
+    from src.xai.shap_explainer import SHAPExplainer
+    df = make_synthetic_unsw(n_rows=700, seed=4)
+    feats = ["rate", "sbytes", "dbytes", "dur", "spkts", "proto"]
+    pre = Preprocessor(feature_list=feats, target_column="attack_cat").fit(df)
+    X, y = pre.transform(df)
+    expected = {"xgboost": shap.TreeExplainer, "random_forest": shap.TreeExplainer, "logistic_regression": shap.LinearExplainer}
+    params = {"xgboost": {"n_estimators": 8, "max_depth": 3}, "random_forest": {"n_estimators": 8, "max_depth": 4, "random_state": 0},
+              "logistic_regression": {"max_iter": 200}}
+    for name, cls in expected.items():
+        explainer = SHAPExplainer(create_model(name, params[name]).fit(X, y), feats)
+        values = explainer.compute_shap_values(X, 50)
+        assert isinstance(explainer._explainer, cls), name
+        assert len(values) == len(set(y)) and values[0].shape == (50, 6)
+
+
+def test_tier_runner_works_for_every_model_family_and_writes_to_an_out_dir(config, feature_sets, tmp_path):
+    from pipelines.run_tier_study import output_dir, run_tiers, save
+    config["tier_study"].update(block_size=50, buffer=5, shap_rows=60, bootstrap=4, seeds=[1, 2])
+    for model in ("random_forest", "logistic_regression"):
+        config["tier_study"]["model_params"][model] = {**config["tier_study"]["model_params"][model], **({"n_estimators": 8, "max_depth": 4} if model == "random_forest" else {"max_iter": 100})}
+        runs, imps, boots = run_tiers(config, feature_sets, "base", model, tiers=["15"])
+        assert set(runs["model"]) == {model} and len(runs) == 2 and runs["f1"].between(0, 1).all()
+        assert len(imps) == 2 * 15 and (imps["importance"] >= 0).all() and boots["15__1"].shape == (4, 15)
+        save(config, model, "40f", runs, imps, boots, out_dir=str(tmp_path / "scratch"))
+        assert (tmp_path / "scratch" / model / "tier_study_" f"{model}_40f_runs.csv").exists()
+        assert not (output_dir(config, model) / f"tier_study_{model}_40f_runs.csv").exists()          # nothing leaked into results/metrics/<model>/
+
+
+def test_cross_model_agreement_runs_end_to_end_from_saved_tier_runs(config, feature_sets, tmp_path):
+    from pipelines.run_tier_study import run_tiers, save
+    from scripts.cross_model_agreement import cross_model_table
+    config["tier_study"].update(block_size=50, buffer=5, shap_rows=80, bootstrap=6, seeds=[1, 2])
+    config["tier_study"]["model_params"]["random_forest"].update(n_estimators=8, max_depth=4)
+    scratch = tmp_path / "scratch"
+    for model in ("xgboost", "random_forest"):
+        runs, imps, boots = run_tiers(config, feature_sets, "base", model, tiers=["15", "40"])
+        save(config, model, "40f", runs, imps, boots, out_dir=str(scratch))
+    table = cross_model_table(config, "40f", ("xgboost", "random_forest"), in_dir=str(scratch))
+    assert set(table["tier"]) == {15, 40} and set(zip(table["model_a"], table["model_b"])) == {("xgboost", "random_forest")}
+    assert table["n_seeds"].eq(2).all() and table["n_bootstrap"].eq(6).all()
+    for m in ("rank_correlation", "cosine_similarity", "topk_overlap"):
+        assert table[f"{m}_ci_low"].le(table[f"{m}_ci_high"]).all() and table[f"{m}_mean"].between(-1, 1).all()
+    assert cross_model_table(config, "40f", ("xgboost", "logistic_regression"), in_dir=str(scratch)).empty   # a model without saved runs is skipped, not invented
+
+
+def test_model_config_explains_what_to_add_for_an_undeclared_model_type():
+    from pipelines.run_tier_study import model_config
+    with pytest.raises(ValueError, match="tier_study.model_params.lightgbm"):
+        model_config(copy.deepcopy(load_config()), "lightgbm", 42)
+
+
+def test_confidence_scores_by_hand():
+    from src.openset_scores import entropy_score, margin_score, msp_score
+    p = np.array([[1.0, 0.0, 0.0], [0.5, 0.5, 0.0], [1 / 3, 1 / 3, 1 / 3], [0.7, 0.2, 0.1]])
+    assert np.allclose(msp_score(p), [0.0, 0.5, 2 / 3, 0.3])
+    assert np.allclose(margin_score(p), [0.0, 1.0, 1.0, 0.5])                                  # 1 - (top - second)
+    h = entropy_score(p)
+    assert abs(h[0]) < 1e-6 and abs(h[1] - np.log(2) / np.log(3)) < 1e-9 and abs(h[2] - 1.0) < 1e-9 and h[2] > h[3] > h[0]   # 0 certain ... 1 uniform
+
+
+def test_conformal_scorer_pvalues_and_sets_by_hand():
+    from src.openset_scores import ConformalScorer
+    # two classes; calibration flows: class 0 nonconformities 0.1, 0.2, 0.4 (p_0 = .9, .8, .6); class 1: 0.3 (p_1 = .7)
+    proba = np.array([[0.9, 0.1], [0.8, 0.2], [0.6, 0.4], [0.3, 0.7]])
+    y = np.array([0, 0, 0, 1])
+    c = ConformalScorer().fit(proba, y)
+    pv = c.pvalues(np.array([[0.8, 0.2], [0.55, 0.45], [0.05, 0.95]]))
+    # class 0: nonconf(x) = 0.2 -> cal scores >= 0.2 are {0.2, 0.4} = 2 -> (2 + 1) / (3 + 1) = .75 ; x2: 0.45 -> none >= .45 -> 1/4 ; x3: 0.95 -> 1/4
+    assert np.allclose(pv[:, 0], [0.75, 0.25, 0.25])
+    # class 1: nonconf = 0.8 / 0.55 / 0.05 vs cal {0.3}: x1 none -> 1/2 ; x2 none -> 1/2 ; x3 0.05 <= 0.3 -> (1 + 1) / 2 = 1
+    assert np.allclose(pv[:, 1], [0.5, 0.5, 1.0])
+    assert np.allclose(c.score(np.array([[0.8, 0.2], [0.55, 0.45], [0.05, 0.95]])), [0.25, 0.5, 0.0])      # 1 - max p-value
+    sets = c.prediction_sets(np.array([[0.8, 0.2]]), alpha=0.6)
+    assert sets.tolist() == [[True, False]]                                                              # p = (.75, .5): only class 0 exceeds .6
+    assert c.prediction_sets(np.array([[0.55, 0.45]]), alpha=0.6).sum() == 0                              # empty set <=> score >= 1 - alpha
+    absent = ConformalScorer().fit(proba[:3], y[:3])                                                      # class 1 never calibrated
+    assert absent.pvalues(np.array([[0.2, 0.8]]))[0, 1] == 0.0
+
+
+def test_rank_normalizer_combination_and_threshold_by_hand():
+    from src.openset_scores import RankNormalizer, combine, flag_threshold, unknown_auroc
+    r = RankNormalizer().fit(np.array([4.0, 1.0, 3.0, 2.0]))
+    assert np.allclose(r.transform(np.array([0.5, 1.0, 2.5, 4.0, 9.0])), [0.0, 0.25, 0.5, 1.0, 1.0])     # ECDF of the calibration sample
+    a, b = np.array([0.2, 0.9]), np.array([0.6, 0.1])
+    assert np.allclose(combine(a, b, "mean"), [0.4, 0.5]) and np.allclose(combine(a, b, "max"), [0.6, 0.9])
+    with pytest.raises(ValueError):
+        combine(a, b, "min")
+    known = np.arange(100.0)
+    thr = flag_threshold(known, 0.05)
+    assert abs(thr - 94.05) < 1e-9 and (known > thr).mean() == 0.05                                       # 5% of the known scores are flagged
+    assert unknown_auroc(np.array([0.1, 0.2, 0.3]), np.array([0.25, 0.9])) == (5 / 6)                      # 5 of the 6 (known, unknown) pairs ordered correctly
+    assert unknown_auroc(np.array([0.1, 0.2]), np.array([0.1, 0.2])) == 0.5
+
+
+def test_anomaly_scorer_ranks_far_points_above_normal_ones_and_the_suite_builds_every_candidate():
+    from src.openset_scores import BASE_SCORES, RULES, AnomalyScorer, ScoreSuite
+    rng = np.random.default_rng(0)
+    normal = rng.normal(0, 1, (800, 4))
+    scorer = AnomalyScorer(seed=1).fit(normal)
+    far = rng.normal(8, 1, (50, 4))
+    assert scorer.score(far).mean() > scorer.score(rng.normal(0, 1, (50, 4))).mean()
+    proba = rng.dirichlet(np.ones(3), 300)
+    suite = ScoreSuite(seed=1).fit(proba, rng.integers(0, 3, 300), rng.normal(0, 1, (300, 4)), normal)
+    out = suite.scores(proba[:20], rng.normal(0, 1, (20, 4)))
+    expected = {*BASE_SCORES, "iforest", *(f"iforest+{b}:{r}" for b in BASE_SCORES for r in RULES)}
+    assert set(out) == expected and all(len(v) == 20 and np.isfinite(v).all() for v in out.values())
+    assert all((out[f"iforest+{b}:max"] >= out[f"iforest+{b}:mean"] - 1e-12).all() for b in BASE_SCORES)    # max of two ranks >= their mean
+
+
+def _open_set_config(config):
+    config["tier_study"].update(block_size=40, buffer=5, seeds=[1])
+    config["data"]["val_size"] = 0.5
+    return config
+
+
+def test_validation_halves_are_disjoint_blockwise_and_reproducible():
+    from pipelines.run_open_set_study import validation_halves
+    df = pd.DataFrame({"x": range(400)})
+    cal = validation_halves(df, block_size=50, seed=3)
+    assert cal.dtype == bool and cal.sum() == 200 and (~cal).sum() == 200                          # half of the 8 blocks each
+    blocks = np.arange(400) // 50
+    assert all(len(set(cal[blocks == b])) == 1 for b in range(8))                                  # a block is never split between the halves
+    assert np.array_equal(cal, validation_halves(df, 50, 3)) and not np.array_equal(cal, validation_halves(df, 50, 4))
+
+
+def test_open_set_run_thresholds_never_see_the_unknown_flows(config, feature_sets):
+    from pipelines.run_open_set_study import CANDIDATES, OpenSetRun, zero_day_rows, zero_sets_of
+    from pipelines.run_tier_study import prepare
+    from src.openset_scores import flag_threshold
+    cfg, sets, splits = prepare(_open_set_config(config), feature_sets, "base", "xgboost", 1)
+    feats = list(sets["feature_pool"])
+    run_a = OpenSetRun(cfg, splits.train, splits.val, splits.test, splits.unknown, feats, 1)
+    shuffled_unknown = splits.unknown.sample(frac=1, random_state=0).iloc[: len(splits.unknown) // 2].reset_index(drop=True)       # different zero-day flows
+    run_b = OpenSetRun(cfg, splits.train, splits.val, splits.test, shuffled_unknown, feats, 1)
+    for name in CANDIDATES:
+        assert run_a.threshold(name) == run_b.threshold(name) == flag_threshold(run_a.parts["thr"]["scores"][name], 0.05)   # fixed on the known threshold half only
+    rows = zero_day_rows(run_a, "40f", 1, zero_sets_of(splits.unknown))
+    assert {r["zero_day"] for r in rows} == {"Shellcode+Worms", "Shellcode", "Worms"} and len(rows) == 3 * len(CANDIDATES)
+    msp = [r for r in rows if r["score"] == "msp" and r["zero_day"] == "Shellcode+Worms"][0]
+    assert abs(msp["false_unknown_thr_half"] - 0.05) < 0.04 and 0 <= msp["unknown_auroc"] <= 1 and msp["flagged_or_attack"] >= msp["detection"]
+
+
+def test_review_queue_curve_and_false_alarm_sources_obey_their_definitions(config, feature_sets):
+    from pipelines.run_open_set_study import OpenSetRun, curve_rows, source_rows
+    from pipelines.run_tier_study import prepare
+    cfg, sets, splits = prepare(_open_set_config(config), feature_sets, "base", "xgboost", 1)
+    run = OpenSetRun(cfg, splits.train, splits.val, splits.test, splits.unknown, list(sets["feature_pool"]), 1)
+    curve = pd.DataFrame(curve_rows(run, "40f", 1, ["msp", "iforest"]))
+    assert (curve["alert_fpr_on"] >= curve["alert_fpr_off"] - 1e-12).all() and (curve["confident_alert_fpr"] <= curve["alert_fpr_off"] + 1e-12).all()
+    assert (curve["zero_day_catch"] >= curve["zero_day_flagged"] - 1e-12).all()
+    for name, g in curve.groupby("score"):
+        g = g.sort_values("target")
+        assert g["review_rate_normal"].is_monotonic_increasing and g["confident_alert_fpr"].is_monotonic_decreasing   # a looser threshold sends more to review and fewer alerts skip it
+    one = curve[(curve["score"] == "msp") & (curve["target"] == 0.05)].iloc[0]
+    assert abs(one["alert_fpr_on"] - (one["confident_alert_fpr"] + one["review_rate_normal"])) < 1e-9        # alert = confident alert + every reviewed Normal flow
+    src = pd.DataFrame(source_rows(run, "40f", 1, ["msp"]))
+    for part, g in src.groupby("part"):
+        assert abs(g["share_of_false_alarms"].sum() - 1.0) < 1e-9 or g["flagged_share"].sum() == 0
+
+
+def test_pool_selection_picks_rules_and_the_best_score_from_pseudo_unknown_auroc_only():
+    from pipelines.run_open_set_study import BASE_SCORES, CANDIDATES, RULES, pool_selection
+    rows = []
+    for seed in (1, 2):
+        for inner in ("Reconnaissance", "Generic"):
+            for name in CANDIDATES:
+                value = 0.5
+                if name == "iforest+entropy:max":
+                    value = 0.9                      # the best combination, with the "max" rule
+                if name == "iforest+entropy:mean":
+                    value = 0.8
+                if name == "margin":
+                    value = 0.7
+                rows.append({"pool": "40f", "seed": seed, "inner_class": inner, "score": name, "pseudo_auroc": value})
+    sel = pool_selection(pd.DataFrame(rows))
+    assert sel["rules"]["entropy"] == "max" and sel["rules"]["msp"] in RULES                     # ties go to the first rule, a clear winner wins
+    assert sel["best"] == "iforest+entropy:max" and sel["mean_pseudo_auroc"]["margin"] == 0.7
+    assert set(sel["candidates"]) == {*BASE_SCORES, "iforest", *(f"iforest+{b}:{sel['rules'][b]}" for b in BASE_SCORES)} and len(sel["candidates"]) == 9
+
+
+def test_pseudo_unknown_rows_use_only_validation_flows_of_the_inner_classes(config, feature_sets):
+    from pipelines.run_open_set_study import CANDIDATES, INNER_CLASSES, pseudo_unknown_rows
+    from pipelines.run_tier_study import prepare
+    cfg, sets, splits = prepare(_open_set_config(config), feature_sets, "base", "xgboost", 1)
+    rows = pd.DataFrame(pseudo_unknown_rows(cfg, splits.train, splits.val, list(sets["feature_pool"]), 1, "40f"))
+    assert set(rows["inner_class"]) == set(INNER_CLASSES) and len(rows) == 2 * len(CANDIDATES)
+    assert rows["pseudo_auroc"].between(0, 1).all() and (rows["n_pseudo"] == rows.groupby("inner_class")["n_pseudo"].transform("first")).all()
+    expected = {c: int((splits.val["attack_cat"] == c).sum()) for c in INNER_CLASSES}
+    assert {c: int(g["n_pseudo"].iloc[0]) for c, g in rows.groupby("inner_class")} == expected         # the pseudo-unknowns are the validation rows of the class, nothing else
+
+
+def test_rotation_holds_each_class_out_and_reports_twins(config, feature_sets):
+    from pipelines.run_open_set_study import ROTATION_CLASSES, rotation_specs, run_rotation
+    assert [n for n, _ in rotation_specs()][:-1] == ROTATION_CLASSES and rotation_specs()[-1][1] == ["Analysis", "Backdoor", "DoS"]
+    assert rotation_specs(["Fuzzers"]) == [("Fuzzers", ["Fuzzers"])]
+    out = run_rotation(_open_set_config(config), feature_sets, "base", [1], ["msp", "iforest"], classes=["Fuzzers", "Worms"])
+    runs = out["runs"]
+    assert set(runs["held_out"]) == {"Fuzzers", "Worms"} and set(runs["score"]) == {"msp", "iforest"} and len(runs) == 4
+    assert runs["exact_twin_share_in_known"].between(0, 1).all() and runs["unknown_auroc"].between(0, 1).all()
+    assert set(out["sources"]["held_out"]) == {"Fuzzers", "Worms"}
+    # the held-out class is really unknown to the model: a Fuzzers-held-out source table has no Fuzzers flows among the known classes
+    assert "Fuzzers" not in set(out["sources"].query("held_out == 'Fuzzers'")["known_class"])
+
+
+def test_run_scores_end_to_end_and_the_saved_selection_drives_the_rotation_choice(config, feature_sets):
+    from pipelines.run_open_set_study import save_tables, selection_for
+    from pipelines.run_open_set_study import run_scores
+    tables = run_scores(_open_set_config(config), feature_sets, "base", [1])
+    assert set(tables) == {"runs", "selection", "curve", "sources"} and all(len(t) for t in tables.values())
+    save_tables(config, "scores", "40f", tables)
+    d = rae.get_metrics_dir(config)
+    assert all((d / f"open_set_{n}_40f.csv").exists() for n in ("runs", "selection", "curve", "sources"))
+    sel = selection_for(config, "40f")
+    assert sel["best"] in sel["candidates"] and len(sel["candidates"]) == 9
+
+
+def test_open_set_summary_tables_and_the_declared_ct_verdict():
+    from pipelines.run_open_set_study import CANDIDATES
+    from scripts.open_set_summary import ct_verdict, mean_std, rotation_table, step1_table
+    rows = []
+    for seed in (1, 2, 3):
+        for name in CANDIDATES:
+            for zero, det in (("Shellcode+Worms", 0.30), ("Shellcode", 0.32), ("Worms", 0.10)):
+                rows.append({"pool": "48f", "seed": seed, "score": name, "zero_day": zero, "n_zero_day": 100, "threshold": 0.5,
+                             "unknown_auroc": 0.8 + (0.05 if name == "margin" else 0), "detection": det + 0.01 * seed, "flagged_or_attack": 0.9,
+                             "false_unknown_thr_half": 0.05, "false_unknown_cal_half": 0.07, "false_unknown_test": 0.09})
+    sel_rows = [{"pool": "48f", "seed": s, "inner_class": c, "score": n, "pseudo_auroc": 0.9 if n == "iforest" else 0.6} for s in (1, 2, 3) for c in ("Reconnaissance", "Generic") for n in CANDIDATES]
+    table, sel = step1_table(pd.DataFrame(rows), pd.DataFrame(sel_rows))
+    assert sel["best"] == "iforest" and table.loc[table["score"] == "iforest", "best_on_validation"].iloc[0]       # chosen on pseudo-unknown validation
+    assert table.loc[table["score"] == "margin", "best_on_zero_day_auroc"].iloc[0] and not table.loc[table["score"] == "margin", "best_on_validation"].iloc[0]   # reported, not used
+    msp = table[table["score"] == "msp"].iloc[0]
+    assert abs(msp["detection_mean"] - 0.32) < 1e-9 and abs(msp["detection_std"] - 0.01) < 1e-9 and msp["n_seeds"] == 3     # mean / std (ddof=1) over the seeds
+    assert abs(msp["detection_Shellcode"] - 0.34) < 1e-9 and abs(msp["detection_Worms"] - 0.12) < 1e-9
+    rot = pd.DataFrame([{"held_out": c, "seed": s, "score": "msp", "n_zero_day": 50, "unknown_auroc": a, "detection": 0.1, "flagged_or_attack": 0.5,
+                         "false_unknown_cal_half": 0.05, "false_unknown_test": 0.07, "exact_twin_share_in_known": t}
+                        for c, a, t in (("Analysis", 0.55, 0.77), ("Exploits", 0.8, 0.37)) for s in (1, 2)])
+    r = rotation_table(rot, ["msp"]).set_index("held_out")
+    assert r.loc["Analysis", "exact_twin_share"] == 0.77 and abs(r.loc["Exploits", "unknown_auroc_mean"] - 0.8) < 1e-9
+    assert ct_verdict({"40f": 0.25, "48f": 0.37, "41f": 0.30})[0] == "confirmed"                                   # drop 0.07 >= half of the 0.12 gap
+    assert ct_verdict({"40f": 0.25, "48f": 0.37, "41f": 0.36})[0] == "rejected"                                    # drop 0.01 < a quarter
+    assert ct_verdict({"40f": 0.25, "48f": 0.37, "41f": 0.33})[0] == "partial"
+    assert ct_verdict({"40f": 0.40, "48f": 0.37, "41f": 0.33})[0] == "no gap to explain"
+
+
+def test_a_member_of_a_merged_group_can_be_held_out_while_its_siblings_stay_known(config):
+    config["data"]["unknown_attack_categories"] = ["Analysis"]
+    s = load_split_data(config)
+    assert set(s.unknown["attack_cat"]) == {"Analysis"} and len(s.unknown) > 0
+    known = pd.concat([s.train, s.val, s.test])
+    assert "Analysis" not in set(known["attack_cat"])                                         # never trained on or tested as a known class
+    assert set(known.loc[known["attack_cat"].isin(["Backdoor", "DoS"]), "label_merged"]) == {"Overlap-Group-1"}   # the siblings still form the merged group
+    config["data"]["unknown_attack_categories"] = ["Analysis", "Backdoor", "DoS"]              # the trio as a unit
+    trio = load_split_data(config)
+    assert set(trio.unknown["attack_cat"]) == {"Analysis", "Backdoor", "DoS"} and "Overlap-Group-1" not in set(pd.concat([trio.train, trio.val, trio.test])["label_merged"])
+
+
+def test_sources_table_averages_the_per_class_alarm_shares_over_seeds():
+    from scripts.open_set_summary import sources_table
+    rows = []
+    for seed, (a, b) in ((1, (0.2, 0.8)), (2, (0.4, 0.6))):
+        for cls, flagged, share in (("Normal", 0.05, a), ("Fuzzers", 0.10, b)):
+            rows.append({"pool": "40f", "seed": seed, "score": "msp", "part": "test", "known_class": cls, "n": 100, "flagged_share": flagged, "share_of_false_alarms": share})
+            rows.append({"pool": "40f", "seed": seed, "score": "entropy", "part": "test", "known_class": cls, "n": 100, "flagged_share": 0.5, "share_of_false_alarms": 0.5})
+    t = sources_table(pd.DataFrame(rows), ["msp"]).set_index("known_class")
+    assert set(t["score"]) == {"msp"} and abs(t.loc["Normal", "share_of_false_alarms"] - 0.3) < 1e-9 and abs(t.loc["Fuzzers", "share_of_false_alarms"] - 0.7) < 1e-9
+    assert t.loc["Fuzzers", "flagged_share"] == 0.10 and t.loc["Normal", "n"] == 100                      # means over the two seeds

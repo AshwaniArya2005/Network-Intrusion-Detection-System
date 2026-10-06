@@ -1,0 +1,11 @@
+pool,pool_label,seed,validation,n_train,n_val,val_fpr,val_detection,test_fpr,test_detection,fpr_gap
+full,48f,42,random_validation,90543,15979,0.1025,0.9684,0.2926,0.9675,0.1901
+full,48f,42,block_validation,77322,2800,0.2425,0.9613,0.2991,0.9675,0.0566
+full,48f,43,random_validation,90543,15979,0.0967,0.9689,0.2943,0.9708,0.1976
+full,48f,43,block_validation,76522,2000,0.3095,0.9638,0.3084,0.9666,-0.0011
+full,48f,44,random_validation,90543,15979,0.0978,0.9686,0.2955,0.9642,0.1977
+full,48f,44,block_validation,76522,2000,0.1148,0.9757,0.2959,0.9647,0.1811
+full,48f,45,random_validation,90543,15979,0.1019,0.97,0.2947,0.9695,0.1928
+full,48f,45,block_validation,76522,2000,0.1931,0.9528,0.3118,0.9712,0.1187
+full,48f,46,random_validation,90543,15979,0.099,0.9695,0.2894,0.9687,0.1904
+full,48f,46,block_validation,76322,1800,0.0668,0.9649,0.2845,0.9654,0.2177

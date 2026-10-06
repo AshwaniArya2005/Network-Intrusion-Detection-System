@@ -1,9 +1,38 @@
 # XIDS Capstone — Project Plan (updated to match the repository)
 
 > This revises the earlier plan so that its findings, numbers and open items match what the code and
-> `results/` currently show. Numbers are XGBoost, 40 features, official UNSW-NB15 train/test split,
+> `results/` currently show. Every headline number is listed with its source file and column in `results/NUMBERS_LEDGER.md`. Numbers are XGBoost, 40 features, official UNSW-NB15 train/test split,
 > duplicates removed, single seed unless stated. Reproduce with `python pipelines/run_all_experiments.py`.
 > Items that cannot be derived from the repository (team progress, review dates) are left as they were and marked.
+
+## Corrections since this plan was written (Tasks 1-3)
+
+- The repository now runs on the 42-feature UNSW-NB15 files (40- and 48-feature pools); the "obtain the official files with all 42 features" open item is done. Numbers below that say 34 raw features / 0.742 / 0.685 are the earlier single-seed figures.
+  Current official-split figures (XGBoost, 5 seeds): accuracy 0.743 / 0.740 and FPR 0.285 / 0.293 for 40 / 48 features.
+- **Random splits leak through neighbouring flows** (the official files are in capture order; `ct_*` window counts and class labels are shared by consecutive rows). The pooled-split and random-validation figures in this document are
+  best cases; block-grouped validation is used for any new selection.
+- **Train-vs-test shift:** block-grouped AUC 0.81-0.84 (not 0.90-0.93). Its cause is undetermined; the TTL columns do not explain the Normal -> Fuzzers errors.
+- **Few-shot result:** the 48-feature FPR of about 0.09 at 95% detection with ~5,000 labelled test rows is within-capture adaptation that relies on the window-count `ct_*` columns; zero-shot FPR stays 0.24-0.25.
+- **Task 2.7 (XGBoost):** re-tuning on block-grouped validation, temperature scaling, EM class-prior correction, self-training and their combination do not lower the zero-shot FPR (all within 0.007 of the default at about 95% detection);
+  with labels, 0.15 at exactly 95% detection takes about 2,500-5,000 labelled rows (48 and 45 features) and is never reached without the window-count `ct_*` columns; the earlier 0.09 was read at a test detection of 0.93
+  (`results/metrics/xgboost/task_2_7_conclusion.md`).
+- **Novelty 3 (Task 3, XGBoost):** no measurable cost down to 30 features; 20 / 15 features cost 0.006-0.014 macro F1 and about half the open-set detection; explanation stability stays near the retraining floor
+  (`results/metrics/xgboost/task_3_conclusion.md`). Other model families are left to their owners (`pipelines/run_tier_study.py --model <type>`, `scripts/cross_model_agreement.py`).
+- **Novelty 1 (Task 4, XGBoost, zero-shot):** under thresholds fixed on known block-grouped validation at 5% false-Unknown, max-softmax flags 0.22 (40 features) / 0.33 (48) of the Worms + Shellcode flows and a nine-class
+  leave-one-class-out mean of 0.21-0.23 (AUROC 0.77; hardest: Worms, Exploits, Fuzzers). Entropy ranks better but is not reliably better at the threshold; margin, conformal, an isolation forest and combinations are no better.
+  The 48-feature gain depends on window-count `ct_*` columns. 94-99% of zero-day flows are already called an attack, and the review queue barely lowers the alert FPR (0.289 -> 0.254) because the false alerts are confidently wrong
+  (`results/metrics/xgboost/task_4_conclusion.md`).
+- **Novelty 1, Task 4.5:** six ideas to improve it (calibration, per-class thresholds, ensemble disagreement, distance, pseudo-unknown training, a rank-average chosen on pseudo-unknown validation) leave the picture much the same: the best combination reaches rotation-mean detection
+  0.27 / 0.34 (40 / 48 features) in a setting that removes two known classes, only 0.02-0.07 above entropy; in the full known set only calibrated entropy on 48 features clearly beats max-softmax (0.304 against 0.234); distance scores fail and the review queue does not lower the alert FPR.
+- **Novelty 2 (Task 5, XGBoost):** the SHAP explanations are faithful (SHAP additivity error 1.4e-5; removing the top-5 SHAP features lowers the predicted-class probability 0.50-0.55 more than removing random ones on the whole pools, 0.33-0.34 at 15 features; unchanged on shifted test flows) and the
+  narratives pass every mechanical check on 2,000 audited flows (label, confidence, cited features, cues in the right units, categories, action) and match the dashboard exactly; they are weaker as explanations (36-47% of cited features read "typical", cue direction agrees with the model's general behaviour in 72-76% of cases)
+  and quote an uncalibrated confidence. The pipeline's own `check_explainability.py` standardised twice and was fixed. Human ratings are not collected (blank sheet `results/task_5_human_audit_sheet.csv`) (`results/metrics/xgboost/task_5_conclusion.md`).
+  **Task 5.5:** a `class_relative` narrative style (config switch, classic is the default) removes the "typical" reasons (45% / 37% of cited numeric features, now 0), cites about 2.6 instead of 4.1 features, adds a calibrated confidence (ECE 0.093 -> 0.070, 0.115 -> 0.086) and keeps every correctness check at 1.000; the cue-direction agreement
+  is unchanged (0.78 / 0.73). The explanations of false-positive Normal flows are faithful to the model (top-minus-random 0.35-0.51) but look like those of true attacks, so a narrative alone gives no reason to doubt a false alarm. No human study yet (blank A/B sheet `results/task_5_5_ab_sheet.csv`).
+- **Novelty 4 (Task 6, XGBoost, leak-free on both datasets):** zero-shot transfer between UNSW-NB15 and CICIDS2017 fails in both directions on the 14 common features (AUROC 0.49 UNSW -> CIC, 0.58 CIC -> UNSW and degenerate; leak-free references 0.975 and 0.896 balanced accuracy); 11 of 14 features are near 0.5 in at least one
+  dataset and 7 point opposite ways; the SHAP-selected "stable" set is not better than random subsets of its size; per-dataset standardisation helps ranking in one direction only (AUROC 0.79). Transfer takes labelled target flows: about 1,000 for CIC (FPR 0.10 at 95% detection), 1,000-5,000 for UNSW to match its own ceiling (FPR 0.21), and the
+  source data does not help beyond about 100 labelled rows. Within-capture results (`results/metrics/xgboost/task_6_conclusion.md`).
+- 0.912 / 0.921 is an empirical feature-space ceiling, not a Bayes ceiling.
 
 ## Overview
 
@@ -21,7 +50,7 @@ equally candid about what did *not* work (zero-day detection, cross-dataset tran
 ## Objectives and Research Novelties
 
 1. **Open-Set / Zero-Day Attack Detection** — confidence-based thresholding on the max softmax probability.
-   *Outcome: works only weakly (about a quarter of zero-day flows detected at ~6% false alarms).*
+   *Outcome: works only weakly (about a quarter of zero-day flows detected at ~6% false alarms; 0.04-0.41 depending on the held-out class; no alternative score reliably better; see Task 4 above).*
 2. **Human-Centered Actionable Explanations** — SHAP-driven plain-language narratives per prediction, checked
    against real data. *Outcome: implemented; two bugs found and fixed through real-data checks (below).*
 3. **Feature-Selection + Explanation Consistency Study** — does shrinking the feature set change accuracy and the
@@ -48,7 +77,7 @@ for the experiment grid and for re-evaluating saved models.
 
 | Model | Owner | Status in the repository |
 |---|---|---|
-| XGBoost | Ashwani | Done. Macro F1 **0.685** (accuracy 0.742) on the official test split; 0.760 / 0.836 on a pooled random split. The earlier "0.97 macro ROC-AUC" is not reproduced (ROC curves are plotted, AUC is not in the result CSVs). |
+| XGBoost | Ashwani | Done. Macro F1 **0.685** (accuracy 0.742) on the official test split; 0.760 / 0.836 on a pooled random split (an optimistic best case: it shares neighbouring flows with its training rows). The earlier "0.97 macro ROC-AUC" is not reproduced (ROC curves are plotted, AUC is not in the result CSVs). |
 | Logistic Regression | Samiksha Tiwari | Supported via `model.type: logistic_regression`; no comparison results in the repo (the earlier 64% F1 is not reproduced here). |
 | Random Forest | Anjali | Supported via `model.type: random_forest`; no results in the repo. |
 | LightGBM | Anshu | Not implemented; worked example in `ONBOARDING.md`. |
@@ -58,19 +87,19 @@ for the experiment grid and for re-evaluating saved models.
 
 **Data hygiene changed the headline numbers.** Removing exact duplicates and using the official train/test split
 lowers macro F1 from ~0.78 to **0.685**. The attack-vs-normal false-positive rate is **0.276** on the official
-split vs. 0.112 on a pooled random split (FPR at 90 / 95 / 99% detection: 0.167 / 0.264 / 0.374); most of the gap is
+split vs. 0.112 on a pooled random split, which is optimistic because it shares neighbouring flows with its training rows (FPR at 90 / 95 / 99% detection: 0.167 / 0.264 / 0.374); most of the gap is
 train/test shift plus dedup (dedup removes recurring easy rows and reshapes the class mix: Generic 18,871 → 1,257
 test rows, DoS 4,089 → 1,504), not the model.
 
-**Taxonomy.** Analysis, Backdoor and DoS cannot be reliably separated from the flow features: **72–80% of their rows
-have an exact feature-vector twin in another class**. (The earlier justification — identical medians, extra features
+**Taxonomy.** Analysis, Backdoor and DoS cannot be reliably separated from the flow features: **77–85% of their rows
+have an exact feature-vector twin in another class** on the tracked pooled partition (duplicates kept; `results/metrics/overlap/pooled_34f/summary.md` and `pooled_42f/summary.md`: Analysis 77.0%, Backdoor 84.9%, DoS 77.4–77.8%); an earlier deduplicated 34-feature run gave 72–80% (output not committed). (The earlier justification — identical medians, extra features
 absent — was incomplete: the official release does have the 8 missing columns, and restoring them does *not* remove the
-overlap: twin share Analysis 72.0 → 72.0%, Backdoor 78.9 → 76.7%, DoS 79.7 → 79.5%.) They are merged into
+overlap. Tracked figures, 34 → 42 features: Analysis 77.0 → 77.0%, Backdoor 84.9 → 84.9%, DoS 77.8 → 77.4%, Fuzzers 23.9 → 14.9%, Reconnaissance 33.8 → 16.1%; the earlier, untracked 34-feature run read Analysis 72.0 → 72.0%, Backdoor 78.9 → 76.7%, DoS 79.7 → 79.5%.) They are merged into
 `Overlap-Group-1`; recall into the group is 0.83 (Analysis), 0.94 (Backdoor), 0.50 (DoS). Exploits is the class
 sharing the most vectors with the group (78% of the group's rows have an Exploits twin). Label schemes compared
-(`current`, `none` 8-class, `wide` = merge + Exploits, `hierarchical`): `wide` has the best fine-grained recall (0.83)
-but lumps 56% of attack rows into one class; `hierarchical` has the lowest false-positive rate (0.208) and the lowest
-detection (0.925). Best-possible accuracy rises mechanically with coarser labels (0.905 / 0.912 / 0.969), so it measures
+(`current`, `none` 8-class, `wide` = merge + Exploits, `hierarchical`; 40 features, official split): `wide` has the best fine-grained recall (0.859,
+`label_scheme_comparison.csv`) but lumps 48% of attack rows into one class; `hierarchical` has the lowest false-positive rate (0.214) and the lowest
+detection (0.935) (5-seed Task 2.5 B1 result, `methods_zero_shot_b1_40f_summary.csv`, method `hier_default`; full table in README, section Label schemes). Best-possible accuracy rises mechanically with coarser labels (0.905 / 0.912 / 0.969), so it measures
 what a merge discards, not which merge is right. The choice of scheme is a team decision.
 
 **Feature tiers.** Tier size (40 → 15) changes macro F1 by only about 0.015 (0.672–0.687). Against 10 random subsets per
@@ -106,7 +135,7 @@ it is not an honest operating point. Where the false alarms concentrate (previou
 - Random-feature-set and worst-N baselines (10 draws per tier) with a significance statement; same-set/different-seed noise floor
 - Per-class precision/recall, attack-vs-normal view at several operating points, fine-grained recall under every label scheme
 - Exact-twin and best-possible-accuracy analysis of class overlap (`scripts/overlap_analysis.py`)
-- Real-data explainability spot checks (`scripts/check_explainability.py`) plus 140 automated tests
+- Real-data explainability spot checks (`scripts/check_explainability.py`) plus 328 automated tests
 
 ## Remaining Work / Open Items
 

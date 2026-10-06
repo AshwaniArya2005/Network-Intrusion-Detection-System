@@ -42,7 +42,6 @@ F1_COLUMN = "macro_f1_not_comparable_across_schemes"
 def run_label_scheme_comparison(config: dict, feature_sets: dict, schemes: list[str] | None = None,
                                 use_official_split: bool | None = None, output_name: str = "label_scheme_comparison.csv") -> pd.DataFrame:
     schemes = schemes or list(config["data"]["label_schemes"])
-    feature_set_name = config["feature_selection"]["active_set"]
     pooled = use_official_split is False
 
     # Known-class rows with duplicates kept, for the best-possible accuracy of each scheme.
@@ -50,7 +49,9 @@ def run_label_scheme_comparison(config: dict, feature_sets: dict, schemes: list[
                     seed=config["project"]["seed"], synthetic_rows=config["data"]["synthetic_fallback_rows"],
                     drop_duplicates=False)
     raw = raw[~raw[config["data"]["fine_grained_target_column"]].isin(config["data"]["unknown_attack_categories"])].copy()
-    raw_features = [c for c in UNSW_RAW_COLUMNS if c in raw.columns]
+    # The ceiling uses the raw columns of the chosen pool (34 for the base pool even if the data has 42).
+    pool = choose_pool(config, feature_sets, raw.columns)[1]["feature_pool"]
+    raw_features = [c for c in UNSW_RAW_COLUMNS if c in raw.columns and c in pool]
     label_cols = build_label_columns(raw, config, schemes)
 
     rows = []
@@ -66,7 +67,11 @@ def run_label_scheme_comparison(config: dict, feature_sets: dict, schemes: list[
         # Per-scheme ranking, regenerated whenever its training data changed (not only when missing).
         if ensure_feature_ranking(scheme_config, scheme_sets, splits.train):
             logger.info(f"Regenerated the '{name}' feature ranking (missing or training data changed)")
-        result = train_and_evaluate(scheme_config, scheme_sets, feature_set_name, False, splits, save_artifacts=False)
+        # The tier is the whole pool (40 or 48 features), so the two pools compare like for like.
+        feature_set_name = str(len(scheme_sets["feature_pool"]))
+        pool_tag = scheme_config["feature_selection"]["pool_tag"]
+        result = train_and_evaluate(scheme_config, scheme_sets, feature_set_name, False, splits, save_artifacts=False,
+                                    write_confusion=True)
 
         ceiling_col = label_cols.get(name, label_cols["original"])  # a hierarchy ends in the fine-grained classes
         rows.append({
@@ -85,8 +90,9 @@ def run_label_scheme_comparison(config: dict, feature_sets: dict, schemes: list[
                       comparison["fine_recall_macro"].rank(method="min", ascending=False).astype(int))
     metrics_dir = get_metrics_dir(config)
     metrics_dir.mkdir(parents=True, exist_ok=True)
-    comparison.to_csv(metrics_dir / output_name, index=False)
-    logger.info(f"Saved label-scheme comparison to {metrics_dir / output_name}")
+    out_path = metrics_dir / f"{Path(output_name).stem}{pool_tag}{Path(output_name).suffix}"
+    comparison.to_csv(out_path, index=False)
+    logger.info(f"Saved label-scheme comparison to {out_path}")
     return comparison
 
 
@@ -127,15 +133,21 @@ Recall of each ORIGINAL class under each scheme (share of its rows predicted as 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--schemes", nargs="*", help="label_schemes entries to compare (default: all)")
+    parser.add_argument("--pools", nargs="*", choices=["base", "full"], default=["base", "full"],
+                        help="feature pools to run (40- and 48-feature; the full pool needs the 8 extra official columns)")
     args = parser.parse_args()
     config = load_config()
     add_file_logging(str(resolve_path(config["logging"]["log_file"])))
     feature_sets = load_feature_sets()
-    official = run_label_scheme_comparison(config, feature_sets, args.schemes)
-    pooled = run_label_scheme_comparison(config, feature_sets, args.schemes, use_official_split=False,
-                                         output_name="label_scheme_comparison_pooled.csv")
-    write_label_scheme_summary(official, pooled, get_metrics_dir(config) / "label_scheme_summary.md")
-    print(official.T.to_string())
+    for pool in args.pools:
+        pool_config = copy.deepcopy(config)
+        pool_config["feature_selection"]["pool"] = pool
+        official = run_label_scheme_comparison(pool_config, feature_sets, args.schemes)
+        pooled = run_label_scheme_comparison(pool_config, feature_sets, args.schemes, use_official_split=False,
+                                             output_name="label_scheme_comparison_pooled.csv")
+        tag = "_48f" if pool == "full" else ""
+        write_label_scheme_summary(official, pooled, get_metrics_dir(config) / f"label_scheme_summary{tag}.md")
+        print(f"--- pool={pool}\n{official.T.to_string()}")
 
 
 if __name__ == "__main__":

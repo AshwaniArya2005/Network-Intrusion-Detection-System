@@ -1,0 +1,3 @@
+pool,raw_columns,n_test_normal,within_test_attack_twin,within_test_forced,from_train_unseen,from_train_seen_attack_only,from_train_seen_attack_majority,from_train_seen_normal_majority
+40f,34,33832,0.0288,0.0021,0.9263,0.0059,0.0291,0.0446
+48f,42,33832,0.0001,0.0,0.9951,0.0049,0.0049,0.0

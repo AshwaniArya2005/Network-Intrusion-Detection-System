@@ -158,6 +158,52 @@ At the time of those fixes the XGBoost pipeline was checked before/after: same p
 same F1 (0.7781 — a historical figure from the old pooled split before duplicates were removed; current numbers are in results/metrics/), same SHAP values and narratives on a fixed set of real test
 rows, byte-for-byte identical to before the refactor (a one-off check of that refactor, not a statement about the current pipeline or its results).
 
+## Reproducing the feature-tier and explanation-stability study for your own model
+
+XGBoost's Task 3 study (feature tiers, SHAP stability, cross-model agreement) is committed. Each teammate runs the **same** study for their own model
+so the numbers are comparable. The protocol is in `results/task_3_protocol.md` (read it first). The rules that make runs comparable:
+
+- **Zero-shot, official split, scheme `current`.** Nothing is tuned on the official test file.
+- **Block-grouped validation.** Training / validation are rebuilt from contiguous blocks of the training file (`tier_study.block_size` / `tier_study.buffer` in
+  `configs/config.yaml`) because a random validation split shares neighbouring flows with its training rows. The runner does this for you
+  (`pipelines/train_pipeline.block_validation_splits`). Do not report a random-validation number as "validation".
+- **Shared rankings.** The mutual-information rankings are committed (`results/feature_ranking_mutual_info_blockval[_45f|_48f].csv`), so every model sees the same tiers.
+  The runner only regenerates a ranking if the file is missing or the training data changed; if it rewrites a tracked ranking file, stop and ask.
+- **Same seeds and explained rows.** `tier_study.seeds` (42-46), `tier_study.shap_rows` and `tier_study.bootstrap` must be the same for every model, otherwise the
+  cross-model agreement is not a paired comparison. Leave them alone.
+
+### Steps
+1. Make your model available as a `model.type` (see "TL;DR" above: `src/models/your_model.py` + one branch in `src/models/model_factory.py`).
+2. Declare its parameters (no tuning on test) in `configs/config.yaml`:
+   ```yaml
+   tier_study:
+     model_params:
+       your_model: {n_estimators: 200, max_depth: 8}     # whatever your model takes; random_state is set per seed by the runner
+   ```
+   The runner raises an error naming this key if it is missing.
+3. Run the tier grid (3 pools x tiers x 5 seeds; each fit also gives the SHAP importance of that same model):
+   ```bash
+   python pipelines/run_tier_study.py --model your_model                       # writes results/metrics/your_model/
+   python pipelines/run_tier_study.py --model your_model --out-dir results/_local_scratch   # local-only copy (gitignored)
+   ```
+4. Summaries (add `--in-dir results/_local_scratch` if you used `--out-dir`):
+   ```bash
+   python scripts/tier_summary.py --model your_model                           # tier table, shrinking-claim test
+   python scripts/explanation_stability_tiers.py --model your_model            # tier agreement vs same-tier/different-seed floor
+   python scripts/cross_model_agreement.py --models xgboost your_model         # agreement with XGBoost (needs XGBoost's committed SHAP files)
+   ```
+   Random-subset / worst-N baselines and the pooled-split column are XGBoost-only runs (`--parts baselines`, `--parts pooled`); they are optional for other models.
+5. Commit only your own `results/metrics/<your_model>/` files and code; never edit another model's files.
+
+### Things that differ by model family
+- **SHAP explainer** is chosen from the fitted model: `TreeExplainer` for XGBoost / random forest / other tree ensembles, `LinearExplainer` for anything with `.coef_`
+  (logistic regression), and the slow `KernelExplainer` fallback for MLPs / SVMs. For a Kernel-explained model, expect the SHAP part to dominate the runtime.
+- **Logistic regression** gets the same scaled numeric matrix and label-encoded categorical columns as the trees, so `proto` / `service` / `state` enter as numbers,
+  not one-hot. It can emit lbfgs convergence warnings at the declared `max_iter`; that is expected and not an error. Class weights (balanced ** 0.5) are passed as `sample_weight` for every model.
+- **Random forest** uses `n_jobs: -1`. At the declared settings the SHAP step takes several times longer than the fit (it grows with trees x depth), so keep the declared size; for logistic regression the fit dominates and SHAP is negligible.
+- Outputs of a model whose parameters you change are not comparable with the declared settings: say so in your write-up.
+- Tests that exercise all of this on synthetic data: `python -m pytest tests/test_pipelines.py -k "tier or cross_model or explainer_type"`.
+
 ## A concrete example
 
 ```python

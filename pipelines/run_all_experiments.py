@@ -70,6 +70,7 @@ def run_experiment_grid(config: dict, feature_sets: dict, splits: Splits) -> pd.
             result = train_and_evaluate(
                 config, feature_sets, feature_set_name, open_set_enabled,
                 splits, save_artifacts=True, predictions_out=predictions_out,
+                write_confusion=not open_set_enabled,
             )
             rows.append(result)
 
@@ -185,7 +186,8 @@ def run_pooled_split_report(config: dict, feature_sets: dict) -> tuple[pd.DataFr
     """Same models evaluated on a pooled random split (use_official_split=False), so both
     the official-split and pooled numbers can be shown side by side."""
     splits = load_split_data(config, use_official_split=False)
-    rows = [dict(train_and_evaluate(config, feature_sets, name, True, splits, save_artifacts=False), split="pooled_random")
+    rows = [dict(train_and_evaluate(config, feature_sets, name, True, splits, save_artifacts=False,
+                                         write_confusion=True), split="pooled_random")
             for name in config["experiments"]["feature_sets"]]
     df = pd.DataFrame(rows)
     df.to_csv(get_metrics_dir(config) / tagged(config, config["experiments"]["pooled_split_csv"]), index=False)

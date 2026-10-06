@@ -4,7 +4,8 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 from sklearn.metrics import roc_curve
-from sklearn.metrics import accuracy_score, f1_score, precision_recall_fscore_support, precision_score, recall_score, roc_auc_score
+from sklearn.metrics import (accuracy_score, average_precision_score, f1_score, precision_recall_fscore_support, precision_score,
+                             recall_score, roc_auc_score)
 
 
 def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray, average: str = "macro") -> dict[str, float]:
@@ -24,6 +25,45 @@ def per_class_metrics(y_true: np.ndarray, y_pred: np.ndarray, class_names: list[
     for name, pi, ri, fi in zip(class_names, p, r, f):
         out.update({f"precision_{name}": round(float(pi), 4), f"recall_{name}": round(float(ri), 4),
                     f"f1_{name}": round(float(fi), 4)})
+    return out
+
+
+def expected_calibration_error(y_true: np.ndarray, proba: np.ndarray, n_bins: int = 15) -> float:
+    """Top-label ECE: the confidence (max probability) of each prediction is binned into `n_bins`
+    equal-width bins; ECE = sum over bins of (bin share of rows) * |accuracy - mean confidence|."""
+    confidence, pred = proba.max(axis=1), proba.argmax(axis=1)
+    correct = (pred == np.asarray(y_true)).astype(float)
+    bins = np.minimum((confidence * n_bins).astype(int), n_bins - 1)
+    return float(sum((bins == b).mean() * abs(correct[bins == b].mean() - confidence[bins == b].mean())
+                     for b in range(n_bins) if (bins == b).any()))
+
+
+def brier_score(y_true: np.ndarray, proba: np.ndarray) -> float:
+    """Multiclass Brier score: mean over rows of the squared distance between the probability
+    vector and the one-hot label (0 = perfect, 2 = always confidently wrong)."""
+    onehot = np.eye(proba.shape[1])[np.asarray(y_true)]
+    return float(((proba - onehot) ** 2).sum(axis=1).mean())
+
+
+def probabilistic_metrics(y_true: np.ndarray, proba: np.ndarray, class_names: list[str], normal_label: str = "Normal",
+                          ece_bins: int = 15) -> dict[str, float]:
+    """Threshold-free and calibration metrics from the class probabilities: one-vs-rest ROC-AUC and
+    PR-AUC per class (`roc_auc_<class>`, `pr_auc_<class>`) and their macro means over the classes
+    present in `y_true` (`roc_auc_macro`, `pr_auc_macro`), `roc_auc_attack_vs_normal` (score
+    1 - P(Normal)), top-label `ece` and multiclass `brier`. A class with no test rows is NaN."""
+    y_true = np.asarray(y_true)
+    out = {}
+    for k, name in enumerate(class_names):
+        positive = y_true == k
+        ok = 0 < positive.sum() < len(positive)
+        out[f"roc_auc_{name}"] = round(float(roc_auc_score(positive, proba[:, k])), 4) if ok else float("nan")
+        out[f"pr_auc_{name}"] = round(float(average_precision_score(positive, proba[:, k])), 4) if ok else float("nan")
+    for kind in ("roc_auc", "pr_auc"):
+        out[f"{kind}_macro"] = round(float(np.nanmean([out[f"{kind}_{n}"] for n in class_names])), 4)
+    normal = list(class_names).index(normal_label)
+    out["roc_auc_attack_vs_normal"] = round(float(roc_auc_score(y_true != normal, 1 - proba[:, normal])), 4)
+    out["ece"] = round(expected_calibration_error(y_true, proba, ece_bins), 4)
+    out["brier"] = round(brier_score(y_true, proba), 4)
     return out
 
 
@@ -48,6 +88,38 @@ def fpr_at_detection(true_labels: np.ndarray, proba: np.ndarray, class_names: li
     score = 1.0 - proba[:, list(class_names).index(normal_label)]
     fpr, tpr, _ = roc_curve(is_attack, score)
     return {f"fpr_at_{round(t * 100)}_detection": round(float(fpr[np.searchsorted(tpr, t, side="left")]), 4) for t in targets}
+
+
+def confusion_matrix_tables(true_labels: np.ndarray, pred_labels: np.ndarray, class_names: list[str]) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Confusion matrix as DataFrames, rows = true class, columns = predicted class (every class
+    present even with zero rows): (counts, row-normalised shares). The row for a class answers
+    "where do this class's flows go?", e.g. the Normal row gives each class's share of Normal flows."""
+    names = list(class_names)
+    counts = pd.crosstab(pd.Categorical(np.asarray(true_labels), categories=names),
+                         pd.Categorical(np.asarray(pred_labels), categories=names), dropna=False)
+    counts.index.name, counts.columns.name = "true", "predicted"
+    return counts, counts.div(counts.sum(axis=1).replace(0, 1), axis=0).round(4)
+
+
+def select_attack_threshold(is_attack: np.ndarray, score: np.ndarray, target_detection: float | None = None,
+                            target_fpr: float | None = None) -> float:
+    """Attack-vs-normal operating point chosen on the rows passed in (validation only). `score` is
+    1 - P(Normal); a flow is called an attack when score >= the returned threshold. Give exactly one target:
+    `target_detection` -> the highest threshold whose detection (TPR) reaches it, i.e. the lowest FPR that
+    still detects that share of attacks; `target_fpr` -> the lowest threshold whose FPR stays within it, i.e.
+    the highest detection inside that false-alarm budget."""
+    if (target_detection is None) == (target_fpr is None):
+        raise ValueError("give exactly one of target_detection / target_fpr")
+    fpr, tpr, thresholds = roc_curve(np.asarray(is_attack, dtype=bool), score, drop_intermediate=False)
+    if target_detection is not None:
+        return float(thresholds[np.searchsorted(tpr, target_detection, side="left")])
+    return float(thresholds[np.searchsorted(fpr, target_fpr, side="right") - 1])
+
+
+def attack_rates(is_attack: np.ndarray, score: np.ndarray, threshold: float) -> tuple[float, float]:
+    """(detection rate, false-positive rate) of calling every flow with score >= threshold an attack."""
+    is_attack, called = np.asarray(is_attack, dtype=bool), np.asarray(score) >= threshold
+    return float((called & is_attack).sum() / max(is_attack.sum(), 1)), float((called & ~is_attack).sum() / max((~is_attack).sum(), 1))
 
 
 def group_recall_from_diagnostics(diagnostics: dict[str, pd.DataFrame]) -> dict[str, float]:

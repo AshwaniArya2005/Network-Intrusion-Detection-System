@@ -76,11 +76,75 @@ def _magnitude_phrase(z_score: float) -> str:
     return "typical"
 
 
-class NarrativeGenerator:
-    """Generates human-readable, actionable explanations from SHAP output."""
+def standardised_value_statistics(numeric_features: list[str]) -> tuple[pd.Series, pd.Series]:
+    """(means, stds) to pass to `NarrativeGenerator` together with feature values taken from `Preprocessor.transform`: those values are ALREADY standardised (training mean 0, std 1), so
+    they are the z-scores. Passing the scaler's raw mean / scale here would standardise a second time and make most flows read "typical" (the dashboard and scripts/check_explainability.py
+    both had this defect)."""
+    return pd.Series(0.0, index=numeric_features), pd.Series(1.0, index=numeric_features)
 
-    def __init__(self, suggested_actions: dict[str, str] | None = None):
+
+HIGH_CUES = ("elevated", "unusually high", "extremely high")
+CALIBRATION_NOTE = "(the model's raw probability tends to be too high on new traffic; treat both numbers as estimates, not guarantees)"
+
+
+class NarrativeGenerator:
+    """Generates human-readable, actionable explanations from SHAP output.
+
+    `style="classic"` (default): every cited feature gets a magnitude cue against the overall training mean / std, "typical" included.
+    `style="class_relative"` (Task 5.5, protocol results/task_5_5_protocol.md): features whose cue would read "typical" are omitted and the others say where the value sits among
+    ALL training flows and among the flows of the PREDICTED class, using a `ClassReference` (src/xai/class_reference.py); a calibrated confidence can be shown next to the raw one."""
+
+    def __init__(self, suggested_actions: dict[str, str] | None = None, style: str = "classic", reference=None):
+        if style not in ("classic", "class_relative"):
+            raise ValueError(f"unknown narrative style {style!r} (classic or class_relative)")
+        if style == "class_relative" and reference is None:
+            raise ValueError("narrative style 'class_relative' needs a ClassReference (saved with the model as class_reference_<set>.npz)")
         self.suggested_actions = suggested_actions or {}
+        self.style, self.reference = style, reference
+
+    def _class_clause(self, feat: str, value: float, label: str) -> str:
+        """`typical of <label> flows` inside the class's interquartile range, else how far above / below the class's flows the value lies."""
+        q25, q75 = self.reference.quartiles(feat, label)
+        if q25 <= value <= q75:
+            return f"typical of {label} flows"
+        if value > q75:
+            return f"higher than {100 * self.reference.share_below(feat, value, label):.0f}% of {label} flows"
+        return f"lower than {100 * self.reference.share_above(feat, value, label):.0f}% of {label} flows"
+
+    def _class_relative_phrases(self, shap_row: pd.Series, feature_values: pd.Series | None, feature_means: pd.Series | None, feature_stds: pd.Series | None,
+                                categorical_features: frozenset[str], category_decoders: dict[str, object] | None, top_k: int, label: str, is_unknown: bool) -> list[str]:
+        top_features = shap_row.reindex(shap_row.abs().sort_values(ascending=False).index[:top_k])
+        phrases = []
+        for feat, contribution in top_features.items():
+            if contribution <= 0:
+                continue
+            desc = _describe_feature(feat)
+            if feat in categorical_features:
+                base = self._categorical_phrase(feat, desc, feature_values, category_decoders)
+                if feature_values is None or feat not in feature_values.index:
+                    phrases.append(base)
+                    continue
+                code = int(round(feature_values[feat]))
+                clause = f"seen in {100 * self.reference.category_share(feat, code):.0f}% of all flows"
+                if not is_unknown:
+                    clause += f"; seen in {100 * self.reference.category_share(feat, code, label):.0f}% of {label} flows"
+                phrases.append(f"{base} ({clause})")
+            elif feature_values is not None and feature_means is not None and feature_stds is not None and feat in feature_values.index:
+                std = feature_stds.get(feat, 0.0) or 1e-9
+                value = float(feature_values[feat])
+                cue = _magnitude_phrase((value - feature_means.get(feat, 0.0)) / std)
+                if cue == "typical":
+                    continue                                                           # an uninformative feature is not cited
+                if cue in HIGH_CUES:
+                    clause = f"higher than {100 * self.reference.share_below(feat, value):.0f}% of all flows"
+                else:
+                    clause = f"lower than {100 * self.reference.share_above(feat, value):.0f}% of all flows"
+                if not is_unknown:
+                    clause += "; " + self._class_clause(feat, value, label)
+                phrases.append(f"{cue} {desc} ({clause})")
+            else:
+                phrases.append(f"notable {desc}")
+        return phrases
 
     def _categorical_phrase(self, feat: str, desc: str, feature_values: pd.Series | None,
                              category_decoders: dict[str, object] | None) -> str:
@@ -131,6 +195,7 @@ class NarrativeGenerator:
         category_decoders: dict[str, object] | None = None,
         top_k: int = 3,
         is_unknown: bool = False,
+        calibrated_confidence: float | None = None,
     ) -> str:
         """Build a narrative string like:
         "This flow was flagged as DoS with 97.8% confidence. Main reasons: extremely
@@ -145,10 +210,16 @@ class NarrativeGenerator:
         string; without it, the raw encoded value is shown instead.
         """
         label_for_sentence = "an unrecognized (potential zero-day) pattern" if is_unknown else predicted_label
-        reasons = self._reason_phrases(shap_row, feature_values, feature_means, feature_stds,
-                                        frozenset(categorical_features), category_decoders, top_k)
+        if self.style == "class_relative":
+            reasons = self._class_relative_phrases(shap_row, feature_values, feature_means, feature_stds, frozenset(categorical_features), category_decoders, top_k,
+                                                   predicted_label, is_unknown)
+        else:
+            reasons = self._reason_phrases(shap_row, feature_values, feature_means, feature_stds,
+                                           frozenset(categorical_features), category_decoders, top_k)
 
         sentence = f"This flow was flagged as {label_for_sentence} with {confidence * 100:.1f}% confidence."
+        if self.style == "class_relative" and calibrated_confidence is not None:
+            sentence += f" Calibrated estimate: about {calibrated_confidence * 100:.0f}% {CALIBRATION_NOTE}."
         if reasons:
             sentence += " Main reasons: " + ", ".join(reasons) + "."
         else:

@@ -15,7 +15,7 @@ paths:
   unsw_train: "data/raw/unsw_nb15_train.csv"
   unsw_test: "data/raw/unsw_nb15_test.csv"
   cic_file: "data/raw/cicids2017_combined.csv"
-  feature_ranking: "results/feature_ranking_{source}.csv"   # one file per feature_selection.ranking_source
+  feature_ranking: "results/feature_ranking_{source}.csv"   # one file per ranking_source (+ "_48f" for the full pool, see feature_selection.pool)
 
 data:
   label_column: "label"                        # binary: 0 = normal, 1 = attack
@@ -71,6 +71,12 @@ data:
       hierarchical: true
 
 feature_selection:
+  # Feature pool: "auto" = the 48-feature pool when the data has the 8 extra official columns, else the
+  # 40-feature one; "base" forces the 40-feature pool on any data (to compare 40 vs 48 on the same
+  # rows); "full" requires the extra columns. The full pool's outputs carry the suffix "_48f" (rankings,
+  # CSVs, models), so the two pools' results sit side by side and never overwrite each other.
+  pool: "auto"
+  exclude: []   # feature names removed from the chosen pool (they reach no ranking, model or SHAP output); see experiments.pool_variants
   active_set: "40"   # one of: "40", "30", "20", "15" — see configs/feature_sets.yaml
   # "mutual_info": rank the pool by mutual information on the training split (generated);
   # "curated": the hand-written order in feature_sets.yaml (feature_curated_rank).
@@ -79,6 +85,7 @@ feature_selection:
   redundancy_threshold: null   # e.g. 0.8: push features correlated above this with a better-ranked one down
 
 model:
+  class_weight_power: 0.5   # sample weights = balanced ** this (0 unweighted, 1 fully balanced); see src/preprocessing.balanced_sample_weight
   type: "xgboost"     # swap target: "xgboost" | "random_forest" | "logistic_regression"
   params:
     n_estimators: 400
@@ -91,6 +98,66 @@ model:
     random_state: 42
     n_jobs: -1
     eval_metric: "mlogloss"
+
+# Capped random search (pipelines/tune_xgboost.py): every trial is fitted on the training split with early stopping on the
+# VALIDATION split's mlogloss, and scored on validation only (macro F1 and attack-vs-normal AUC); the official test file and
+# the held-out zero-day rows are never used. The same n_trials sampled configurations are used for both objectives.
+tuning:
+  n_trials: 40
+  seed: 42
+  early_stopping_rounds: 30
+  max_estimators: 1000
+  space:
+    max_depth: {int: [3, 10]}
+    learning_rate: {loguniform: [0.03, 0.3]}
+    min_child_weight: {choice: [1, 3, 5, 10, 20]}
+    subsample: {uniform: [0.6, 1.0]}
+    colsample_bytree: {uniform: [0.5, 1.0]}
+    reg_lambda: {loguniform: [0.5, 20.0]}
+    reg_alpha: {choice: [0, 0.1, 1, 5]}
+    class_weight_power: {uniform: [0.0, 1.0]}   # exponent of the balanced class weights (default model: 0.5)
+  # Task 2.7 (results/task_2_7_protocol.md): the same search on block-grouped validation with stronger regularisation
+  space_regularised:
+    max_depth: {int: [3, 7]}
+    learning_rate: {loguniform: [0.03, 0.3]}
+    min_child_weight: {choice: [5, 10, 20, 50, 100]}
+    subsample: {uniform: [0.6, 1.0]}
+    colsample_bytree: {uniform: [0.5, 1.0]}
+    reg_lambda: {loguniform: [2.0, 100.0]}
+    reg_alpha: {choice: [0, 0.1, 1, 5]}
+    class_weight_power: {uniform: [0.0, 1.0]}
+
+# Feature groups for the train-vs-test shift study (scripts/characterize_shift.py): they partition the 48-feature pool
+# (the 40-feature pool has no ttl group). Used to ask WHICH kinds of features carry the shift, one group at a time.
+shift:
+  seeds: [42, 43, 44, 45, 46]   # classifier seeds of the Normal-vs-Normal shift classifier (and the ablation's model seeds: first 3)
+  shap_rows: 3000               # rows used for the shift classifier's SHAP importance
+  feature_groups:
+    volume_size: [spkts, dpkts, sbytes, dbytes, smean, dmean, total_bytes, total_pkts, byte_ratio, pkt_ratio, avg_pkt_size, response_body_len]
+    rate_load: [rate, sload, dload]
+    timing: [dur, duration_log, sinpkt, dinpkt, sjit, djit, tcprtt, synack, ackdat]
+    tcp_window_loss: [swin, dwin, stcpb, dtcpb, sloss, dloss]
+    protocol_state: [proto, service, state, trans_depth, is_ftp_login, ct_ftp_cmd, ct_flw_http_mthd, is_sm_ips_ports]
+    ttl: [sttl, dttl, ct_state_ttl]
+    connection_counts: [ct_src_dport_ltm, ct_dst_sport_ltm, ct_srv_src, ct_dst_ltm, ct_src_ltm, ct_srv_dst, ct_dst_src_ltm]
+
+# Task 3 tier study (pipelines/run_tier_study.py; protocol in results/task_3_protocol.md). Training / validation are built from contiguous
+# blocks of the training file (a random validation split shares neighbouring flows with training and is optimistic).
+tier_study:
+  block_size: 1000
+  buffer: 200
+  seeds: [42, 43, 44, 45, 46]
+  shap_rows: 1000          # rows explained for the global SHAP importance (the same rows for every model type)
+  bootstrap: 100           # paired bootstrap resamples of the explained rows (cross-model agreement intervals)
+  random_draws: 10
+  random_tiers: ["30", "20", "15"]
+  pools: ["base", "full_no_ttl", "full"]   # 40, 45 and 48 features
+  model_params:            # declared settings for the other model families (no tuning)
+    random_forest: {n_estimators: 150, max_depth: 10, min_samples_leaf: 5, n_jobs: -1}
+    logistic_regression: {max_iter: 300}
+
+evaluation:
+  ece_bins: 15   # equal-width confidence bins of the expected calibration error
 
 open_set:
   enabled: true
@@ -108,6 +175,10 @@ xai:
   top_k_features: 5
 
 narrative:
+  # "classic": every cited feature gets a magnitude cue against the overall training mean / std. "class_relative" (Task 5.5, results/task_5_5_protocol.md): features that read "typical" are
+  # omitted, the rest are placed among all training flows and the predicted class's flows, and a calibrated confidence is shown next to the raw one (needs the class_reference / calibration
+  # files that training saves next to the model).
+  style: "classic"
   # Suggested remediation action per attack category, used by NarrativeGenerator.
   suggested_actions:
     DoS: "Consider rate-limiting or temporarily blocking this source IP."
@@ -156,6 +227,15 @@ experiments:
   nonredundant_threshold: 0.8
   random_baseline_draws: 10   # independent random feature subsets per tier
   report_pooled_split: true   # also report metrics on a pooled random split (pooled_split_results.csv)
+  # Named pools usable as `--pools <name>` next to base / full: a pool minus excluded features. full_no_ttl asks whether the
+  # five other extra official columns help once the three TTL columns (the shifted ones, see the Normal-to-Fuzzers diagnostic) are gone.
+  pool_variants:
+    full_no_ttl: {pool: full, exclude: [sttl, dttl, ct_state_ttl]}
+    # Task 2.6 (leakage check): the ct_* columns count recent connections (a sliding window), so neighbouring flows share values.
+    # full_no_ct_window drops the seven window-count columns, full_no_ct_any every column whose name starts with ct_.
+    full_no_ct_window: {pool: full, exclude: [ct_src_dport_ltm, ct_dst_sport_ltm, ct_srv_src, ct_dst_ltm, ct_src_ltm, ct_srv_dst, ct_dst_src_ltm]}
+    full_no_ct_any: {pool: full, exclude: [ct_src_dport_ltm, ct_dst_sport_ltm, ct_srv_src, ct_dst_ltm, ct_src_ltm, ct_srv_dst, ct_dst_src_ltm, ct_state_ttl, ct_flw_http_mthd, ct_ftp_cmd]}
+  headline_seeds: [42, 43, 44, 45, 46]   # pipelines/run_headline_seeds.py: mean +/- std of the headline metrics
   stability_seeds: [43, 44]   # extra seeds for the same-feature-set stability reference
 
 dashboard:
