@@ -1,8 +1,14 @@
-# Task 3 Step 1: tier study, xgboost (official split, block-grouped validation, mean +/- std over 5 seeds)
+# Task 3 tables (XGBoost): tier study and explanation stability
+
+Merged in the Task 7 cleanup from the per-table files named below. Each section is the original file with every line unchanged except that its headings are demoted by two levels; nothing was added to or removed from any table or caveat. The generation scripts still write the original per-table names if re-run.
+
+## Source: tier_summary_xgboost.md
+
+### Task 3 Step 1: tier study, xgboost (official split, block-grouped validation, mean +/- std over 5 seeds)
 
 Ranked top-N tiers (mutual information on the training split). `det95 FPR` is the 95%-detection operating point chosen on the BLOCK-GROUPED validation split. The pooled random split is a best case: it shares neighbouring flows with its training rows and is optimistic. `noise` / `practical`: macro F1 drop from the full pool within 2 x seed std / within 0.02.
 
-## 40f
+#### 40f
 
 | tier | features | macro F1 | accuracy | FPR | det95 FPR | det95 detection | ROC-AUC | ECE | open-set det. | open-set AUROC | pooled macro F1 (best case) | drop F1 | z | noise | practical | ct window / other / TTL cols |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
@@ -19,7 +25,7 @@ Ranked vs 10 random subsets vs worst-N (40f, macro F1):
 | 20 | 0.6973 | 0.6985 +/- 0.0051 (0.6881-0.7044) | 0.6183 | 20 | -0.24 |
 | 15 | 0.6986 | 0.6804 +/- 0.0414 (0.5655-0.7002) | 0.5089 | 70 | 0.44 |
 
-## 45f
+#### 45f
 
 | tier | features | macro F1 | accuracy | FPR | det95 FPR | det95 detection | ROC-AUC | ECE | open-set det. | open-set AUROC | pooled macro F1 (best case) | drop F1 | z | noise | practical | ct window / other / TTL cols |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
@@ -37,7 +43,7 @@ Ranked vs 10 random subsets vs worst-N (45f, macro F1):
 | 20 | 0.6976 | 0.7007 +/- 0.0048 (0.6934-0.7109) | 0.5589 | 20 | -0.64 |
 | 15 | 0.6972 | 0.6812 +/- 0.0545 (0.5271-0.7069) | 0.4752 | 40 | 0.29 |
 
-## 48f
+#### 48f
 
 | tier | features | macro F1 | accuracy | FPR | det95 FPR | det95 detection | ROC-AUC | ECE | open-set det. | open-set AUROC | pooled macro F1 (best case) | drop F1 | z | noise | practical | ct window / other / TTL cols |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
@@ -54,4 +60,71 @@ Ranked vs 10 random subsets vs worst-N (48f, macro F1):
 | 30 | 0.7129 | 0.7080 +/- 0.0043 (0.7008-0.7127) | 0.6185 | 100 | 1.16 |
 | 20 | 0.7063 | 0.6835 +/- 0.0436 (0.5686-0.7077) | 0.5597 | 80 | 0.52 |
 | 15 | 0.7067 | 0.6644 +/- 0.0641 (0.5448-0.7082) | 0.4746 | 80 | 0.66 |
+
+## Source: stability_xgboost.md
+
+### Task 3 Step 2: explanation stability, xgboost (mean over seeds 42-46; zero-shot)
+
+Tier agreement = SHAP importance of two tiers of the same seed; noise floor = the same tier under two seeds. Spearman rank correlation / cosine / top-10 Jaccard. Stability is evidence about the explanations, not about the cause of the official-split shift.
+
+#### 40f
+
+Tier agreement: Spearman 0.869-0.990 (mean 0.920), cosine 0.966-0.999, top-10 Jaccard 0.818-1.000. Noise floor (same tier, different seeds): Spearman 0.935-0.980, cosine 0.988-0.992, top-10 Jaccard 0.812-1.000.
+
+| comparison | a | b | common features | Spearman | cosine | top-10 Jaccard |
+|---|---|---|---|---|---|---|
+| tier_pair | 40 | 30 | 30 | 0.990 +/- 0.004 | 0.999 +/- 0.001 | 0.855 +/- 0.081 |
+| tier_pair | 40 | 20 | 20 | 0.936 +/- 0.023 | 0.988 +/- 0.003 | 1.000 +/- 0.000 |
+| tier_pair | 40 | 15 | 15 | 0.871 +/- 0.029 | 0.966 +/- 0.003 | 0.855 +/- 0.081 |
+| tier_pair | 30 | 20 | 20 | 0.938 +/- 0.021 | 0.989 +/- 0.002 | 1.000 +/- 0.000 |
+| tier_pair | 30 | 15 | 15 | 0.869 +/- 0.031 | 0.967 +/- 0.003 | 0.818 +/- 0.000 |
+| tier_pair | 20 | 15 | 15 | 0.917 +/- 0.017 | 0.977 +/- 0.001 | 1.000 +/- 0.000 |
+| same_tier_seeds | 40 | 40 | 40 | 0.980 +/- 0.007 | 0.988 +/- 0.006 | 0.812 +/- 0.145 |
+| same_tier_seeds | 30 | 30 | 30 | 0.978 +/- 0.008 | 0.988 +/- 0.007 | 0.873 +/- 0.088 |
+| same_tier_seeds | 20 | 20 | 20 | 0.952 +/- 0.023 | 0.988 +/- 0.006 | 1.000 +/- 0.000 |
+| same_tier_seeds | 15 | 15 | 15 | 0.935 +/- 0.030 | 0.992 +/- 0.004 | 1.000 +/- 0.000 |
+
+#### 45f
+
+Tier agreement: Spearman 0.900-0.991 (mean 0.952), cosine 0.969-0.999, top-10 Jaccard 0.727-0.891. Noise floor (same tier, different seeds): Spearman 0.932-0.977, cosine 0.988-0.992, top-10 Jaccard 0.758-0.927.
+
+| comparison | a | b | common features | Spearman | cosine | top-10 Jaccard |
+|---|---|---|---|---|---|---|
+| tier_pair | 45 | 40 | 40 | 0.991 +/- 0.003 | 0.999 +/- 0.000 | 0.855 +/- 0.081 |
+| tier_pair | 45 | 30 | 30 | 0.980 +/- 0.003 | 0.997 +/- 0.000 | 0.788 +/- 0.068 |
+| tier_pair | 45 | 20 | 20 | 0.962 +/- 0.018 | 0.988 +/- 0.002 | 0.855 +/- 0.081 |
+| tier_pair | 45 | 15 | 15 | 0.900 +/- 0.045 | 0.969 +/- 0.007 | 0.727 +/- 0.083 |
+| tier_pair | 40 | 30 | 30 | 0.979 +/- 0.003 | 0.997 +/- 0.000 | 0.818 +/- 0.000 |
+| tier_pair | 40 | 20 | 20 | 0.965 +/- 0.015 | 0.989 +/- 0.003 | 0.891 +/- 0.100 |
+| tier_pair | 40 | 15 | 15 | 0.900 +/- 0.045 | 0.971 +/- 0.006 | 0.727 +/- 0.083 |
+| tier_pair | 30 | 20 | 20 | 0.962 +/- 0.013 | 0.989 +/- 0.002 | 0.818 +/- 0.000 |
+| tier_pair | 30 | 15 | 15 | 0.921 +/- 0.039 | 0.976 +/- 0.004 | 0.891 +/- 0.100 |
+| tier_pair | 20 | 15 | 15 | 0.961 +/- 0.023 | 0.988 +/- 0.004 | 0.891 +/- 0.100 |
+| same_tier_seeds | 45 | 45 | 45 | 0.977 +/- 0.006 | 0.990 +/- 0.006 | 0.758 +/- 0.078 |
+| same_tier_seeds | 40 | 40 | 40 | 0.972 +/- 0.009 | 0.990 +/- 0.005 | 0.818 +/- 0.000 |
+| same_tier_seeds | 30 | 30 | 30 | 0.977 +/- 0.009 | 0.992 +/- 0.004 | 0.855 +/- 0.077 |
+| same_tier_seeds | 20 | 20 | 20 | 0.961 +/- 0.018 | 0.988 +/- 0.006 | 0.927 +/- 0.094 |
+| same_tier_seeds | 15 | 15 | 15 | 0.932 +/- 0.033 | 0.991 +/- 0.006 | 0.891 +/- 0.094 |
+
+#### 48f
+
+Tier agreement: Spearman 0.916-0.992 (mean 0.952), cosine 0.978-0.999, top-10 Jaccard 0.727-0.964. Noise floor (same tier, different seeds): Spearman 0.946-0.975, cosine 0.991-0.993, top-10 Jaccard 0.788-0.927.
+
+| comparison | a | b | common features | Spearman | cosine | top-10 Jaccard |
+|---|---|---|---|---|---|---|
+| tier_pair | 48 | 40 | 40 | 0.992 +/- 0.003 | 0.999 +/- 0.000 | 0.964 +/- 0.081 |
+| tier_pair | 48 | 30 | 30 | 0.974 +/- 0.010 | 0.991 +/- 0.003 | 0.927 +/- 0.100 |
+| tier_pair | 48 | 20 | 20 | 0.952 +/- 0.012 | 0.985 +/- 0.003 | 0.788 +/- 0.068 |
+| tier_pair | 48 | 15 | 15 | 0.916 +/- 0.018 | 0.979 +/- 0.005 | 0.727 +/- 0.083 |
+| tier_pair | 40 | 30 | 30 | 0.977 +/- 0.009 | 0.990 +/- 0.003 | 0.964 +/- 0.081 |
+| tier_pair | 40 | 20 | 20 | 0.950 +/- 0.011 | 0.984 +/- 0.003 | 0.758 +/- 0.083 |
+| tier_pair | 40 | 15 | 15 | 0.919 +/- 0.026 | 0.978 +/- 0.005 | 0.727 +/- 0.083 |
+| tier_pair | 30 | 20 | 20 | 0.949 +/- 0.018 | 0.991 +/- 0.001 | 0.758 +/- 0.083 |
+| tier_pair | 30 | 15 | 15 | 0.928 +/- 0.018 | 0.989 +/- 0.003 | 0.727 +/- 0.083 |
+| tier_pair | 20 | 15 | 15 | 0.959 +/- 0.008 | 0.996 +/- 0.001 | 0.788 +/- 0.068 |
+| same_tier_seeds | 48 | 48 | 48 | 0.975 +/- 0.009 | 0.993 +/- 0.005 | 0.788 +/- 0.064 |
+| same_tier_seeds | 40 | 40 | 40 | 0.971 +/- 0.012 | 0.993 +/- 0.005 | 0.821 +/- 0.079 |
+| same_tier_seeds | 30 | 30 | 30 | 0.969 +/- 0.012 | 0.991 +/- 0.005 | 0.927 +/- 0.094 |
+| same_tier_seeds | 20 | 20 | 20 | 0.968 +/- 0.018 | 0.991 +/- 0.005 | 0.821 +/- 0.079 |
+| same_tier_seeds | 15 | 15 | 15 | 0.946 +/- 0.033 | 0.992 +/- 0.005 | 0.873 +/- 0.088 |
 
