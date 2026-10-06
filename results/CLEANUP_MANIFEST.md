@@ -1,17 +1,21 @@
-# Cleanup manifest (Task 7, Step 2): PROPOSAL. Nothing has been deleted.
+# Cleanup manifest (Task 7): what was removed, merged and kept, and why
 
-Branch `cleanup/prune-results` from `research/novelty-results` (HEAD `e8b58e4`). Recovery tag: `pre-cleanup-2026-10` on that commit. Rule used throughout: delete only what no quoted number, declared protocol, kept script or test, or the dashboard depends on; if the purpose is unclear the file is KEPT and listed under UNSURE. Nothing under `data/raw`, `models_saved`, `results/_local_scratch` or any other gitignored path is touched (they are not tracked). No teammate file is touched (none is tracked: `results/_local_scratch/` is ignored).
+**Status: the proposal was approved with six edits and applied on branch `cleanup/prune-results` (not merged).** Commits: `77286b8` ledger and manifest, `8536e7a` merges, `1e7ab35` outputs removed, then the documentation commit. Branch from `research/novelty-results` (HEAD `e8b58e4`). Recovery tag: `pre-cleanup-2026-10` on that commit; a zip of the whole `results/` folder (including the untracked folders) is at `D:\Github Projects\_backups\xai-ids-results-pre-cleanup.zip`.
+
+Approved edits: (1) keep one small Task 5 audit narrative sample (`xai_audit_40f_narratives.csv`) and add ten example failures (`xai_audit_40f_example_failures.csv`, four of the "reduced average packet size" style); (2) also delete `cross_dataset_generalization.png`; (3) keep the three notebooks and `normal_fpr_floor_40f_48f.csv`; (4) back up `results/` first; (5) do the 7 merges and verify every source line; (6) fix the Task 6 Spearman rounding, "140 tests" -> 327 and the README label-scheme table, and label the twin shares by origin. The rest of this file is the original classification; where it says "proposed" read "done".
+
+Rule used throughout: delete only what no quoted number, declared protocol, kept script or test, or the dashboard depends on; if the purpose is unclear the file is KEPT and listed under UNSURE. Nothing under `data/raw`, `models_saved`, `results/_local_scratch` or any other gitignored path is touched (they are not tracked). No teammate file is touched (none is tracked: `results/_local_scratch/` is ignored).
 
 | | files | size |
 |---|---|---|
-| tracked now | 575 | 30.00 MB |
-| KEEP | 337 | 5.24 MB |
+| tracked before the cleanup | 575 | 30.00 MB |
+| KEEP | 341 | 5.23 MB |
 | MERGE (into 7 files; content kept verbatim) | 37 -> 7 | 0.25 MB |
-| DELETE | 197 | 24.49 MB |
-| UNSURE (kept) | 4 | 18.5 KB |
-| **after the cleanup** (incl. the ledger and this manifest) | **350** | **about 5.52 MB** (before 30.00 MB) |
+| DELETE | 198 | 24.52 MB |
+| UNSURE items, decided: kept (counted in KEEP above) | 4 | 18.5 KB |
+| **after the cleanup** (350 tracked files, including the ledger, this manifest, the 7 merged files and the example-failures file) | **350** | **5.63 MB** (before 30.00 MB; DELETE below counts 198 files, 24.52 MB, after the `cross_dataset_generalization.png` edit) |
 
-Code, tests, configs, dashboard, notebooks, data samples and root documents: **no deletions proposed** (details in section 5).
+Code, tests, configs, dashboard, notebooks, data samples and root documents: **no deletions** (details in section 5).
 
 ## 1. DELETE: by family
 
@@ -20,7 +24,7 @@ Code, tests, configs, dashboard, notebooks, data samples and root documents: **n
 | Confusion-matrix CSVs of the non-default `none` / `wide` label schemes | 16 | 5.8 KB | confusion matrix of the non-default `none` / `wide` scheme; the default-scheme matrices are kept; scheme comparison is in label_scheme_summary.md |
 | Duplicates / superseded single files | 4 | 4.4 KB | subset of bootstrap_ci_40f_48f_45f.csv (same rows plus the 45-feature pool) |
 | Overlap twin tables (4 label schemes; summary.md and best_possible_accuracy.csv kept) | 16 | 5.6 KB | per-class twin tables for 4 label schemes; `none` and `original` are byte-identical; summary.md (kept) holds the shares |
-| Per-tier plots (15 / 20 / 30 features) | 6 | 0.57 MB | per-tier plot not planned for the report (headline tier 40 kept) |
+| Plots: per-tier (15 / 20 / 30 features) and the stale cross-dataset plot | 7 | 0.61 MB | per-tier plot not planned for the report (headline tier 40 kept) |
 | Scratch diagnostic: normal_fuzzers_diagnostic/ (Task 2 investigation) | 8 | 16.2 KB | Task 2 investigation tables (feature distributions, TTL signature, KS); no document quotes them; scripts/diagnose_normal_fuzzers.py stays (imported by characterize_shift.py and run_leakage_checks.py) |
 | Task 1 headline / operating point: per-seed rows | 7 | 36.2 KB | per-seed rows; the kept headline_*_summary.csv/.md has mean/std/min/max over the same 5 seeds |
 | Task 2.7: per-seed rows (fpr_study_*_runs.csv) | 15 | 0.20 MB | per-seed rows; the Task 2.7 tables (fpr_study_*.md, kept/merged) hold mean/std and paired differences |
@@ -85,13 +89,14 @@ Every file, with the reason it is safe (the kept summary that carries its number
 | `results/metrics/overlap/pooled_42f/twin_vectors_pct_none.csv` | 0.5 KB | per-class twin tables for 4 label schemes; `none` and `original` are byte-identical; summary.md (kept) holds the shares |
 | `results/metrics/overlap/pooled_42f/twin_vectors_pct_original.csv` | 0.5 KB | per-class twin tables for 4 label schemes; `none` and `original` are byte-identical; summary.md (kept) holds the shares |
 
-### Per-tier plots (15 / 20 / 30 features)
+### Plots: per-tier (15 / 20 / 30 features) and the stale cross-dataset plot
 
 | file | size | reason |
 |---|---|---|
 | `results/plots/xgboost/confusion_matrix_15.png` | 85.6 KB | per-tier plot not planned for the report (headline tier 40 kept) |
 | `results/plots/xgboost/confusion_matrix_20.png` | 86.2 KB | per-tier plot not planned for the report (headline tier 40 kept) |
 | `results/plots/xgboost/confusion_matrix_30.png` | 86.5 KB | per-tier plot not planned for the report (headline tier 40 kept) |
+| `results/plots/xgboost/cross_dataset_generalization.png` | 35.1 KB | stale: plots the pre-Task-6 random-split run that Task 6 contradicts (approved edit 2) |
 | `results/plots/xgboost/roc_curve_15.png` | 0.11 MB | per-tier plot not planned for the report (headline tier 40 kept) |
 | `results/plots/xgboost/roc_curve_20.png` | 0.11 MB | per-tier plot not planned for the report (headline tier 40 kept) |
 | `results/plots/xgboost/roc_curve_30.png` | 0.10 MB | per-tier plot not planned for the report (headline tier 40 kept) |
@@ -315,17 +320,11 @@ Each merged file keeps every source line unchanged under a heading `Source: <ori
 | `task_6_tables.md` | `cross_dataset_step1_zero_shot.md`, `cross_dataset_step2_diagnostic.md`, `cross_dataset_step3_align.md`, `cross_dataset_step4_fewshot.md` | 16.3 KB |
 | `headline_tables.md` | `headline_summary.md`, `headline_full_no_ttl_summary.md`, `headline_tuned_auc_official_summary.md`, `headline_tuned_f1_official_summary.md`, `operating_point_summary.md`, `accuracy_three_numbers_40f_48f_45f.md`, `accuracy_three_numbers_40f_48f_tuned_f1_auc.md`, `pool_comparison_40f_48f_45f_official.md`, `pool_comparison_40f_48f_45f_pooled_random.md`, `tuned_vs_default.md` | 13.2 KB |
 
-## 3. UNSURE (kept)
+## 3. Decisions on the UNSURE items (approved)
 
-- `results/metrics/xgboost/normal_fpr_floor_40f_48f.csv` (0.3 KB): two-row exact-twin floor of the Normal FPR (Task 2.7 diagnostic); no document quotes it.
-- `results/metrics/xgboost/tier_study_xgboost_40f_runs.csv` (4.7 KB): per-seed tier rows (18 KB for the 3 pools): `pipelines/run_tier_study.py --parts baselines` reads them, and they are the per-seed source of the Task 3 macro F1.
-- `results/metrics/xgboost/tier_study_xgboost_45f_runs.csv` (6.6 KB): per-seed tier rows (18 KB for the 3 pools): `pipelines/run_tier_study.py --parts baselines` reads them, and they are the per-seed source of the Task 3 macro F1.
-- `results/metrics/xgboost/tier_study_xgboost_48f_runs.csv` (6.9 KB): per-seed tier rows (18 KB for the 3 pools): `pipelines/run_tier_study.py --parts baselines` reads them, and they are the per-seed source of the Task 3 macro F1.
-- `notebooks/01_exploratory_analysis.ipynb`, `02_feature_importance.ipynb`, `03_explanation_stability.ipynb` (5 KB in total): kept because README lists them in the project layout; the brief says to keep them if the report refers to them, which I cannot tell.
-- `results/plots/xgboost/cross_dataset_generalization.png`: kept as a planned report figure, but it plots the earlier random-split cross-dataset run (`cross_dataset_results.csv`), not the leak-free Task 6 numbers; the report will want a new figure (not part of this cleanup).
-- `results/plots/xgboost/open_set_detection.png`: kept (aggregate over tiers, not per-tier).
-- `results/metrics/xgboost/open_set_step*.csv`, `cross_dataset_diagnostic_*.csv`, `narrative_falsepos_*_{faithfulness,features,groups,separation}.csv`: small per-table CSVs next to their markdown tables; kept because ledger entries point at them.
-- The older single-seed outputs quoted by README `Key findings` (`experiment_results.csv`, `split_comparison.csv`, `split_summary.csv`, `feature_selection_baselines_summary.csv`, `explanation_stability.csv`, `open_set_sweep_40.csv`, `overlap_diagnostic_40.csv`, `cross_dataset_results.csv`, `cross_dataset_feature_shift.csv`): superseded as headline numbers by the 5-seed tables, but README still quotes them, so they stay; see the ledger gaps section for two README tables that no tracked file backs.
+- Kept: `normal_fpr_floor_40f_48f.csv` (edit 3); the three notebooks (edit 3); the three `tier_study_xgboost_<N>f_runs.csv` (read by `run_tier_study.py --parts baselines`); `open_set_detection.png`; the small per-table CSVs next to the markdown tables (`open_set_step*.csv`, `cross_dataset_diagnostic_*.csv`, `narrative_falsepos_*_{faithfulness,features,groups,separation}.csv`); the older single-seed outputs quoted by README `Key findings` (`experiment_results.csv`, `split_comparison.csv`, `split_summary.csv`, `feature_selection_baselines_summary.csv`, `explanation_stability.csv`, `open_set_sweep_40.csv`, `overlap_diagnostic_40.csv`, `cross_dataset_results.csv`, `cross_dataset_feature_shift.csv`).
+- Deleted (edit 2): `results/plots/xgboost/cross_dataset_generalization.png`, stale (plots the pre-Task-6 random-split run).
+- Added (edit 1): `xai_audit_40f_example_failures.csv`, ten rows taken verbatim from the audit failure list (check f) plus the columns `feature`, `cue` and `shap_trend_on_training_rows`; the failure-list `reason` text always says "falls as the value rises" (a wording defect of the template in `pipelines/run_xai_study.py`), so that column states the real sign. The figures of the 2,000 audited narratives remain in `xai_audit_*_summary.csv`.
 
 ## 4. KEEP (compact)
 
@@ -340,8 +339,8 @@ Each merged file keeps every source line unchanged under a heading `Source: <ori
 | pipelines | 19 | 0.27 MB |
 | results/ protocols, sheets, rankings, README | 27 | 0.11 MB |
 | results/ metrics/overlap | 4 | 6.5 KB |
-| results/ metrics/xgboost | 154 | 3.25 MB |
-| results/ plots | 10 | 0.77 MB |
+| results/ metrics/xgboost | 159 | 3.27 MB |
+| results/ plots | 9 | 0.74 MB |
 | scripts | 25 | 0.19 MB |
 | src | 33 | 0.21 MB |
 | tests | 32 | 0.25 MB |
@@ -387,7 +386,7 @@ Each merged file keeps every source line unchanged under a heading `Source: <ori
 
 </details>
 
-<details><summary>results/ metrics/xgboost: 154 files</summary>
+<details><summary>results/ metrics/xgboost: 159 files</summary>
 
 - `results\metrics\xgboost\accuracy_three_numbers_40f_48f_45f.csv` (0.3 KB): backs quoted numbers
 - `results\metrics\xgboost\accuracy_three_numbers_40f_48f_tuned_f1_auc.csv` (0.5 KB): backs quoted numbers
@@ -467,6 +466,7 @@ Each merged file keeps every source line unchanged under a heading `Source: <ori
 - `results\metrics\xgboost\narrative_test_48f_summary.csv` (14.3 KB): backs quoted numbers
 - `results\metrics\xgboost\narrative_validation_40f_calibration.csv` (0.1 KB): backs quoted numbers
 - `results\metrics\xgboost\narrative_validation_40f_summary.csv` (3.3 KB): backs quoted numbers
+- `results\metrics\xgboost\normal_fpr_floor_40f_48f.csv` (0.3 KB): approved: keep; two-row exact-twin floor of the Normal FPR (Task 2.7 diagnostic); no document quotes it
 - `results\metrics\xgboost\open_set_boost_selection_40f_scores.csv` (5.0 KB): backs quoted numbers
 - `results\metrics\xgboost\open_set_boost_selection_48f_scores.csv` (5.0 KB): backs quoted numbers
 - `results\metrics\xgboost\open_set_step1_40f.csv` (4.7 KB): backs quoted numbers
@@ -524,6 +524,9 @@ Each merged file keeps every source line unchanged under a heading `Source: <ori
 - `results\metrics\xgboost\tier_baselines_summary_xgboost_40f.csv` (0.4 KB): backs quoted numbers
 - `results\metrics\xgboost\tier_baselines_summary_xgboost_45f.csv` (0.4 KB): backs quoted numbers
 - `results\metrics\xgboost\tier_baselines_summary_xgboost_48f.csv` (0.4 KB): backs quoted numbers
+- `results\metrics\xgboost\tier_study_xgboost_40f_runs.csv` (4.7 KB): approved: keep; per-seed tier rows (18 KB for the 3 pools): `pipelines/run_tier_study.py --parts baselines` reads them, and they are the per-seed source of the Task 3 macro F1
+- `results\metrics\xgboost\tier_study_xgboost_45f_runs.csv` (6.6 KB): approved: keep; per-seed tier rows (18 KB for the 3 pools): `pipelines/run_tier_study.py --parts baselines` reads them, and they are the per-seed source of the Task 3 macro F1
+- `results\metrics\xgboost\tier_study_xgboost_48f_runs.csv` (6.9 KB): approved: keep; per-seed tier rows (18 KB for the 3 pools): `pipelines/run_tier_study.py --parts baselines` reads them, and they are the per-seed source of the Task 3 macro F1
 - `results\metrics\xgboost\tier_summary_xgboost_40f.csv` (1.4 KB): backs quoted numbers
 - `results\metrics\xgboost\tier_summary_xgboost_45f.csv` (1.7 KB): backs quoted numbers
 - `results\metrics\xgboost\tier_summary_xgboost_48f.csv` (1.8 KB): backs quoted numbers
@@ -543,15 +546,15 @@ Each merged file keeps every source line unchanged under a heading `Source: <ori
 - `results\metrics\xgboost\xai_audit_48f_summary.csv` (4.8 KB): backs quoted numbers
 - `results\metrics\xgboost\xai_audit_validation_40f_summary.csv` (4.8 KB): backs quoted numbers
 - `results\metrics\xgboost\xai_audit_validation_48f_summary.csv` (4.8 KB): backs quoted numbers
+- `results\metrics\xgboost\xai_audit_40f_example_failures.csv` (5.7 KB): added (approved edit 1); ten example audit failures extracted from xai_audit_40f_failures.csv (four of the 'reduced average packet size' style) with the real SHAP trend column
 
 </details>
 
-<details><summary>results/ plots: 10 files</summary>
+<details><summary>results/ plots: 9 files</summary>
 
 - `results\plots\xgboost\adaptation_curve_40f.png` (65.6 KB): planned report figure
 - `results\plots\xgboost\adaptation_curve_48f.png` (76.7 KB): planned report figure
 - `results\plots\xgboost\confusion_matrix_40.png` (86.3 KB): planned report figure
-- `results\plots\xgboost\cross_dataset_generalization.png` (35.1 KB): planned report figure
 - `results\plots\xgboost\dashboard_prediction_explanation_view.png` (0.21 MB): planned report figure
 - `results\plots\xgboost\explanation_stability.png` (36.8 KB): planned report figure
 - `results\plots\xgboost\feature_set_metrics.png` (37.9 KB): planned report figure
@@ -566,20 +569,21 @@ Each merged file keeps every source line unchanged under a heading `Source: <ori
 Import graph of every tracked module (checked with `ast`): every file in `src/`, `pipelines/`, `scripts/` and `dashboard/` is imported by a kept script, a kept test or the dashboard, or is an entry point named in README / ONBOARDING / a protocol. The only candidates were:
 
 - `scripts/compare_pools.py` (+ one test in `tests/test_pipelines.py`): writes `pool_comparison_*` which are KEPT (the three-pool official / pooled table is a natural report table), so the script stays.
-- `scripts/diagnose_normal_fuzzers.py` (+ `tests/test_diagnostics.py`): its outputs (`normal_fuzzers_diagnostic/`) are proposed for deletion, but the module is imported by `scripts/characterize_shift.py` and `pipelines/run_leakage_checks.py` (`CV_PARAMS`, `codes`, `distance`, `load_splits`), so it stays.
+- `scripts/diagnose_normal_fuzzers.py` (+ `tests/test_diagnostics.py`): its outputs (`normal_fuzzers_diagnostic/`) were removed, but the module is imported by `scripts/characterize_shift.py` and `pipelines/run_leakage_checks.py` (`CV_PARAMS`, `codes`, `distance`, `load_splits`), so it stays.
 - `scripts/normal_fpr_floor.py` (no test; helper `normal_overlap_floor` is tested in `tests/test_overlap.py`): its single output `normal_fpr_floor_40f_48f.csv` is UNSURE (kept), so the script stays.
-- The summary scripts (`scripts/*_summary.py`, `tier_summary.py`, ...) read per-seed files that are proposed for deletion. They stay because they produce the kept tables; to re-run one, re-run the pipeline named in its docstring first (hours for the large studies). The two sheet makers read `xai_audit_40f_narratives.csv` and `narrative_test_40f_narratives.csv`, which are KEPT for that reason.
+- The summary scripts (`scripts/*_summary.py`, `tier_summary.py`, ...) read per-seed files that were removed. They stay because they produce the kept tables; to re-run one, re-run the pipeline named in its docstring first (hours for the large studies). The two sheet makers read `xai_audit_40f_narratives.csv` and `narrative_test_40f_narratives.csv`, which are KEPT for that reason.
 - Config keys: nothing is removed; every key in `configs/config.yaml` is still read by kept code (the pooled-split and baseline CSV names are still written by `run_all_experiments.py`).
 - Test suite: 327 tests at HEAD; no test is removed, so the count must stay 327 after the cleanup.
 
-## 6. Documents to edit in Step 3 so that no kept document points at a removed file or command
+## 6. Documents edited so that no kept document points at a removed file or command
 
-- `results/README.md`: drop the entries for `normal_fuzzers_diagnostic/`, the `_none` / `_wide` confusion matrices and `overlap/` twin tables; explain the merged `task_*_tables.md` files and that per-seed rows are in tag `pre-cleanup-2026-10`.
-- `README.md`: `feature_selection_baselines.csv` (deleted, the `_summary.csv` stays); the overlap sentence about the output folder; table-file names in the Task 2.7-6 bullets; "140 tests" -> 327.
-- `PROJECT_PLAN.md`: "140 automated tests" -> 327.
-- `ONBOARDING.md`: no reference to a removed file (checked); its commands are smoke-tested in Step 4.
-- Conclusions (`task_2_5` ... `task_6`): re-point `Tables:` lines to the merged files; one number correction (Spearman +/- 0.05, see the ledger).
-- Protocols (`results/task_*_protocol.md`): not edited (they were declared before any result); none of them names a removed file.
+- `results/README.md`: rewritten (merged files, removed families and how to recover them, new file names).
+- `README.md`: pointer to the ledger; twin shares labelled by origin (tracked 77-85% against the earlier untracked 72-80%); label-scheme table replaced by the tracked figures with named sources (hierarchical row from the Task 2.5 B1 summary); `feature_selection_baselines.csv` and the overlap-folder sentences; "140 tests" -> 327.
+- `PROJECT_PLAN.md`: same twin-share and label-scheme corrections; "140" -> 327; pointer to the ledger.
+- `ONBOARDING.md`: no reference to a removed file (checked); unchanged.
+- Conclusions (`task_2_7` ... `task_6`): `Tables:` lines re-pointed to the merged files; Task 6 Spearman corrected to +/- 0.05; Task 5 names the example-failures file and the template wording defect.
+- `results/NUMBERS_LEDGER.md`: regenerated (316 entries) with the merged file names; all verified.
+- Protocols (`results/task_*_protocol.md`): not edited.
 
 ## 7. Coverage check (why deleting these files loses no quoted number)
 

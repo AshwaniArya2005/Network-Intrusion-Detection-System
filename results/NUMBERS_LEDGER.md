@@ -1,12 +1,12 @@
 # Numbers ledger
 
-One line per headline number that the README, PROJECT_PLAN, the per-task conclusions or the Phase-I report quote: the value, what it measures and under which setting, and the file and column (or table row) it comes from. Built in Task 7 Step 1 on branch `cleanup/prune-results` (recovery tag `pre-cleanup-2026-10`). **All 280 entries were checked by a program against their source cell** (CSV cells selected by the row filter shown, means over seeds, or markdown-table cells selected by row text and column header), rounded to the precision the documents quote. No experiment was run and no result was regenerated.
+One line per headline number that the README, PROJECT_PLAN, the per-task conclusions or the Phase-I report quote: the value, what it measures and under which setting, and the file and column (or table row) it comes from. Built in Task 7 (Step 1, updated after the merges in Step 3) on branch `cleanup/prune-results` (recovery tag `pre-cleanup-2026-10`). **All 316 entries were checked by a program against their source cell** (CSV cells selected by the row filter shown, means over seeds, or markdown-table cells selected by row text and column header), rounded to the precision the documents quote. No experiment was run and no result was regenerated.
 
 ## How to read it
 
 - *Pools:* `base` / `40f` = 40 features (34 raw + 6 engineered); `full` / `48f` = 48 features; `full_no_ttl` / `45f` = 48 minus `sttl`, `dttl`, `ct_state_ttl`; `41f` = 48 minus the 7 window-count `ct_*` columns; `38f` = 48 minus every `ct_*` column. *Splits:* `official` = official UNSW-NB15 train/test files; `pooled_random` = optimistic pooled random split (shares neighbouring flows with its training rows).
 - *Seeds:* every `mean` is over seeds 42-46 unless the setting says single seed. Access levels are written as in the conclusions: ZERO-SHOT / TRANSDUCTIVE / FEW-SHOT.
-- *Paths* are relative to the repository root. Markdown-table sources that the manifest proposes to merge into one per-task tables file keep their current name here until the merge is applied; Step 3 rewrites this column to the merged file (the section keeps the original table's file name) and Step 4 re-verifies every entry.
+- *Paths* are relative to the repository root. The markdown tables were folded into `results/metrics/xgboost/task_*_tables.md` and `headline_tables.md` in the cleanup; an entry that points into one names the original table in its `Source: <file name>` section.
 - Per-seed rows that were behind these means were removed in the cleanup (list: `results/CLEANUP_MANIFEST.md`); they are recoverable from tag `pre-cleanup-2026-10` or by re-running the pipeline named in the conclusion.
 
 ## Headline
@@ -139,35 +139,35 @@ One line per headline number that the README, PROJECT_PLAN, the per-task conclus
 
 | # | value | metric and setting | source file | where in the file |
 |---|---|---|---|---|
-| 74 | **0.256** | default (config.yaml), 40 features, official split (mean of seeds 42-46) | `results/metrics/xgboost/fpr_study_final_40f_45f_48f.md` | table row containing `default (config.yaml)`, column `det95_test_fpr` (section `## 40f`) |
-| 75 | **0.257** | tuned on block-grouped validation (auc), 40 features, official split (mean of seeds 42-46) | `results/metrics/xgboost/fpr_study_final_40f_45f_48f.md` | table row containing `tuned on block-grouped validation (auc)`, column `det95_test_fpr` (section `## 40f`) |
-| 76 | **0.249** | temperature scaling + EM prior correction, 40 features, official split (mean of seeds 42-46) | `results/metrics/xgboost/fpr_study_final_40f_45f_48f.md` | table row containing `temperature scaling + EM prior correction`, column `det95_test_fpr` (section `## 40f`) |
-| 77 | **0.254** | declared combination, 40 features, official split (mean of seeds 42-46) | `results/metrics/xgboost/fpr_study_final_40f_45f_48f.md` | table row containing `declared combination`, column `det95_test_fpr` (section `## 40f`) |
-| 78 | **0.248** | default (config.yaml), 45 features, official split (mean of seeds 42-46) | `results/metrics/xgboost/fpr_study_final_40f_45f_48f.md` | table row containing `default (config.yaml)`, column `det95_test_fpr` (section `## 45f`) |
-| 79 | **0.258** | tuned on block-grouped validation (auc), 45 features, official split (mean of seeds 42-46) | `results/metrics/xgboost/fpr_study_final_40f_45f_48f.md` | table row containing `tuned on block-grouped validation (auc)`, column `det95_test_fpr` (section `## 45f`) |
-| 80 | **0.244** | temperature scaling + EM prior correction, 45 features, official split (mean of seeds 42-46) | `results/metrics/xgboost/fpr_study_final_40f_45f_48f.md` | table row containing `temperature scaling + EM prior correction`, column `det95_test_fpr` (section `## 45f`) |
-| 81 | **0.249** | declared combination, 45 features, official split (mean of seeds 42-46) | `results/metrics/xgboost/fpr_study_final_40f_45f_48f.md` | table row containing `declared combination`, column `det95_test_fpr` (section `## 45f`) |
-| 82 | **0.248** | default (config.yaml), 48 features, official split (mean of seeds 42-46) | `results/metrics/xgboost/fpr_study_final_40f_45f_48f.md` | table row containing `default (config.yaml)`, column `det95_test_fpr` (section `## 48f`) |
-| 83 | **0.244** | temperature scaling + EM prior correction, 48 features, official split (mean of seeds 42-46) | `results/metrics/xgboost/fpr_study_final_40f_45f_48f.md` | table row containing `temperature scaling + EM prior correction`, column `det95_test_fpr` (section `## 48f`) |
-| 84 | **0.247** | declared combination, 48 features, official split (mean of seeds 42-46) | `results/metrics/xgboost/fpr_study_final_40f_45f_48f.md` | table row containing `declared combination`, column `det95_test_fpr` (section `## 48f`) |
-| 85 | **0.196** | argmax FPR with EM prior correction, 40 features | `results/metrics/xgboost/fpr_study_final_40f_45f_48f.md` | table row containing `temperature scaling + EM prior correction`, column `argmax_fpr` (section `## 40f`) |
-| 86 | **0.289** | argmax FPR, default, 40 features | `results/metrics/xgboost/fpr_study_final_40f_45f_48f.md` | table row containing `default (config.yaml)`, column `argmax_fpr` (section `## 40f`) |
+| 74 | **0.256** | default (config.yaml), 40 features, official split (mean of seeds 42-46) | `results/metrics/xgboost/task_2_7_tables.md` | table row containing `default (config.yaml)`, column `det95_test_fpr` (section `## 40f`); in the section `Source: fpr_study_final_40f_45f_48f.md` |
+| 75 | **0.257** | tuned on block-grouped validation (auc), 40 features, official split (mean of seeds 42-46) | `results/metrics/xgboost/task_2_7_tables.md` | table row containing `tuned on block-grouped validation (auc)`, column `det95_test_fpr` (section `## 40f`); in the section `Source: fpr_study_final_40f_45f_48f.md` |
+| 76 | **0.249** | temperature scaling + EM prior correction, 40 features, official split (mean of seeds 42-46) | `results/metrics/xgboost/task_2_7_tables.md` | table row containing `temperature scaling + EM prior correction`, column `det95_test_fpr` (section `## 40f`); in the section `Source: fpr_study_final_40f_45f_48f.md` |
+| 77 | **0.254** | declared combination, 40 features, official split (mean of seeds 42-46) | `results/metrics/xgboost/task_2_7_tables.md` | table row containing `declared combination`, column `det95_test_fpr` (section `## 40f`); in the section `Source: fpr_study_final_40f_45f_48f.md` |
+| 78 | **0.248** | default (config.yaml), 45 features, official split (mean of seeds 42-46) | `results/metrics/xgboost/task_2_7_tables.md` | table row containing `default (config.yaml)`, column `det95_test_fpr` (section `## 45f`); in the section `Source: fpr_study_final_40f_45f_48f.md` |
+| 79 | **0.258** | tuned on block-grouped validation (auc), 45 features, official split (mean of seeds 42-46) | `results/metrics/xgboost/task_2_7_tables.md` | table row containing `tuned on block-grouped validation (auc)`, column `det95_test_fpr` (section `## 45f`); in the section `Source: fpr_study_final_40f_45f_48f.md` |
+| 80 | **0.244** | temperature scaling + EM prior correction, 45 features, official split (mean of seeds 42-46) | `results/metrics/xgboost/task_2_7_tables.md` | table row containing `temperature scaling + EM prior correction`, column `det95_test_fpr` (section `## 45f`); in the section `Source: fpr_study_final_40f_45f_48f.md` |
+| 81 | **0.249** | declared combination, 45 features, official split (mean of seeds 42-46) | `results/metrics/xgboost/task_2_7_tables.md` | table row containing `declared combination`, column `det95_test_fpr` (section `## 45f`); in the section `Source: fpr_study_final_40f_45f_48f.md` |
+| 82 | **0.248** | default (config.yaml), 48 features, official split (mean of seeds 42-46) | `results/metrics/xgboost/task_2_7_tables.md` | table row containing `default (config.yaml)`, column `det95_test_fpr` (section `## 48f`); in the section `Source: fpr_study_final_40f_45f_48f.md` |
+| 83 | **0.244** | temperature scaling + EM prior correction, 48 features, official split (mean of seeds 42-46) | `results/metrics/xgboost/task_2_7_tables.md` | table row containing `temperature scaling + EM prior correction`, column `det95_test_fpr` (section `## 48f`); in the section `Source: fpr_study_final_40f_45f_48f.md` |
+| 84 | **0.247** | declared combination, 48 features, official split (mean of seeds 42-46) | `results/metrics/xgboost/task_2_7_tables.md` | table row containing `declared combination`, column `det95_test_fpr` (section `## 48f`); in the section `Source: fpr_study_final_40f_45f_48f.md` |
+| 85 | **0.196** | argmax FPR with EM prior correction, 40 features | `results/metrics/xgboost/task_2_7_tables.md` | table row containing `temperature scaling + EM prior correction`, column `argmax_fpr` (section `## 40f`); in the section `Source: fpr_study_final_40f_45f_48f.md` |
+| 86 | **0.289** | argmax FPR, default, 40 features | `results/metrics/xgboost/task_2_7_tables.md` | table row containing `default (config.yaml)`, column `argmax_fpr` (section `## 40f`); in the section `Source: fpr_study_final_40f_45f_48f.md` |
 
 ### Task 2.7 few-shot (FPR at exactly 95% detection)
 
 | # | value | metric and setting | source file | where in the file |
 |---|---|---|---|---|
-| 87 | **0.152** | random selection, k=2,500, 48 features | `results/metrics/xgboost/fpr_study_fewshot_48f_45f_41f.md` | table row containing `random` + `2500`, column `FPR at exactly 95%` (section `## 48f`) |
-| 88 | **0.148** | diverse (k-means) selection, k=2,500, 48 features | `results/metrics/xgboost/fpr_study_fewshot_48f_45f_41f.md` | table row containing `diverse` + `2500`, column `FPR at exactly 95%` (section `## 48f`) |
-| 89 | **0.122** | random selection, k=5,000, 48 features | `results/metrics/xgboost/fpr_study_fewshot_48f_45f_41f.md` | table row containing `random` + `5000`, column `FPR at exactly 95%` (section `## 48f`) |
-| 90 | **0.138** | random selection, k=5,000, 45 features | `results/metrics/xgboost/fpr_study_fewshot_48f_45f_41f.md` | table row containing `random` + `5000`, column `FPR at exactly 95%` (section `## 45f`) |
-| 91 | **0.199** | random selection, k=500, 48 features | `results/metrics/xgboost/fpr_study_fewshot_48f_45f_41f.md` | table row containing `random` + `500`, column `FPR at exactly 95%` (section `## 48f`) |
+| 87 | **0.152** | random selection, k=2,500, 48 features | `results/metrics/xgboost/task_2_7_tables.md` | table row containing `random` + `2500`, column `FPR at exactly 95%` (section `## 48f`); in the section `Source: fpr_study_fewshot_48f_45f_41f.md` |
+| 88 | **0.148** | diverse (k-means) selection, k=2,500, 48 features | `results/metrics/xgboost/task_2_7_tables.md` | table row containing `diverse` + `2500`, column `FPR at exactly 95%` (section `## 48f`); in the section `Source: fpr_study_fewshot_48f_45f_41f.md` |
+| 89 | **0.122** | random selection, k=5,000, 48 features | `results/metrics/xgboost/task_2_7_tables.md` | table row containing `random` + `5000`, column `FPR at exactly 95%` (section `## 48f`); in the section `Source: fpr_study_fewshot_48f_45f_41f.md` |
+| 90 | **0.138** | random selection, k=5,000, 45 features | `results/metrics/xgboost/task_2_7_tables.md` | table row containing `random` + `5000`, column `FPR at exactly 95%` (section `## 45f`); in the section `Source: fpr_study_fewshot_48f_45f_41f.md` |
+| 91 | **0.199** | random selection, k=500, 48 features | `results/metrics/xgboost/task_2_7_tables.md` | table row containing `random` + `500`, column `FPR at exactly 95%` (section `## 48f`); in the section `Source: fpr_study_fewshot_48f_45f_41f.md` |
 
 ### Task 2.7 few-shot (det95 FPR, threshold on held-out half)
 
 | # | value | metric and setting | source file | where in the file |
 |---|---|---|---|---|
-| 92 | **0.089** | random selection, k=5,000, 48 features (the 'about 0.09'; read at a test detection of 0.935) | `results/metrics/xgboost/fpr_study_fewshot_48f_45f_41f.md` | table row containing `random` + `5000`, column `det95 FPR` (section `## 48f`) |
+| 92 | **0.089** | random selection, k=5,000, 48 features (the 'about 0.09'; read at a test detection of 0.935) | `results/metrics/xgboost/task_2_7_tables.md` | table row containing `random` + `5000`, column `det95 FPR` (section `## 48f`); in the section `Source: fpr_study_fewshot_48f_45f_41f.md` |
 
 ## Task 3
 
@@ -238,14 +238,14 @@ One line per headline number that the README, PROJECT_PLAN, the per-task conclus
 
 | # | value | metric and setting | source file | where in the file |
 |---|---|---|---|---|
-| 134 | **0.289** | alert FPR OFF, max-softmax, 40 features, Worms + Shellcode held out | `results/metrics/xgboost/open_set_step3_40f_45f_48f.md` | table row containing `| 5.0% |`, column `alert FPR OFF` (section `## 40f: msp`) |
-| 135 | **0.311** | alert FPR ON, max-softmax, 40 features, Worms + Shellcode held out | `results/metrics/xgboost/open_set_step3_40f_45f_48f.md` | table row containing `| 5.0% |`, column `alert FPR ON` (section `## 40f: msp`) |
-| 136 | **0.254** | confident-alert FPR, max-softmax, 40 features, Worms + Shellcode held out | `results/metrics/xgboost/open_set_step3_40f_45f_48f.md` | table row containing `| 5.0% |`, column `confident-alert FPR` (section `## 40f: msp`) |
-| 137 | **0.057** | review rate on Normal, max-softmax, 40 features, Worms + Shellcode held out | `results/metrics/xgboost/open_set_step3_40f_45f_48f.md` | table row containing `| 5.0% |`, column `review rate on Normal` (section `## 40f: msp`) |
-| 138 | **0.878** | false alerts that skip review, max-softmax, 40 features, Worms + Shellcode held out | `results/metrics/xgboost/open_set_step3_40f_45f_48f.md` | table row containing `| 5.0% |`, column `false alerts that skip review` (section `## 40f: msp`) |
-| 139 | **0.955** | zero-day catch, max-softmax, 40 features, Worms + Shellcode held out | `results/metrics/xgboost/open_set_step3_40f_45f_48f.md` | table row containing `| 5.0% |`, column `zero-day catch` (section `## 40f: msp`) |
-| 140 | **0.223** | zero-day flagged Unknown, max-softmax, 40 features, Worms + Shellcode held out | `results/metrics/xgboost/open_set_step3_40f_45f_48f.md` | table row containing `| 5.0% |`, column `zero-day flagged Unknown` (section `## 40f: msp`) |
-| 141 | **0.121** | confident-alert FPR at the 30% target (entropy, 40 features): the cost of halving it | `results/metrics/xgboost/open_set_step3_40f_45f_48f.md` | table row containing `| 30.0% |`, column `confident-alert FPR` (section `## 40f: entropy`) |
+| 134 | **0.289** | alert FPR OFF, max-softmax, 40 features, Worms + Shellcode held out | `results/metrics/xgboost/task_4_tables.md` | table row containing `| 5.0% |`, column `alert FPR OFF` (section `## 40f: msp`); in the section `Source: open_set_step3_40f_45f_48f.md` |
+| 135 | **0.311** | alert FPR ON, max-softmax, 40 features, Worms + Shellcode held out | `results/metrics/xgboost/task_4_tables.md` | table row containing `| 5.0% |`, column `alert FPR ON` (section `## 40f: msp`); in the section `Source: open_set_step3_40f_45f_48f.md` |
+| 136 | **0.254** | confident-alert FPR, max-softmax, 40 features, Worms + Shellcode held out | `results/metrics/xgboost/task_4_tables.md` | table row containing `| 5.0% |`, column `confident-alert FPR` (section `## 40f: msp`); in the section `Source: open_set_step3_40f_45f_48f.md` |
+| 137 | **0.057** | review rate on Normal, max-softmax, 40 features, Worms + Shellcode held out | `results/metrics/xgboost/task_4_tables.md` | table row containing `| 5.0% |`, column `review rate on Normal` (section `## 40f: msp`); in the section `Source: open_set_step3_40f_45f_48f.md` |
+| 138 | **0.878** | false alerts that skip review, max-softmax, 40 features, Worms + Shellcode held out | `results/metrics/xgboost/task_4_tables.md` | table row containing `| 5.0% |`, column `false alerts that skip review` (section `## 40f: msp`); in the section `Source: open_set_step3_40f_45f_48f.md` |
+| 139 | **0.955** | zero-day catch, max-softmax, 40 features, Worms + Shellcode held out | `results/metrics/xgboost/task_4_tables.md` | table row containing `| 5.0% |`, column `zero-day catch` (section `## 40f: msp`); in the section `Source: open_set_step3_40f_45f_48f.md` |
+| 140 | **0.223** | zero-day flagged Unknown, max-softmax, 40 features, Worms + Shellcode held out | `results/metrics/xgboost/task_4_tables.md` | table row containing `| 5.0% |`, column `zero-day flagged Unknown` (section `## 40f: msp`); in the section `Source: open_set_step3_40f_45f_48f.md` |
+| 141 | **0.121** | confident-alert FPR at the 30% target (entropy, 40 features): the cost of halving it | `results/metrics/xgboost/task_4_tables.md` | table row containing `| 30.0% |`, column `confident-alert FPR` (section `## 40f: entropy`); in the section `Source: open_set_step3_40f_45f_48f.md` |
 
 ### Task 4 where the 40 -> 48 gain comes from
 
@@ -268,33 +268,33 @@ One line per headline number that the README, PROJECT_PLAN, the per-task conclus
 
 | # | value | metric and setting | source file | where in the file |
 |---|---|---|---|---|
-| 147 | **0.213** | max-softmax rotation-mean detection, 40 features (baseline) | `results/metrics/xgboost/open_set_boost_calibration_40f_48f.md` | table row containing `| msp |`, column `rotation mean detection` (section `## calibration (40f`) |
-| 148 | **0.266** | entropy rotation-mean detection, 40 features | `results/metrics/xgboost/open_set_boost_calibration_40f_48f.md` | table row containing `| entropy |`, column `rotation mean detection` (section `## calibration (40f`) |
-| 149 | **0.276** | temperature-scaled entropy rotation-mean detection, 40 features | `results/metrics/xgboost/open_set_boost_calibration_40f_48f.md` | table row containing `| entropy_cal |`, column `rotation mean detection` (section `## calibration (40f`) |
-| 150 | **0.234** | max-softmax rotation-mean detection, 48 features (baseline) | `results/metrics/xgboost/open_set_boost_calibration_40f_48f.md` | table row containing `| msp |`, column `rotation mean detection` (section `## calibration (48f`) |
-| 151 | **0.304** | temperature-scaled entropy rotation-mean detection, 48 features (the one clear gain in the full known set) | `results/metrics/xgboost/open_set_boost_calibration_40f_48f.md` | table row containing `| entropy_cal |`, column `rotation mean detection` (section `## calibration (48f`) |
-| 152 | **yes** | calibrated entropy clearly beats max-softmax under the declared rule, 48 features | `results/metrics/xgboost/open_set_boost_calibration_40f_48f.md` | table row containing `| entropy_cal |`, column `clearly beats` (section `## calibration (48f`) |
+| 147 | **0.213** | max-softmax rotation-mean detection, 40 features (baseline) | `results/metrics/xgboost/task_4_5_tables.md` | table row containing `| msp |`, column `rotation mean detection` (section `## calibration (40f`); in the section `Source: open_set_boost_calibration_40f_48f.md` |
+| 148 | **0.266** | entropy rotation-mean detection, 40 features | `results/metrics/xgboost/task_4_5_tables.md` | table row containing `| entropy |`, column `rotation mean detection` (section `## calibration (40f`); in the section `Source: open_set_boost_calibration_40f_48f.md` |
+| 149 | **0.276** | temperature-scaled entropy rotation-mean detection, 40 features | `results/metrics/xgboost/task_4_5_tables.md` | table row containing `| entropy_cal |`, column `rotation mean detection` (section `## calibration (40f`); in the section `Source: open_set_boost_calibration_40f_48f.md` |
+| 150 | **0.234** | max-softmax rotation-mean detection, 48 features (baseline) | `results/metrics/xgboost/task_4_5_tables.md` | table row containing `| msp |`, column `rotation mean detection` (section `## calibration (48f`); in the section `Source: open_set_boost_calibration_40f_48f.md` |
+| 151 | **0.304** | temperature-scaled entropy rotation-mean detection, 48 features (the one clear gain in the full known set) | `results/metrics/xgboost/task_4_5_tables.md` | table row containing `| entropy_cal |`, column `rotation mean detection` (section `## calibration (48f`); in the section `Source: open_set_boost_calibration_40f_48f.md` |
+| 152 | **yes** | calibrated entropy clearly beats max-softmax under the declared rule, 48 features | `results/metrics/xgboost/task_4_5_tables.md` | table row containing `| entropy_cal |`, column `clearly beats` (section `## calibration (48f`); in the section `Source: open_set_boost_calibration_40f_48f.md` |
 
 ### Task 4.5 outlier exposure + combination
 
 | # | value | metric and setting | source file | where in the file |
 |---|---|---|---|---|
-| 153 | **0.128** | max-softmax of the model trained without two classes, rotation-mean detection, 40 features (baseline in this setting) | `results/metrics/xgboost/open_set_boost_combo_40f_48f.md` | table row containing `| noP_msp |`, column `rotation mean detection` (section `## combo (40f`) |
-| 154 | **0.268** | rank-average of ensemble MI and P(Unknown), rotation-mean detection, 40 features | `results/metrics/xgboost/open_set_boost_combo_40f_48f.md` | table row containing `| combo |`, column `rotation mean detection` (section `## combo (40f`) |
-| 155 | **0.209** | max-softmax of the model trained without two classes, 48 features (baseline) | `results/metrics/xgboost/open_set_boost_combo_40f_48f.md` | table row containing `| noP_msp |`, column `rotation mean detection` (section `## combo (48f`) |
-| 156 | **0.335** | rank-average of ensemble MI and P(Unknown), 48 features | `results/metrics/xgboost/open_set_boost_combo_40f_48f.md` | table row containing `| combo |`, column `rotation mean detection` (section `## combo (48f`) |
-| 157 | **0.842** | P(Unknown) rotation-mean AUROC, 40 features (best AUROC of any score) | `results/metrics/xgboost/open_set_boost_combo_40f_48f.md` | table row containing `| oe_pu |`, column `rotation mean AUROC` (section `## combo (40f`) |
-| 158 | **0.200** | entropy of the model trained without the two classes, rotation-mean detection, 40 features | `results/metrics/xgboost/open_set_boost_combo_40f_48f.md` | table row containing `| noP_entropy |`, column `rotation mean detection` (section `## combo (40f`) |
+| 153 | **0.128** | max-softmax of the model trained without two classes, rotation-mean detection, 40 features (baseline in this setting) | `results/metrics/xgboost/task_4_5_tables.md` | table row containing `| noP_msp |`, column `rotation mean detection` (section `## combo (40f`); in the section `Source: open_set_boost_combo_40f_48f.md` |
+| 154 | **0.268** | rank-average of ensemble MI and P(Unknown), rotation-mean detection, 40 features | `results/metrics/xgboost/task_4_5_tables.md` | table row containing `| combo |`, column `rotation mean detection` (section `## combo (40f`); in the section `Source: open_set_boost_combo_40f_48f.md` |
+| 155 | **0.209** | max-softmax of the model trained without two classes, 48 features (baseline) | `results/metrics/xgboost/task_4_5_tables.md` | table row containing `| noP_msp |`, column `rotation mean detection` (section `## combo (48f`); in the section `Source: open_set_boost_combo_40f_48f.md` |
+| 156 | **0.335** | rank-average of ensemble MI and P(Unknown), 48 features | `results/metrics/xgboost/task_4_5_tables.md` | table row containing `| combo |`, column `rotation mean detection` (section `## combo (48f`); in the section `Source: open_set_boost_combo_40f_48f.md` |
+| 157 | **0.842** | P(Unknown) rotation-mean AUROC, 40 features (best AUROC of any score) | `results/metrics/xgboost/task_4_5_tables.md` | table row containing `| oe_pu |`, column `rotation mean AUROC` (section `## combo (40f`); in the section `Source: open_set_boost_combo_40f_48f.md` |
+| 158 | **0.200** | entropy of the model trained without the two classes, rotation-mean detection, 40 features | `results/metrics/xgboost/task_4_5_tables.md` | table row containing `| noP_entropy |`, column `rotation mean detection` (section `## combo (40f`); in the section `Source: open_set_boost_combo_40f_48f.md` |
 
 ### Task 4.5 isolation-forest sign check
 
 | # | value | metric and setting | source file | where in the file |
 |---|---|---|---|---|
-| 159 | **0.672** | isolation-forest AUROC, known attacks vs Normal (official test), 40 features | `results/metrics/xgboost/open_set_boost_iforest_40f_48f.md` | table row containing `| iforest |`, column `known attacks vs Normal` (section `(40f`) |
-| 160 | **0.724** | same, 48 features | `results/metrics/xgboost/open_set_boost_iforest_40f_48f.md` | table row containing `| iforest |`, column `known attacks vs Normal` (section `(48f`) |
-| 161 | **0.407** | Shellcode mean percentile among known test flows (looks like an inlier), 40 features | `results/metrics/xgboost/open_set_boost_iforest_40f_48f.md` | table row containing `| iforest |`, column `Shellcode` (section `(40f`) |
-| 162 | **0.684** | Worms mean percentile, 40 features | `results/metrics/xgboost/open_set_boost_iforest_40f_48f.md` | table row containing `| iforest |`, column `Worms` (section `(40f`) |
-| 163 | **0.411** | Mahalanobis AUROC, known attacks vs Normal, 40 features (ranks attacks below Normal) | `results/metrics/xgboost/open_set_boost_iforest_40f_48f.md` | table row containing `| maha |`, column `known attacks vs Normal` (section `(40f`) |
+| 159 | **0.672** | isolation-forest AUROC, known attacks vs Normal (official test), 40 features | `results/metrics/xgboost/task_4_5_tables.md` | table row containing `| iforest |`, column `known attacks vs Normal` (section `(40f`); in the section `Source: open_set_boost_iforest_40f_48f.md` |
+| 160 | **0.724** | same, 48 features | `results/metrics/xgboost/task_4_5_tables.md` | table row containing `| iforest |`, column `known attacks vs Normal` (section `(48f`); in the section `Source: open_set_boost_iforest_40f_48f.md` |
+| 161 | **0.407** | Shellcode mean percentile among known test flows (looks like an inlier), 40 features | `results/metrics/xgboost/task_4_5_tables.md` | table row containing `| iforest |`, column `Shellcode` (section `(40f`); in the section `Source: open_set_boost_iforest_40f_48f.md` |
+| 162 | **0.684** | Worms mean percentile, 40 features | `results/metrics/xgboost/task_4_5_tables.md` | table row containing `| iforest |`, column `Worms` (section `(40f`); in the section `Source: open_set_boost_iforest_40f_48f.md` |
+| 163 | **0.411** | Mahalanobis AUROC, known attacks vs Normal, 40 features (ranks attacks below Normal) | `results/metrics/xgboost/task_4_5_tables.md` | table row containing `| maha |`, column `known attacks vs Normal` (section `(40f`); in the section `Source: open_set_boost_iforest_40f_48f.md` |
 
 ### Task 4.5 pseudo-unknown selection
 
@@ -311,41 +311,41 @@ One line per headline number that the README, PROJECT_PLAN, the per-task conclus
 
 | # | value | metric and setting | source file | where in the file |
 |---|---|---|---|---|
-| 168 | **1.39e-05** | largest SHAP additivity error over about 179,000 flows (45-feature pool, whole tier); every flow within 1e-3 | `results/metrics/xgboost/xai_faithfulness_40f_45f_48f.md` | table row containing `| 45f | 45 |`, column `maximum error` (section `Step 1`) |
+| 168 | **1.39e-05** | largest SHAP additivity error over about 179,000 flows (45-feature pool, whole tier); every flow within 1e-3 | `results/metrics/xgboost/task_5_tables.md` | table row containing `| 45f | 45 |`, column `maximum error` (section `Step 1`); in the section `Source: xai_faithfulness_40f_45f_48f.md` |
 
 ### Task 5 faithfulness (top-5 SHAP minus random removal, probability drop)
 
 | # | value | metric and setting | source file | where in the file |
 |---|---|---|---|---|
-| 169 | **0.512** | 40-feature pool, 40-feature tier, official-test flows (mean of 5 seeds) | `results/metrics/xgboost/xai_faithfulness_40f_45f_48f.md` | table row containing `| 40f | 40 | 40 |`, column `difference` (section `Primary metric: probability drop`) |
-| 170 | **0.501** | 45-feature pool, 45-feature tier, official-test flows (mean of 5 seeds) | `results/metrics/xgboost/xai_faithfulness_40f_45f_48f.md` | table row containing `| 45f | 45 | 45 |`, column `difference` (section `Primary metric: probability drop`) |
-| 171 | **0.553** | 48-feature pool, 48-feature tier, official-test flows (mean of 5 seeds) | `results/metrics/xgboost/xai_faithfulness_40f_45f_48f.md` | table row containing `| 48f | 48 | 48 |`, column `difference` (section `Primary metric: probability drop`) |
-| 172 | **0.466** | 40-feature pool, 30-feature tier, official-test flows (mean of 5 seeds) | `results/metrics/xgboost/xai_faithfulness_40f_45f_48f.md` | table row containing `| 40f | 30 | 30 |`, column `difference` (section `Primary metric: probability drop`) |
-| 173 | **0.429** | 45-feature pool, 30-feature tier, official-test flows (mean of 5 seeds) | `results/metrics/xgboost/xai_faithfulness_40f_45f_48f.md` | table row containing `| 45f | 30 | 30 |`, column `difference` (section `Primary metric: probability drop`) |
-| 174 | **0.489** | 48-feature pool, 30-feature tier, official-test flows (mean of 5 seeds) | `results/metrics/xgboost/xai_faithfulness_40f_45f_48f.md` | table row containing `| 48f | 30 | 30 |`, column `difference` (section `Primary metric: probability drop`) |
-| 175 | **0.333** | 40-feature pool, 15-feature tier, official-test flows (mean of 5 seeds) | `results/metrics/xgboost/xai_faithfulness_40f_45f_48f.md` | table row containing `| 40f | 15 | 15 |`, column `difference` (section `Primary metric: probability drop`) |
-| 176 | **0.344** | 45-feature pool, 15-feature tier, official-test flows (mean of 5 seeds) | `results/metrics/xgboost/xai_faithfulness_40f_45f_48f.md` | table row containing `| 45f | 15 | 15 |`, column `difference` (section `Primary metric: probability drop`) |
-| 177 | **0.340** | 48-feature pool, 15-feature tier, official-test flows (mean of 5 seeds) | `results/metrics/xgboost/xai_faithfulness_40f_45f_48f.md` | table row containing `| 48f | 15 | 15 |`, column `difference` (section `Primary metric: probability drop`) |
+| 169 | **0.512** | 40-feature pool, 40-feature tier, official-test flows (mean of 5 seeds) | `results/metrics/xgboost/task_5_tables.md` | table row containing `| 40f | 40 | 40 |`, column `difference` (section `Primary metric: probability drop`); in the section `Source: xai_faithfulness_40f_45f_48f.md` |
+| 170 | **0.501** | 45-feature pool, 45-feature tier, official-test flows (mean of 5 seeds) | `results/metrics/xgboost/task_5_tables.md` | table row containing `| 45f | 45 | 45 |`, column `difference` (section `Primary metric: probability drop`); in the section `Source: xai_faithfulness_40f_45f_48f.md` |
+| 171 | **0.553** | 48-feature pool, 48-feature tier, official-test flows (mean of 5 seeds) | `results/metrics/xgboost/task_5_tables.md` | table row containing `| 48f | 48 | 48 |`, column `difference` (section `Primary metric: probability drop`); in the section `Source: xai_faithfulness_40f_45f_48f.md` |
+| 172 | **0.466** | 40-feature pool, 30-feature tier, official-test flows (mean of 5 seeds) | `results/metrics/xgboost/task_5_tables.md` | table row containing `| 40f | 30 | 30 |`, column `difference` (section `Primary metric: probability drop`); in the section `Source: xai_faithfulness_40f_45f_48f.md` |
+| 173 | **0.429** | 45-feature pool, 30-feature tier, official-test flows (mean of 5 seeds) | `results/metrics/xgboost/task_5_tables.md` | table row containing `| 45f | 30 | 30 |`, column `difference` (section `Primary metric: probability drop`); in the section `Source: xai_faithfulness_40f_45f_48f.md` |
+| 174 | **0.489** | 48-feature pool, 30-feature tier, official-test flows (mean of 5 seeds) | `results/metrics/xgboost/task_5_tables.md` | table row containing `| 48f | 30 | 30 |`, column `difference` (section `Primary metric: probability drop`); in the section `Source: xai_faithfulness_40f_45f_48f.md` |
+| 175 | **0.333** | 40-feature pool, 15-feature tier, official-test flows (mean of 5 seeds) | `results/metrics/xgboost/task_5_tables.md` | table row containing `| 40f | 15 | 15 |`, column `difference` (section `Primary metric: probability drop`); in the section `Source: xai_faithfulness_40f_45f_48f.md` |
+| 176 | **0.344** | 45-feature pool, 15-feature tier, official-test flows (mean of 5 seeds) | `results/metrics/xgboost/task_5_tables.md` | table row containing `| 45f | 15 | 15 |`, column `difference` (section `Primary metric: probability drop`); in the section `Source: xai_faithfulness_40f_45f_48f.md` |
+| 177 | **0.340** | 48-feature pool, 15-feature tier, official-test flows (mean of 5 seeds) | `results/metrics/xgboost/task_5_tables.md` | table row containing `| 48f | 15 | 15 |`, column `difference` (section `Primary metric: probability drop`); in the section `Source: xai_faithfulness_40f_45f_48f.md` |
 
 ### Task 5 faithfulness (deletion curve, 40 features, k = 5, median baseline)
 
 | # | value | metric and setting | source file | where in the file |
 |---|---|---|---|---|
-| 178 | **0.619** | removing the top-5 SHAP features lowers the predicted-class probability by | `results/metrics/xgboost/xai_faithfulness_40f_45f_48f.md` | table row containing `| 40f | 5 |`, column `top SHAP` (section `baseline = training median`) |
-| 179 | **0.182** | removing 5 random features lowers it by | `results/metrics/xgboost/xai_faithfulness_40f_45f_48f.md` | table row containing `| 40f | 5 |`, column `random` (section `baseline = training median`) |
-| 180 | **0.022** | removing the 5 least important lowers it by | `results/metrics/xgboost/xai_faithfulness_40f_45f_48f.md` | table row containing `| 40f | 5 |`, column `least important` (section `baseline = training median`) |
-| 181 | **0.860** | share of flows whose predicted class flips after removing the top 5 SHAP features | `results/metrics/xgboost/xai_faithfulness_40f_45f_48f.md` | table row containing `| 40f | 5 |`, column `top: class flips` (section `baseline = training median`) |
-| 182 | **0.280** | same after removing 5 random features | `results/metrics/xgboost/xai_faithfulness_40f_45f_48f.md` | table row containing `| 40f | 5 |`, column `random: class flips` (section `baseline = training median`) |
+| 178 | **0.619** | removing the top-5 SHAP features lowers the predicted-class probability by | `results/metrics/xgboost/task_5_tables.md` | table row containing `| 40f | 5 |`, column `top SHAP` (section `baseline = training median`); in the section `Source: xai_faithfulness_40f_45f_48f.md` |
+| 179 | **0.182** | removing 5 random features lowers it by | `results/metrics/xgboost/task_5_tables.md` | table row containing `| 40f | 5 |`, column `random` (section `baseline = training median`); in the section `Source: xai_faithfulness_40f_45f_48f.md` |
+| 180 | **0.022** | removing the 5 least important lowers it by | `results/metrics/xgboost/task_5_tables.md` | table row containing `| 40f | 5 |`, column `least important` (section `baseline = training median`); in the section `Source: xai_faithfulness_40f_45f_48f.md` |
+| 181 | **0.860** | share of flows whose predicted class flips after removing the top 5 SHAP features | `results/metrics/xgboost/task_5_tables.md` | table row containing `| 40f | 5 |`, column `top: class flips` (section `baseline = training median`); in the section `Source: xai_faithfulness_40f_45f_48f.md` |
+| 182 | **0.280** | same after removing 5 random features | `results/metrics/xgboost/task_5_tables.md` | table row containing `| 40f | 5 |`, column `random: class flips` (section `baseline = training median`); in the section `Source: xai_faithfulness_40f_45f_48f.md` |
 
 ### Task 5 narrative audit
 
 | # | value | metric and setting | source file | where in the file |
 |---|---|---|---|---|
-| 183 | **0.757** | (f) cue direction agrees with the SHAP-vs-value trend on training flows, 40 features | `results/metrics/xgboost/xai_audit_40f_48f.md` | table row containing `(f) cue direction agrees`, column `40f` |
-| 184 | **0.722** | (f) same, 48 features | `results/metrics/xgboost/xai_audit_40f_48f.md` | table row containing `(f) cue direction agrees`, column `48f` |
-| 185 | **1.000** | (a)-(e) correctness checks, each, 40 and 48 features (2,000 audited narratives) | `results/metrics/xgboost/xai_audit_40f_48f.md` | table row containing `(e) no false statement`, column `40f` |
-| 186 | **46.9%** | cited numeric features that read 'typical', 40 features | `results/metrics/xgboost/xai_audit_40f_48f.md` | stated in the running text ("of the cited numeric features 46.9% carry the cue") |
-| 187 | **35.7%** | cited numeric features that read 'typical', 48 features | `results/metrics/xgboost/xai_audit_40f_48f.md` | stated in the running text ("of the cited numeric features 35.7% carry the cue") |
+| 183 | **0.757** | (f) cue direction agrees with the SHAP-vs-value trend on training flows, 40 features | `results/metrics/xgboost/task_5_tables.md` | table row containing `(f) cue direction agrees`, column `40f`; in the section `Source: xai_audit_40f_48f.md` |
+| 184 | **0.722** | (f) same, 48 features | `results/metrics/xgboost/task_5_tables.md` | table row containing `(f) cue direction agrees`, column `48f`; in the section `Source: xai_audit_40f_48f.md` |
+| 185 | **1.000** | (a)-(e) correctness checks, each, 40 and 48 features (2,000 audited narratives) | `results/metrics/xgboost/task_5_tables.md` | table row containing `(e) no false statement`, column `40f`; in the section `Source: xai_audit_40f_48f.md` |
+| 186 | **46.9%** | cited numeric features that read 'typical', 40 features | `results/metrics/xgboost/task_5_tables.md` | stated in the running text ("of the cited numeric features 46.9% carry the cue"); section `Source: xai_audit_40f_48f.md` |
+| 187 | **35.7%** | cited numeric features that read 'typical', 48 features | `results/metrics/xgboost/task_5_tables.md` | stated in the running text ("of the cited numeric features 35.7% carry the cue"); section `Source: xai_audit_40f_48f.md` |
 
 ### Task 5 dashboard end to end
 
@@ -359,28 +359,28 @@ One line per headline number that the README, PROJECT_PLAN, the per-task conclus
 
 | # | value | metric and setting | source file | where in the file |
 |---|---|---|---|---|
-| 189 | **0.452** | cited numeric features that read 'typical', classic narrative, 40 features (held-out official-test sample) | `results/metrics/xgboost/narrative_test_40f_48f.md` | table row containing `cited numeric features read "typical"`, column `classic` (section `## 40f`) |
-| 190 | **0.000** | same, class-relative narrative, 40 features (held-out official-test sample) | `results/metrics/xgboost/narrative_test_40f_48f.md` | table row containing `cited numeric features read "typical"`, column `class-relative` (section `## 40f`) |
-| 191 | **0.365** | same, classic, 48 features, 48 features (held-out official-test sample) | `results/metrics/xgboost/narrative_test_40f_48f.md` | table row containing `cited numeric features read "typical"`, column `classic` (section `## 48f`) |
-| 192 | **0.000** | same, class-relative, 48 features, 48 features (held-out official-test sample) | `results/metrics/xgboost/narrative_test_40f_48f.md` | table row containing `cited numeric features read "typical"`, column `class-relative` (section `## 48f`) |
-| 193 | **4.108** | features cited per narrative, classic, 40 features | `results/metrics/xgboost/narrative_test_40f_48f.md` | table row containing `features cited per narrative`, column `classic` (section `## 40f`) |
-| 194 | **2.558** | features cited per narrative, class-relative, 40 features | `results/metrics/xgboost/narrative_test_40f_48f.md` | table row containing `features cited per narrative`, column `class-relative` (section `## 40f`) |
-| 195 | **4.018** | features cited per narrative, classic, 48 features, 48 features | `results/metrics/xgboost/narrative_test_40f_48f.md` | table row containing `features cited per narrative`, column `classic` (section `## 48f`) |
-| 196 | **2.714** | features cited per narrative, class-relative, 48 features, 48 features | `results/metrics/xgboost/narrative_test_40f_48f.md` | table row containing `features cited per narrative`, column `class-relative` (section `## 48f`) |
-| 197 | **0.780** | (f) cue-direction agreement (unchanged by the new wording), 40 features | `results/metrics/xgboost/narrative_test_40f_48f.md` | table row containing `(f) cue direction`, column `class-relative` (section `## 40f`) |
-| 198 | **0.733** | (f) cue-direction agreement, 48 features | `results/metrics/xgboost/narrative_test_40f_48f.md` | table row containing `(f) cue direction`, column `class-relative` (section `## 48f`) |
+| 189 | **0.452** | cited numeric features that read 'typical', classic narrative, 40 features (held-out official-test sample) | `results/metrics/xgboost/task_5_tables.md` | table row containing `cited numeric features read "typical"`, column `classic` (section `## 40f`); in the section `Source: narrative_test_40f_48f.md` |
+| 190 | **0.000** | same, class-relative narrative, 40 features (held-out official-test sample) | `results/metrics/xgboost/task_5_tables.md` | table row containing `cited numeric features read "typical"`, column `class-relative` (section `## 40f`); in the section `Source: narrative_test_40f_48f.md` |
+| 191 | **0.365** | same, classic, 48 features, 48 features (held-out official-test sample) | `results/metrics/xgboost/task_5_tables.md` | table row containing `cited numeric features read "typical"`, column `classic` (section `## 48f`); in the section `Source: narrative_test_40f_48f.md` |
+| 192 | **0.000** | same, class-relative, 48 features, 48 features (held-out official-test sample) | `results/metrics/xgboost/task_5_tables.md` | table row containing `cited numeric features read "typical"`, column `class-relative` (section `## 48f`); in the section `Source: narrative_test_40f_48f.md` |
+| 193 | **4.108** | features cited per narrative, classic, 40 features | `results/metrics/xgboost/task_5_tables.md` | table row containing `features cited per narrative`, column `classic` (section `## 40f`); in the section `Source: narrative_test_40f_48f.md` |
+| 194 | **2.558** | features cited per narrative, class-relative, 40 features | `results/metrics/xgboost/task_5_tables.md` | table row containing `features cited per narrative`, column `class-relative` (section `## 40f`); in the section `Source: narrative_test_40f_48f.md` |
+| 195 | **4.018** | features cited per narrative, classic, 48 features, 48 features | `results/metrics/xgboost/task_5_tables.md` | table row containing `features cited per narrative`, column `classic` (section `## 48f`); in the section `Source: narrative_test_40f_48f.md` |
+| 196 | **2.714** | features cited per narrative, class-relative, 48 features, 48 features | `results/metrics/xgboost/task_5_tables.md` | table row containing `features cited per narrative`, column `class-relative` (section `## 48f`); in the section `Source: narrative_test_40f_48f.md` |
+| 197 | **0.780** | (f) cue-direction agreement (unchanged by the new wording), 40 features | `results/metrics/xgboost/task_5_tables.md` | table row containing `(f) cue direction`, column `class-relative` (section `## 40f`); in the section `Source: narrative_test_40f_48f.md` |
+| 198 | **0.733** | (f) cue-direction agreement, 48 features | `results/metrics/xgboost/task_5_tables.md` | table row containing `(f) cue direction`, column `class-relative` (section `## 48f`); in the section `Source: narrative_test_40f_48f.md` |
 
 ### Task 5.5 false-positive explanations
 
 | # | value | metric and setting | source file | where in the file |
 |---|---|---|---|---|
-| 199 | **0.184** | faithfulness difference (top SHAP minus random, k = 5), correctly predicted Normal (TN), 40 features | `results/metrics/xgboost/narrative_falsepos_40f_48f.md` | table row containing `| TN |`, column `difference` (section `## 40f`) |
-| 200 | **0.349** | same, false-positive Normal predicted as an attack (FP-attack), 40 features | `results/metrics/xgboost/narrative_falsepos_40f_48f.md` | table row containing `| FP-attack |`, column `difference` (section `## 40f`) |
-| 201 | **0.359** | same, FP-Fuzzers, 40 features | `results/metrics/xgboost/narrative_falsepos_40f_48f.md` | table row containing `| FP-Fuzzers |`, column `difference` (section `## 40f`) |
-| 202 | **0.435** | same, true Fuzzers (TP-Fuzzers), 40 features | `results/metrics/xgboost/narrative_falsepos_40f_48f.md` | table row containing `| TP-Fuzzers |`, column `difference` (section `## 40f`) |
-| 203 | **0.701** | raw confidence on FP-Fuzzers flows, 40 features | `results/metrics/xgboost/narrative_falsepos_40f_48f.md` | table row containing `| FP-Fuzzers |`, column `raw confidence` (section `## 40f`) |
-| 204 | **0.771** | raw confidence on true Fuzzers, 40 features | `results/metrics/xgboost/narrative_falsepos_40f_48f.md` | table row containing `| TP-Fuzzers |`, column `raw confidence` (section `## 40f`) |
-| 205 | **0.632** | AUROC of 1 - raw confidence for FP-Fuzzers vs TP-Fuzzers, 40 features (weak separation) | `results/metrics/xgboost/narrative_falsepos_40f_48f.md` | table row containing `1 - raw confidence`, column `AUROC` (section `## 40f`) |
+| 199 | **0.184** | faithfulness difference (top SHAP minus random, k = 5), correctly predicted Normal (TN), 40 features | `results/metrics/xgboost/task_5_tables.md` | table row containing `| TN |`, column `difference` (section `## 40f`); in the section `Source: narrative_falsepos_40f_48f.md` |
+| 200 | **0.349** | same, false-positive Normal predicted as an attack (FP-attack), 40 features | `results/metrics/xgboost/task_5_tables.md` | table row containing `| FP-attack |`, column `difference` (section `## 40f`); in the section `Source: narrative_falsepos_40f_48f.md` |
+| 201 | **0.359** | same, FP-Fuzzers, 40 features | `results/metrics/xgboost/task_5_tables.md` | table row containing `| FP-Fuzzers |`, column `difference` (section `## 40f`); in the section `Source: narrative_falsepos_40f_48f.md` |
+| 202 | **0.435** | same, true Fuzzers (TP-Fuzzers), 40 features | `results/metrics/xgboost/task_5_tables.md` | table row containing `| TP-Fuzzers |`, column `difference` (section `## 40f`); in the section `Source: narrative_falsepos_40f_48f.md` |
+| 203 | **0.701** | raw confidence on FP-Fuzzers flows, 40 features | `results/metrics/xgboost/task_5_tables.md` | table row containing `| FP-Fuzzers |`, column `raw confidence` (section `## 40f`); in the section `Source: narrative_falsepos_40f_48f.md` |
+| 204 | **0.771** | raw confidence on true Fuzzers, 40 features | `results/metrics/xgboost/task_5_tables.md` | table row containing `| TP-Fuzzers |`, column `raw confidence` (section `## 40f`); in the section `Source: narrative_falsepos_40f_48f.md` |
+| 205 | **0.632** | AUROC of 1 - raw confidence for FP-Fuzzers vs TP-Fuzzers, 40 features (weak separation) | `results/metrics/xgboost/task_5_tables.md` | table row containing `1 - raw confidence`, column `AUROC` (section `## 40f`); in the section `Source: narrative_falsepos_40f_48f.md` |
 
 ## Task 6
 
@@ -388,51 +388,51 @@ One line per headline number that the README, PROJECT_PLAN, the per-task conclus
 
 | # | value | metric and setting | source file | where in the file |
 |---|---|---|---|---|
-| 206 | **0.485** | UNSW -> CIC AUROC, 14 common features, ZERO-SHOT | `results/metrics/xgboost/cross_dataset_step1_zero_shot.md` | table row containing `| common_all |`, column `AUROC` (section `## UNSW -> CIC`) |
-| 207 | **0.578** | CIC -> UNSW AUROC (degenerate in 4 of 5 runs) | `results/metrics/xgboost/cross_dataset_step1_zero_shot.md` | table row containing `| common_all |`, column `AUROC` (section `## CIC -> UNSW`) |
-| 208 | **0.975** | within-dataset reference balanced accuracy, CIC (leak-free) | `results/metrics/xgboost/cross_dataset_step1_zero_shot.md` | table row containing `| within_dataset_reference |`, column `balanced accuracy` (section `## UNSW -> CIC`) |
-| 209 | **0.896** | within-dataset reference balanced accuracy, UNSW (leak-free) | `results/metrics/xgboost/cross_dataset_step1_zero_shot.md` | table row containing `| within_dataset_reference |`, column `balanced accuracy` (section `## CIC -> UNSW`) |
-| 210 | **0.786** | UNSW -> CIC FPR at the source 95%-detection threshold | `results/metrics/xgboost/cross_dataset_step1_zero_shot.md` | table row containing `| common_all |`, column `FPR at the 95%-detection threshold` (section `## UNSW -> CIC`) |
-| 211 | **0.926** | UNSW -> CIC FPR at exactly 95% detection | `results/metrics/xgboost/cross_dataset_step1_zero_shot.md` | table row containing `| common_all |`, column `FPR at exactly 95% detection` (section `## UNSW -> CIC`) |
-| 212 | **0.690** | UNSW -> CIC predicted attack share (CIC is 80% benign) | `results/metrics/xgboost/cross_dataset_step1_zero_shot.md` | table row containing `| common_all |`, column `predicted attack share` (section `## UNSW -> CIC`) |
-| 213 | **0.003** | CIC -> UNSW predicted attack share | `results/metrics/xgboost/cross_dataset_step1_zero_shot.md` | table row containing `| common_all |`, column `predicted attack share` (section `## CIC -> UNSW`) |
-| 214 | **+0.017** | stable minus random subsets, AUROC, UNSW -> CIC: better in 2 of 5 seeds; 95% interval -0.064, +0.097 | `results/metrics/xgboost/cross_dataset_step1_zero_shot.md` | stated in the running text ("Stable against random subsets of the same size (AUROC): better in 2 of...") |
-| 215 | **2831** | CIC blocks of 1,000 consecutive rows in file order | `results/metrics/xgboost/cross_dataset_step1_zero_shot.md` | table row containing `| CIC |`, column `blocks` (section `Block class mix`) |
+| 206 | **0.485** | UNSW -> CIC AUROC, 14 common features, ZERO-SHOT | `results/metrics/xgboost/task_6_tables.md` | table row containing `| common_all |`, column `AUROC` (section `## UNSW -> CIC`); in the section `Source: cross_dataset_step1_zero_shot.md` |
+| 207 | **0.578** | CIC -> UNSW AUROC (degenerate in 4 of 5 runs) | `results/metrics/xgboost/task_6_tables.md` | table row containing `| common_all |`, column `AUROC` (section `## CIC -> UNSW`); in the section `Source: cross_dataset_step1_zero_shot.md` |
+| 208 | **0.975** | within-dataset reference balanced accuracy, CIC (leak-free) | `results/metrics/xgboost/task_6_tables.md` | table row containing `| within_dataset_reference |`, column `balanced accuracy` (section `## UNSW -> CIC`); in the section `Source: cross_dataset_step1_zero_shot.md` |
+| 209 | **0.896** | within-dataset reference balanced accuracy, UNSW (leak-free) | `results/metrics/xgboost/task_6_tables.md` | table row containing `| within_dataset_reference |`, column `balanced accuracy` (section `## CIC -> UNSW`); in the section `Source: cross_dataset_step1_zero_shot.md` |
+| 210 | **0.786** | UNSW -> CIC FPR at the source 95%-detection threshold | `results/metrics/xgboost/task_6_tables.md` | table row containing `| common_all |`, column `FPR at the 95%-detection threshold` (section `## UNSW -> CIC`); in the section `Source: cross_dataset_step1_zero_shot.md` |
+| 211 | **0.926** | UNSW -> CIC FPR at exactly 95% detection | `results/metrics/xgboost/task_6_tables.md` | table row containing `| common_all |`, column `FPR at exactly 95% detection` (section `## UNSW -> CIC`); in the section `Source: cross_dataset_step1_zero_shot.md` |
+| 212 | **0.690** | UNSW -> CIC predicted attack share (CIC is 80% benign) | `results/metrics/xgboost/task_6_tables.md` | table row containing `| common_all |`, column `predicted attack share` (section `## UNSW -> CIC`); in the section `Source: cross_dataset_step1_zero_shot.md` |
+| 213 | **0.003** | CIC -> UNSW predicted attack share | `results/metrics/xgboost/task_6_tables.md` | table row containing `| common_all |`, column `predicted attack share` (section `## CIC -> UNSW`); in the section `Source: cross_dataset_step1_zero_shot.md` |
+| 214 | **+0.017** | stable minus random subsets, AUROC, UNSW -> CIC: better in 2 of 5 seeds; 95% interval -0.064, +0.097 | `results/metrics/xgboost/task_6_tables.md` | stated in the running text ("Stable against random subsets of the same size (AUROC): better in 2 of..."); section `Source: cross_dataset_step1_zero_shot.md` |
+| 215 | **2831** | CIC blocks of 1,000 consecutive rows in file order | `results/metrics/xgboost/task_6_tables.md` | table row containing `| CIC |`, column `blocks` (section `Block class mix`); in the section `Source: cross_dataset_step1_zero_shot.md` |
 
 ### Task 6 diagnostic
 
 | # | value | metric and setting | source file | where in the file |
 |---|---|---|---|---|
-| 216 | **0.52 +/- 0.05** | SHAP importance rank agreement, UNSW-trained vs CIC-trained model, Spearman over 5 seeds (the conclusion prints +/- 0.06: rounding slip, raw std 0.0548) | `results/metrics/xgboost/cross_dataset_step2_diagnostic.md` | stated in the running text ("Spearman 0.52 +/- 0.05 over 5 seeds") |
+| 216 | **0.52 +/- 0.05** | SHAP importance rank agreement, UNSW-trained vs CIC-trained model, Spearman over 5 seeds (the conclusion prints +/- 0.06: rounding slip, raw std 0.0548) | `results/metrics/xgboost/task_6_tables.md` | stated in the running text ("Spearman 0.52 +/- 0.05 over 5 seeds"); section `Source: cross_dataset_step2_diagnostic.md` |
 | 217 | **0.518** | same, mean of the five per-seed Spearman values | `results/metrics/xgboost/cross_dataset_diagnostic_importance_agreement.csv` | mean of column `spearman_importance` |
-| 218 | **7 point the same way** | common features whose attack-vs-normal AUROC points the same way in both datasets (7 of 14; 11 of 14 are near 0.5 in at least one) | `results/metrics/xgboost/cross_dataset_step2_diagnostic.md` | stated in the running text ("Of 14 features: 7 point the same way, 7 do not, 11 are absent") |
+| 218 | **7 point the same way** | common features whose attack-vs-normal AUROC points the same way in both datasets (7 of 14; 11 of 14 are near 0.5 in at least one) | `results/metrics/xgboost/task_6_tables.md` | stated in the running text ("Of 14 features: 7 point the same way, 7 do not, 11 are absent"); section `Source: cross_dataset_step2_diagnostic.md` |
 
 ### Task 6 alignment (TRANSDUCTIVE)
 
 | # | value | metric and setting | source file | where in the file |
 |---|---|---|---|---|
-| 219 | **0.785** | UNSW -> CIC AUROC after per-dataset standardisation (baseline 0.485) | `results/metrics/xgboost/cross_dataset_step3_align.md` | table row containing `| per_dataset_standardisation |`, column `AUROC` (section `## UNSW -> CIC`) |
-| 220 | **0.410** | UNSW -> CIC FPR at exactly 95% detection after standardisation (baseline 0.926) | `results/metrics/xgboost/cross_dataset_step3_align.md` | table row containing `| per_dataset_standardisation |`, column `FPR at exactly 95% detection` (section `## UNSW -> CIC`) |
-| 221 | **0.359** | detection at the source threshold after standardisation (the threshold no longer transfers) | `results/metrics/xgboost/cross_dataset_step3_align.md` | table row containing `| per_dataset_standardisation |`, column `detection at that threshold` (section `## UNSW -> CIC`) |
-| 222 | **0.720** | UNSW -> CIC AUROC after quantile mapping | `results/metrics/xgboost/cross_dataset_step3_align.md` | table row containing `| quantile_mapping |`, column `AUROC` (section `## UNSW -> CIC`) |
+| 219 | **0.785** | UNSW -> CIC AUROC after per-dataset standardisation (baseline 0.485) | `results/metrics/xgboost/task_6_tables.md` | table row containing `| per_dataset_standardisation |`, column `AUROC` (section `## UNSW -> CIC`); in the section `Source: cross_dataset_step3_align.md` |
+| 220 | **0.410** | UNSW -> CIC FPR at exactly 95% detection after standardisation (baseline 0.926) | `results/metrics/xgboost/task_6_tables.md` | table row containing `| per_dataset_standardisation |`, column `FPR at exactly 95% detection` (section `## UNSW -> CIC`); in the section `Source: cross_dataset_step3_align.md` |
+| 221 | **0.359** | detection at the source threshold after standardisation (the threshold no longer transfers) | `results/metrics/xgboost/task_6_tables.md` | table row containing `| per_dataset_standardisation |`, column `detection at that threshold` (section `## UNSW -> CIC`); in the section `Source: cross_dataset_step3_align.md` |
+| 222 | **0.720** | UNSW -> CIC AUROC after quantile mapping | `results/metrics/xgboost/task_6_tables.md` | table row containing `| quantile_mapping |`, column `AUROC` (section `## UNSW -> CIC`); in the section `Source: cross_dataset_step3_align.md` |
 
 ### Task 6 few-shot, UNSW -> CIC (random selection, 25 runs per cell)
 
 | # | value | metric and setting | source file | where in the file |
 |---|---|---|---|---|
-| 223 | **0.508** | target-only FPR at k=100 | `results/metrics/xgboost/cross_dataset_step4_fewshot.md` | table row containing `| random |` + `| 100 |` + `| target_only |`, column `FPR at threshold` (section `## UNSW -> CIC`) |
-| 224 | **0.169** | target-only FPR at k=500 | `results/metrics/xgboost/cross_dataset_step4_fewshot.md` | table row containing `| random |` + `| 500 |` + `| target_only |`, column `FPR at threshold` (section `## UNSW -> CIC`) |
-| 225 | **0.096** | target-only FPR at k=1,000 (FPR <= 0.15 at detection 0.945) | `results/metrics/xgboost/cross_dataset_step4_fewshot.md` | table row containing `| random |` + `| 1000 |` + `| target_only |`, column `FPR at threshold` (section `## UNSW -> CIC`) |
-| 226 | **0.187** | source+target FPR at k=1,000 (the source data does not help) | `results/metrics/xgboost/cross_dataset_step4_fewshot.md` | table row containing `| random |` + `| 1000 |` + `| source+target |`, column `FPR at threshold` (section `## UNSW -> CIC`) |
-| 227 | **0.022** | target-only FPR at k=5,000 | `results/metrics/xgboost/cross_dataset_step4_fewshot.md` | table row containing `| random |` + `| 5000 |` + `| target_only |`, column `FPR at threshold` (section `## UNSW -> CIC`) |
-| 228 | **0.981** | target-only AUROC at k=1,000 | `results/metrics/xgboost/cross_dataset_step4_fewshot.md` | table row containing `| random |` + `| 1000 |` + `| target_only |`, column `AUROC` (section `## UNSW -> CIC`) |
+| 223 | **0.508** | target-only FPR at k=100 | `results/metrics/xgboost/task_6_tables.md` | table row containing `| random |` + `| 100 |` + `| target_only |`, column `FPR at threshold` (section `## UNSW -> CIC`); in the section `Source: cross_dataset_step4_fewshot.md` |
+| 224 | **0.169** | target-only FPR at k=500 | `results/metrics/xgboost/task_6_tables.md` | table row containing `| random |` + `| 500 |` + `| target_only |`, column `FPR at threshold` (section `## UNSW -> CIC`); in the section `Source: cross_dataset_step4_fewshot.md` |
+| 225 | **0.096** | target-only FPR at k=1,000 (FPR <= 0.15 at detection 0.945) | `results/metrics/xgboost/task_6_tables.md` | table row containing `| random |` + `| 1000 |` + `| target_only |`, column `FPR at threshold` (section `## UNSW -> CIC`); in the section `Source: cross_dataset_step4_fewshot.md` |
+| 226 | **0.187** | source+target FPR at k=1,000 (the source data does not help) | `results/metrics/xgboost/task_6_tables.md` | table row containing `| random |` + `| 1000 |` + `| source+target |`, column `FPR at threshold` (section `## UNSW -> CIC`); in the section `Source: cross_dataset_step4_fewshot.md` |
+| 227 | **0.022** | target-only FPR at k=5,000 | `results/metrics/xgboost/task_6_tables.md` | table row containing `| random |` + `| 5000 |` + `| target_only |`, column `FPR at threshold` (section `## UNSW -> CIC`); in the section `Source: cross_dataset_step4_fewshot.md` |
+| 228 | **0.981** | target-only AUROC at k=1,000 | `results/metrics/xgboost/task_6_tables.md` | table row containing `| random |` + `| 1000 |` + `| target_only |`, column `AUROC` (section `## UNSW -> CIC`); in the section `Source: cross_dataset_step4_fewshot.md` |
 
 ### Task 6 few-shot, CIC -> UNSW (random selection, 25 runs per cell)
 
 | # | value | metric and setting | source file | where in the file |
 |---|---|---|---|---|
-| 229 | **0.292** | source+target FPR at k=1,000 (UNSW never reaches 0.15) | `results/metrics/xgboost/cross_dataset_step4_fewshot.md` | table row containing `| random |` + `| 1000 |` + `| source+target |`, column `FPR at threshold` (section `## CIC -> UNSW`) |
-| 230 | **0.224** | FPR at k=10,000 (best of the curve; the leak-free reference itself is 0.210) | `results/metrics/xgboost/cross_dataset_step4_fewshot.md` | table row containing `| random |` + `| 10000 |` + `| target_only |`, column `FPR at threshold` (section `## CIC -> UNSW`) |
+| 229 | **0.292** | source+target FPR at k=1,000 (UNSW never reaches 0.15) | `results/metrics/xgboost/task_6_tables.md` | table row containing `| random |` + `| 1000 |` + `| source+target |`, column `FPR at threshold` (section `## CIC -> UNSW`); in the section `Source: cross_dataset_step4_fewshot.md` |
+| 230 | **0.224** | FPR at k=10,000 (best of the curve; the leak-free reference itself is 0.210) | `results/metrics/xgboost/task_6_tables.md` | table row containing `| random |` + `| 10000 |` + `| target_only |`, column `FPR at threshold` (section `## CIC -> UNSW`); in the section `Source: cross_dataset_step4_fewshot.md` |
 
 ## Older single-seed table
 
@@ -503,10 +503,74 @@ One line per headline number that the README, PROJECT_PLAN, the per-task conclus
 | 279 | **0.69** | KS statistic of sbytes | `results/metrics/xgboost/cross_dataset_feature_shift.csv` | column `ks_statistic`; row: feature=sbytes |
 | 280 | **0.64** | KS statistic of total_pkts | `results/metrics/xgboost/cross_dataset_feature_shift.csv` | column `ks_statistic`; row: feature=total_pkts |
 
-## Gaps and corrections found while building the ledger (nothing was changed or regenerated for these)
+## Label schemes
 
-1. **`task_6_conclusion.md` prints Spearman 0.52 +/- 0.06; the data say 0.52 +/- 0.05.** The five per-seed values (`cross_dataset_diagnostic_importance_agreement.csv`, column `spearman_importance`) have mean 0.518 and standard deviation 0.0548, which `cross_dataset_step2_diagnostic.md` prints as 0.05. A rounding slip in the conclusion; it is corrected in Step 3 if approved.
-2. **README `Label schemes` table (and the matching sentences in PROJECT_PLAN `Key Findings`) are not backed by any tracked file.** README: current 0.756 / 0.276 / 0.955 / 0.12, none 0.611, wide 0.832 / 0.284 / 0.957 / 0.56, hierarchical 0.609 / 0.208 / 0.925 (fine-recall macro / FPR / detection / group share). The tracked `label_scheme_comparison.csv` and `label_scheme_summary.md` hold a later 42-feature run (commit `70a845d`) with three schemes and different values: current 0.7859 / 0.2860 / 0.9607 / 0.1193, none 0.6327 / 0.2895 / 0.9622 / 0, wide 0.8590 / 0.2895 / 0.9598 / 0.4848, and no hierarchical row. The hierarchical row survives only in git history (commit `af809d2`). Left as is; the report should quote the tracked file or the table should be regenerated by its owner (not in this task).
-3. **README and PROJECT_PLAN twin shares (Analysis / Backdoor / DoS 72-80%; "34 -> 42 features": 72.0 -> 72.0, 78.9 -> 76.7, 79.7 -> 79.5, Fuzzers 21.1 -> 11.4, Reconnaissance 35.4 -> 18.0; Overlap-Group-1 twins in Exploits 78% / Fuzzers 77% / Reconnaissance 72% / Generic 33% / Normal 0.1%) are not in the tracked overlap summaries.** `results/metrics/overlap/pooled_34f/` and `pooled_42f/` are the pooled partition with duplicates kept (Analysis 76.99%, Backdoor 84.89%, DoS 77.4-77.8% at both widths), so the quoted figures came from another partition whose output was never committed. README also says the overlap output folder "is not kept in the repo", but these two folders are tracked. `scripts/overlap_analysis.py --partition train|test` regenerates them; not done here.
-4. **Test counts in README ("140 tests") and PROJECT_PLAN ("140 automated tests") are out of date** (the suite has 327 tests at HEAD); corrected in Step 3 if approved.
-5. Numbers that now live only in running text of a kept document (their per-run source is proposed for deletion): the zero-day flow count 1,627 (Shellcode 1,456 + Worms 171) is also in `open_set_step1_40f_45f_48f.md`; the 2,831 / 1,308 CIC block counts are in the `Block class mix` table of `cross_dataset_step1_zero_shot.md` (1,198 mixed + 110 pure-attack = 1,308); the per-class sample counts of Task 5.5 are in `narrative_falsepos_*_groups.csv`. No quoted number depends solely on a file proposed for deletion (checked mechanically, conclusion by conclusion: see `results/CLEANUP_MANIFEST.md`, section Coverage check).
+### Label schemes (README table; 40 features, official split, one run)
+
+| # | value | metric and setting | source file | where in the file |
+|---|---|---|---|---|
+| 281 | **0.786** | fine-recall macro, scheme `current` | `results/metrics/xgboost/label_scheme_comparison.csv` | column `fine_recall_macro`; row: label_scheme=current |
+| 282 | **0.286** | false-positive rate, scheme `current` | `results/metrics/xgboost/label_scheme_comparison.csv` | column `false_positive_rate`; row: label_scheme=current |
+| 283 | **0.961** | attack detection, scheme `current` | `results/metrics/xgboost/label_scheme_comparison.csv` | column `detection_rate`; row: label_scheme=current |
+| 284 | **0.119** | group share (attack rows inside a merged group), scheme `current` | `results/metrics/xgboost/label_scheme_comparison.csv` | column `group_size_share`; row: label_scheme=current |
+| 285 | **0.633** | fine-recall macro, scheme `none` | `results/metrics/xgboost/label_scheme_comparison.csv` | column `fine_recall_macro`; row: label_scheme=none |
+| 286 | **0.290** | false-positive rate, scheme `none` | `results/metrics/xgboost/label_scheme_comparison.csv` | column `false_positive_rate`; row: label_scheme=none |
+| 287 | **0.962** | attack detection, scheme `none` | `results/metrics/xgboost/label_scheme_comparison.csv` | column `detection_rate`; row: label_scheme=none |
+| 288 | **0.000** | group share (attack rows inside a merged group), scheme `none` | `results/metrics/xgboost/label_scheme_comparison.csv` | column `group_size_share`; row: label_scheme=none |
+| 289 | **0.859** | fine-recall macro, scheme `wide` | `results/metrics/xgboost/label_scheme_comparison.csv` | column `fine_recall_macro`; row: label_scheme=wide |
+| 290 | **0.290** | false-positive rate, scheme `wide` | `results/metrics/xgboost/label_scheme_comparison.csv` | column `false_positive_rate`; row: label_scheme=wide |
+| 291 | **0.960** | attack detection, scheme `wide` | `results/metrics/xgboost/label_scheme_comparison.csv` | column `detection_rate`; row: label_scheme=wide |
+| 292 | **0.485** | group share (attack rows inside a merged group), scheme `wide` | `results/metrics/xgboost/label_scheme_comparison.csv` | column `group_size_share`; row: label_scheme=wide |
+
+## Label schemes: hierarchical row
+
+### Label schemes: hierarchical row (Task 2.5 B1, mean of 5 seeds, 40 features, official split)
+
+| # | value | metric and setting | source file | where in the file |
+|---|---|---|---|---|
+| 293 | **0.628** | fine-recall macro, method `hier_default` | `results/metrics/xgboost/methods_zero_shot_b1_40f_summary.csv` | column `mean`; row: pool=base, method=hier_default, metric=fine_recall_macro |
+| 294 | **0.214** | false-positive rate, method `hier_default` | `results/metrics/xgboost/methods_zero_shot_b1_40f_summary.csv` | column `mean`; row: pool=base, method=hier_default, metric=false_positive_rate |
+| 295 | **0.935** | attack detection, method `hier_default` | `results/metrics/xgboost/methods_zero_shot_b1_40f_summary.csv` | column `mean`; row: pool=base, method=hier_default, metric=detection_rate |
+| 296 | **0.000** | group share, method `hier_default` | `results/metrics/xgboost/methods_zero_shot_b1_40f_summary.csv` | column `mean`; row: pool=base, method=hier_default, metric=group_size_share |
+| 297 | **0.628** | fine-recall macro, method `hier_stage1_tuned` | `results/metrics/xgboost/methods_zero_shot_b1_40f_summary.csv` | column `mean`; row: pool=base, method=hier_stage1_tuned, metric=fine_recall_macro |
+| 298 | **0.212** | false-positive rate, method `hier_stage1_tuned` | `results/metrics/xgboost/methods_zero_shot_b1_40f_summary.csv` | column `mean`; row: pool=base, method=hier_stage1_tuned, metric=false_positive_rate |
+| 299 | **0.933** | attack detection, method `hier_stage1_tuned` | `results/metrics/xgboost/methods_zero_shot_b1_40f_summary.csv` | column `mean`; row: pool=base, method=hier_stage1_tuned, metric=detection_rate |
+| 300 | **0.000** | group share, method `hier_stage1_tuned` | `results/metrics/xgboost/methods_zero_shot_b1_40f_summary.csv` | column `mean`; row: pool=base, method=hier_stage1_tuned, metric=group_size_share |
+| 301 | **0.786** | fine-recall macro, method `flat_default` (the flat default, which reproduces the `current` row above) | `results/metrics/xgboost/methods_zero_shot_b1_40f_summary.csv` | column `mean`; row: pool=base, method=flat_default, metric=fine_recall_macro |
+| 302 | **0.285** | false-positive rate, method `flat_default` (the flat default, which reproduces the `current` row above) | `results/metrics/xgboost/methods_zero_shot_b1_40f_summary.csv` | column `mean`; row: pool=base, method=flat_default, metric=false_positive_rate |
+| 303 | **0.959** | attack detection, method `flat_default` (the flat default, which reproduces the `current` row above) | `results/metrics/xgboost/methods_zero_shot_b1_40f_summary.csv` | column `mean`; row: pool=base, method=flat_default, metric=detection_rate |
+| 304 | **0.119** | group share, method `flat_default` (the flat default, which reproduces the `current` row above) | `results/metrics/xgboost/methods_zero_shot_b1_40f_summary.csv` | column `mean`; row: pool=base, method=flat_default, metric=group_size_share |
+
+## Twin shares
+
+### Twin shares (tracked pooled partition, duplicates kept; README: 77-85% etc.)
+
+| # | value | metric and setting | source file | where in the file |
+|---|---|---|---|---|
+| 305 | **76.99%** | share of Analysis rows with an exact twin in another class (label set `original`), 34 raw features | `results/metrics/overlap/pooled_34f/summary.md` | stated in the running text ("Analysis           76.99") |
+| 306 | **76.99%** | share of Analysis rows with an exact twin in another class (label set `original`), 42 raw features | `results/metrics/overlap/pooled_42f/summary.md` | stated in the running text ("Analysis           76.99") |
+| 307 | **84.89%** | share of Backdoor rows with an exact twin in another class (label set `original`), 34 raw features | `results/metrics/overlap/pooled_34f/summary.md` | stated in the running text ("Backdoor           84.89") |
+| 308 | **84.89%** | share of Backdoor rows with an exact twin in another class (label set `original`), 42 raw features | `results/metrics/overlap/pooled_42f/summary.md` | stated in the running text ("Backdoor           84.89") |
+| 309 | **77.75%** | share of DoS rows with an exact twin in another class (label set `original`), 34 raw features | `results/metrics/overlap/pooled_34f/summary.md` | stated in the running text ("DoS                77.75") |
+| 310 | **77.41%** | share of DoS rows with an exact twin in another class (label set `original`), 42 raw features | `results/metrics/overlap/pooled_42f/summary.md` | stated in the running text ("DoS                77.41") |
+| 311 | **23.93%** | share of Fuzzers rows with an exact twin in another class (label set `original`), 34 raw features | `results/metrics/overlap/pooled_34f/summary.md` | stated in the running text ("Fuzzers            23.93") |
+| 312 | **14.92%** | share of Fuzzers rows with an exact twin in another class (label set `original`), 42 raw features | `results/metrics/overlap/pooled_42f/summary.md` | stated in the running text ("Fuzzers            14.92") |
+| 313 | **33.78%** | share of Reconnaissance rows with an exact twin in another class (label set `original`), 34 raw features | `results/metrics/overlap/pooled_34f/summary.md` | stated in the running text ("Reconnaissance     33.78") |
+| 314 | **16.06%** | share of Reconnaissance rows with an exact twin in another class (label set `original`), 42 raw features | `results/metrics/overlap/pooled_42f/summary.md` | stated in the running text ("Reconnaissance     16.06") |
+| 315 | **78.42%** | share of Overlap-Group-1 rows with an exact twin in another class (label set `current`), 34 raw features | `results/metrics/overlap/pooled_34f/summary.md` | stated in the running text ("Overlap-Group-1     78.42") |
+| 316 | **78.16%** | share of Overlap-Group-1 rows with an exact twin in another class (label set `current`), 42 raw features | `results/metrics/overlap/pooled_42f/summary.md` | stated in the running text ("Overlap-Group-1     78.16") |
+
+## Corrections made in the cleanup, and what remains open
+
+**Corrected (approved in Task 7):**
+
+1. `task_6_conclusion.md` printed Spearman 0.52 +/- 0.06; the data say 0.52 +/- 0.05 (five per-seed values in `cross_dataset_diagnostic_importance_agreement.csv`: mean 0.518, std 0.0548). Corrected; see the Task 6 diagnostic entries above.
+2. The README `Label schemes` table and the matching PROJECT_PLAN sentences quoted figures with no tracked source (current 0.756 / 0.276 / 0.955 / 0.12, wide 0.832 / ... / 0.56, hierarchical FPR 0.208 / detection 0.925). They now quote the tracked figures and name their sources: `current`, `none`, `wide` from `label_scheme_comparison.csv` (one run), `hierarchical` from the Task 2.5 B1 5-seed summary `methods_zero_shot_b1_40f_summary.csv` (see the two Label-schemes sections above; every value verified).
+3. README and PROJECT_PLAN twin shares are now labelled by origin. Tracked (pooled partition, duplicates kept, 255,988 rows; `results/metrics/overlap/pooled_34f/summary.md`, `pooled_42f/summary.md`): Analysis / Backdoor / DoS 77-85%, entries above. The earlier 72-80% (and 72.0 -> 72.0, 78.9 -> 76.7, 79.7 -> 79.5, Fuzzers 21.1 -> 11.4, Reconnaissance 35.4 -> 18.0, and the partner-class split of the merged group: Exploits 78%, Fuzzers 77%, Reconnaissance 72%, Generic 33%, Normal 0.1%) are stated in the documents as an earlier 34-feature deduplicated run whose output was never committed; nothing was regenerated.
+4. Test counts: README and PROJECT_PLAN said 140; the suite has 327 (unchanged by the cleanup).
+
+**Still open (not changed, not regenerated):**
+
+- The earlier-run twin figures and the partner-class split in item 3 have no tracked file. `scripts/overlap_analysis.py --partition train|test` would regenerate comparable tables if the owner wants them.
+- The failure-list template in `pipelines/run_xai_study.py` (line 216) writes 'SHAP ... falls as the value rises' whatever the sign of rho, so the `reason` text of audit failures is misleading when rho is positive. The numbers are unaffected (they use rho itself); `xai_audit_40f_example_failures.csv` carries a `shap_trend_on_training_rows` column with the real sign. Left unfixed because the cleanup does not change code.
+- Numbers that now live only in running text of a kept document (their per-run source was removed): the zero-day flow count 1,627 (Shellcode 1,456 + Worms 171) is also in `task_4_tables.md`; the CIC block counts 2,831 / 1,308 are in the `Block class mix` table of `task_6_tables.md` (1,198 mixed + 110 pure-attack = 1,308). No quoted number depends solely on a removed file (checked mechanically, conclusion by conclusion; see `results/CLEANUP_MANIFEST.md`).

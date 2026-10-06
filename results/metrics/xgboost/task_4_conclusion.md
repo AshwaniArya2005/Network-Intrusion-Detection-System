@@ -3,7 +3,7 @@
 ZERO-SHOT throughout; official split, scheme `current`, flat model; seeds 42-46, mean +/- std. Protocol declared before any result: `results/task_4_protocol.md`.
 Thresholds come only from KNOWN validation flows (block-grouped, 1,000-row blocks / 200-row gaps; threshold half vs calibration half) at a **5% false-Unknown** target; the
 combination rule and the "best" score were chosen on pseudo-unknowns carved from known classes (Reconnaissance / Generic held out of inner models), never on the zero-day flows.
-Tables: `open_set_step1_40f_45f_48f.md`, `open_set_step2_40f_48f.md` + `open_set_step2_sources_40f_45f_48f.md`, `open_set_step3_40f_45f_48f.md`, `open_set_step4_*.md`.
+Tables: `task_4_tables.md` (sections `open_set_step1_40f_45f_48f.md`, `open_set_step2_40f_48f.md` + `open_set_step2_sources_40f_45f_48f.md`, `open_set_step3_40f_45f_48f.md`, `open_set_step4_*.md`; CSVs `open_set_step1_<N>f.csv`, `open_set_step2_<N>f.csv`, `open_set_step4_*.csv`).
 Zero-day flows after deduplication (Worms + Shellcode): 1,627 = Shellcode 1,456 (89.5%) + Worms 171. The earlier "67-75% detection at 26-28% false alarms" came from a threshold tuned on the
 zero-day flows and is withdrawn.
 
@@ -100,7 +100,7 @@ against 8-17% on validation. Confidence is not reliable under the official-split
 Protocol declared before any result: `results/task_4_5_protocol.md`. Same evaluation as above: thresholds at 5% false-Unknown from known block-grouped validation, the nine-class rotation, the Overlap-Group-1 trio
 and Worms + Shellcode, seeds 42-46. Score selection used the pseudo-unknown validation only (inner models without Reconnaissance or Generic), never the real zero-day classes. Declared rule: a score **clearly beats**
 max-softmax when its rotation-mean detection is at least 0.05 higher, its rotation-mean AUROC is not lower, it is better in at least 4 of 5 seeds and its Worms + Shellcode detection is not more than 0.02 lower.
-Tables: `open_set_boost_<idea>_40f_48f.md` for calibration, perclass, ensemble, distance, oe, combo and iforest.
+Tables: `task_4_5_tables.md` (one section `open_set_boost_<idea>_40f_48f.md` for each of calibration, perclass, ensemble, distance, oe, combo and iforest; the pseudo-unknown selection scores are `open_set_boost_selection_<N>f_scores.csv`).
 
 ## The updated claim for novelty 1
 Cheap changes to the confidence score do not make zero-day detection good. Under an honest protocol the best result is a rank-average of ensemble mutual information and an Unknown-class probability, which raises the

@@ -3,7 +3,7 @@
 Binary attack-vs-normal on the 14 common features (8 raw + 6 engineered; no `ct_*` window count among them), seeds 42-46 (and 5 adaptation draws per seed in Step 4), mean +/- std. Protocol, every method, the primary metric and the success level were declared before any result
 (`results/task_6_protocol.md`). **Leak-free for both datasets:** blocks of 1,000 consecutive rows in file order, 200-row gaps between groups, no adaptation row ever evaluated; CICIDS2017 is the eight day files concatenated in file order (Friday-DDoS, Friday-PortScan, Friday-Morning, Monday, Thursday-Afternoon,
 Thursday-Morning, Tuesday, Wednesday; verified against the original sizes), streamed once and cached. Primary metric: FPR at about 95% detection on the target evaluation blocks, with the threshold chosen on the source validation blocks (zero-shot) or the held-out labelled half (few-shot), always printed with the detection reached;
-also balanced accuracy, AUROC and the threshold-free FPR at exactly 95% detection. Tables: `cross_dataset_step1_zero_shot.md` ... `cross_dataset_step4_fewshot.md`.
+also balanced accuracy, AUROC and the threshold-free FPR at exactly 95% detection. Tables: `task_6_tables.md` (sections `cross_dataset_step1_zero_shot.md` ... `cross_dataset_step4_fewshot.md`).
 
 ## The claim for novelty 4
 **Zero-shot transfer between UNSW-NB15 and CICIDS2017 does not work on the common flow features, in either direction, under a leak-free protocol** (AUROC 0.49 UNSW to CIC and 0.58 CIC to UNSW, against 0.997 and 0.972 for a model trained on the target's own blocks). The common features carry weak or inconsistent attack signal:
@@ -30,7 +30,7 @@ CIC block mix: 2,831 blocks, 1,308 contain an attack; Monday (530 blocks) is pur
 | ... point opposite ways | 7 of 14 (only dmean clearly: attack flows have higher mean packet size from the destination in CIC, AUROC 0.56, lower in UNSW, 0.30) |
 | features near 0.5 (absent, |AUROC - 0.5| < 0.05) in at least one dataset | 11 of 14 |
 | features with a clear signal pointing the same way in both | rate (0.44 / 0.44), sbytes (0.36 / 0.42) |
-| SHAP importance rank agreement, UNSW-trained vs CIC-trained model (Spearman, 5 seeds) | 0.52 +/- 0.06 |
+| SHAP importance rank agreement, UNSW-trained vs CIC-trained model (Spearman, 5 seeds) | 0.52 +/- 0.05 |
 | largest feature shifts (KS, from the earlier table) | smean 0.72, sbytes 0.69, total_pkts 0.64 |
 Caption. A model trained on UNSW learns that large, fast flows are attacks; in CICIDS2017 the relationship is different or absent for most of the 14 features, so the learned rule is wrong or empty. CIC to UNSW fails the other way (the UNSW flows look benign to a CIC model, hence no attacks predicted). The two models rank the features only moderately alike (0.52), which is why choosing features by one dataset's SHAP ranking does not carry over.
 
