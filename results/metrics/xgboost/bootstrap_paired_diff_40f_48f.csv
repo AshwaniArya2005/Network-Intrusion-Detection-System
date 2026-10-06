@@ -1,7 +1,0 @@
-comparison,metric,difference,ci_low,ci_high,excludes_zero
-48f - 40f,accuracy,-0.0016,-0.004,0.0007,False
-48f - 40f,f1,0.0,-0.0028,0.0028,False
-48f - 40f,detection_rate,0.0079,0.0052,0.0104,True
-48f - 40f,false_positive_rate,0.0055,0.0025,0.0085,True
-48f - 40f,normal_to_Fuzzers,0.01,0.0074,0.0127,True
-48f - 40f,unknown_detection_rate,0.1371,0.1063,0.1672,True

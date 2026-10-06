@@ -1,7 +1,0 @@
-,Exploits,Fuzzers,Generic,Normal,Overlap-Group-1,Reconnaissance,any_other
-Exploits,,4.51,0.92,0.04,4.71,3.84,5.25
-Fuzzers,6.59,,1.21,2.08,6.44,5.36,8.85
-Generic,8.05,7.23,,0.26,7.39,6.71,8.86
-Normal,0.02,0.48,0.01,,0.02,0.01,0.51
-Overlap-Group-1,22.23,20.78,3.98,0.21,,17.63,23.39
-Reconnaissance,12.82,12.26,2.56,0.1,12.48,,13.39
