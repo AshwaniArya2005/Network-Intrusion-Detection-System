@@ -2,11 +2,11 @@
 
 Headline (official split against the optimistic pooled split, 5 seeds), tuning, bootstrap intervals, the accuracy ceiling, per-class headline metrics, label schemes and class overlap, the earlier single-seed run, the shift diagnostics. The declared protocols sit inside the file of the study they declare; the shared rules for every model are in `PROTOCOL.md`. The leakage notes (validation against test, shift AUC with random against block-grouped folds) are in `06_fpr_and_adaptation.md`.
 
-File names mentioned inside this file (for example `task_6_tables.md`, `results/task_5_protocol.md` or `xai_audit_40f_example_failures.csv`) are the `Source:` sections of this file or of one of the other numbered files, or files that were removed in the cleanup and are recoverable from the git tags `pre-cleanup-2026-10` and `pre-lean-2026-10`. Text under a `Source:` heading is the original file, unchanged except that its headings are demoted two levels. Two kinds of file moved after the originals were written: the feature rankings are now in `results/rankings/` and the A/B rating sheet, key and instructions in `results/rating/`.
+File names mentioned inside this file (for example `cross_dataset_tables.md`, `results/explanations_protocol.md` or `xai_audit_40f_example_failures.csv`) are the `Source:` sections of this file or of one of the other numbered files, or files that were removed in the cleanup and are recoverable from the git tags `pre-cleanup-2026-10` and `pre-lean-2026-10`. Text under a `Source:` heading is the original file, unchanged except that its headings are demoted two levels. Two kinds of file moved after the originals were written: the feature rankings are now in `results/rankings/` and the A/B rating sheet, key and instructions in `results/rating/`.
 
 ## Source: shift_conclusion_40f_45f_48f.md
 
-> **Update after Task 2.6.** The shift AUCs below (0.8994 / 0.9293 / 0.9301) use random 5-fold cross-validation. Because neighbouring rows of a file share window values, they
+> **Update after the leakage check.** The shift AUCs below (0.8994 / 0.9293 / 0.9301) use random 5-fold cross-validation. Because neighbouring rows of a file share window values, they
 > are inflated: with cross-validation grouped by contiguous row blocks they are 0.814 / 0.836 / 0.837 (seed 42, `leakage_*_shift_auc.csv`). The shift is real (control 0.50) but smaller
 > than first reported; the per-group AUC changes of the ablation used random CV and were not re-run. Normal -> Fuzzers results on the official test split are unaffected.
 

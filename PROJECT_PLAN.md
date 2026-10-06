@@ -5,7 +5,7 @@
 > duplicates removed, single seed unless stated. Reproduce with `python pipelines/run_all_experiments.py`.
 > Items that cannot be derived from the repository (team progress, review dates) are left as they were and marked.
 
-## Corrections since this plan was written (Tasks 1-3)
+## Corrections since this plan was written (the earlier studies)
 
 - The repository now runs on the 42-feature UNSW-NB15 files (40- and 48-feature pools); the "obtain the official files with all 42 features" open item is done. Numbers below that say 34 raw features / 0.742 / 0.685 are the earlier single-seed figures.
   Current official-split figures (XGBoost, 5 seeds): accuracy 0.743 / 0.740 and FPR 0.285 / 0.293 for 40 / 48 features.
@@ -13,25 +13,25 @@
   best cases; block-grouped validation is used for any new selection.
 - **Train-vs-test shift:** block-grouped AUC 0.81-0.84 (not 0.90-0.93). Its cause is undetermined; the TTL columns do not explain the Normal -> Fuzzers errors.
 - **Few-shot result:** the 48-feature FPR of about 0.09 at 95% detection with ~5,000 labelled test rows is within-capture adaptation that relies on the window-count `ct_*` columns; zero-shot FPR stays 0.24-0.25.
-- **Task 2.7 (XGBoost):** re-tuning on block-grouped validation, temperature scaling, EM class-prior correction, self-training and their combination do not lower the zero-shot FPR (all within 0.007 of the default at about 95% detection);
+- **FPR-reduction study (XGBoost):** re-tuning on block-grouped validation, temperature scaling, EM class-prior correction, self-training and their combination do not lower the zero-shot FPR (all within 0.007 of the default at about 95% detection);
   with labels, 0.15 at exactly 95% detection takes about 2,500-5,000 labelled rows (48 and 45 features) and is never reached without the window-count `ct_*` columns; the earlier 0.09 was read at a test detection of 0.93
-  (`results/06_fpr_and_adaptation.md` (section `Source: task_2_7_conclusion.md`)).
-- **Novelty 3 (Task 3, XGBoost):** no measurable cost down to 30 features; 20 / 15 features cost 0.006-0.014 macro F1 and about half the open-set detection; explanation stability stays near the retraining floor
-  (`results/04_novelty3_feature_tiers.md` (section `Source: task_3_conclusion.md`)). Other model families are left to their owners (`pipelines/run_tier_study.py --model <type>`, `scripts/cross_model_agreement.py`).
-- **Novelty 1 (Task 4, XGBoost, zero-shot):** under thresholds fixed on known block-grouped validation at 5% false-Unknown, max-softmax flags 0.22 (40 features) / 0.33 (48) of the Worms + Shellcode flows and a nine-class
+  (`results/06_fpr_and_adaptation.md` (section `Source: fpr_reduction_conclusion.md`)).
+- **Novelty 3 (the feature-tier study, XGBoost):** no measurable cost down to 30 features; 20 / 15 features cost 0.006-0.014 macro F1 and about half the open-set detection; explanation stability stays near the retraining floor
+  (`results/04_novelty3_feature_tiers.md` (section `Source: feature_tiers_conclusion.md`)). Other model families are left to their owners (`pipelines/run_tier_study.py --model <type>`, `scripts/cross_model_agreement.py`).
+- **Novelty 1 (the open-set study, XGBoost, zero-shot):** under thresholds fixed on known block-grouped validation at 5% false-Unknown, max-softmax flags 0.22 (40 features) / 0.33 (48) of the Worms + Shellcode flows and a nine-class
   leave-one-class-out mean of 0.21-0.23 (AUROC 0.77; hardest: Worms, Exploits, Fuzzers). Entropy ranks better but is not reliably better at the threshold; margin, conformal, an isolation forest and combinations are no better.
   The 48-feature gain depends on window-count `ct_*` columns. 94-99% of zero-day flows are already called an attack, and the review queue barely lowers the alert FPR (0.289 -> 0.254) because the false alerts are confidently wrong
-  (`results/02_novelty1_open_set.md` (section `Source: task_4_conclusion.md`)).
-- **Novelty 1, Task 4.5:** six ideas to improve it (calibration, per-class thresholds, ensemble disagreement, distance, pseudo-unknown training, a rank-average chosen on pseudo-unknown validation) leave the picture much the same: the best combination reaches rotation-mean detection
+  (`results/02_novelty1_open_set.md` (section `Source: open_set_conclusion.md`)).
+- **Novelty 1, the open-set boost study:** six ideas to improve it (calibration, per-class thresholds, ensemble disagreement, distance, pseudo-unknown training, a rank-average chosen on pseudo-unknown validation) leave the picture much the same: the best combination reaches rotation-mean detection
   0.27 / 0.34 (40 / 48 features) in a setting that removes two known classes, only 0.02-0.07 above entropy; in the full known set only calibrated entropy on 48 features clearly beats max-softmax (0.304 against 0.234); distance scores fail and the review queue does not lower the alert FPR.
-- **Novelty 2 (Task 5, XGBoost):** the SHAP explanations are faithful (SHAP additivity error 1.4e-5; removing the top-5 SHAP features lowers the predicted-class probability 0.50-0.55 more than removing random ones on the whole pools, 0.33-0.34 at 15 features; unchanged on shifted test flows) and the
+- **Novelty 2 (the explanation study, XGBoost):** the SHAP explanations are faithful (SHAP additivity error 1.4e-5; removing the top-5 SHAP features lowers the predicted-class probability 0.50-0.55 more than removing random ones on the whole pools, 0.33-0.34 at 15 features; unchanged on shifted test flows) and the
   narratives pass every mechanical check on 2,000 audited flows (label, confidence, cited features, cues in the right units, categories, action) and match the dashboard exactly; they are weaker as explanations (36-47% of cited features read "typical", cue direction agrees with the model's general behaviour in 72-76% of cases)
-  and quote an uncalibrated confidence. The pipeline's own `check_explainability.py` standardised twice and was fixed. Human ratings are not collected (the blank rating template was removed; `scripts/make_human_audit_sheet.py` rebuilds it from `xai_audit_40f_narratives.csv`) (`results/03_novelty2_explanations.md` (section `Source: task_5_conclusion.md`)).
-  **Task 5.5:** a `class_relative` narrative style (config switch, classic is the default) removes the "typical" reasons (45% / 37% of cited numeric features, now 0), cites about 2.6 instead of 4.1 features, adds a calibrated confidence (ECE 0.093 -> 0.070, 0.115 -> 0.086) and keeps every correctness check at 1.000; the cue-direction agreement
-  is unchanged (0.78 / 0.73). The explanations of false-positive Normal flows are faithful to the model (top-minus-random 0.35-0.51) but look like those of true attacks, so a narrative alone gives no reason to doubt a false alarm. No human study yet (blank A/B sheet `results/rating/task_5_5_ab_sheet.csv`).
-- **Novelty 4 (Task 6, XGBoost, leak-free on both datasets):** zero-shot transfer between UNSW-NB15 and CICIDS2017 fails in both directions on the 14 common features (AUROC 0.49 UNSW -> CIC, 0.58 CIC -> UNSW and degenerate; leak-free references 0.975 and 0.896 balanced accuracy); 11 of 14 features are near 0.5 in at least one
+  and quote an uncalibrated confidence. The pipeline's own `check_explainability.py` standardised twice and was fixed. Human ratings are not collected (the blank rating template was removed; `scripts/make_human_audit_sheet.py` rebuilds it from `xai_audit_40f_narratives.csv`) (`results/03_novelty2_explanations.md` (section `Source: explanations_conclusion.md`)).
+  **Narrative study:** a `class_relative` narrative style (config switch, classic is the default) removes the "typical" reasons (45% / 37% of cited numeric features, now 0), cites about 2.6 instead of 4.1 features, adds a calibrated confidence (ECE 0.093 -> 0.070, 0.115 -> 0.086) and keeps every correctness check at 1.000; the cue-direction agreement
+  is unchanged (0.78 / 0.73). The explanations of false-positive Normal flows are faithful to the model (top-minus-random 0.35-0.51) but look like those of true attacks, so a narrative alone gives no reason to doubt a false alarm. No human study yet (blank A/B sheet `results/rating/narratives_ab_sheet.csv`).
+- **Novelty 4 (the cross-dataset study, XGBoost, leak-free on both datasets):** zero-shot transfer between UNSW-NB15 and CICIDS2017 fails in both directions on the 14 common features (AUROC 0.49 UNSW -> CIC, 0.58 CIC -> UNSW and degenerate; leak-free references 0.975 and 0.896 balanced accuracy); 11 of 14 features are near 0.5 in at least one
   dataset and 7 point opposite ways; the SHAP-selected "stable" set is not better than random subsets of its size; per-dataset standardisation helps ranking in one direction only (AUROC 0.79). Transfer takes labelled target flows: about 1,000 for CIC (FPR 0.10 at 95% detection), 1,000-5,000 for UNSW to match its own ceiling (FPR 0.21), and the
-  source data does not help beyond about 100 labelled rows. Within-capture results (`results/05_novelty4_cross_dataset.md` (section `Source: task_6_conclusion.md`)).
+  source data does not help beyond about 100 labelled rows. Within-capture results (`results/05_novelty4_cross_dataset.md` (section `Source: cross_dataset_conclusion.md`)).
 - 0.912 / 0.921 is an empirical feature-space ceiling, not a Bayes ceiling.
 
 ## Overview
@@ -50,7 +50,7 @@ equally candid about what did *not* work (zero-day detection, cross-dataset tran
 ## Objectives and Research Novelties
 
 1. **Open-Set / Zero-Day Attack Detection** — confidence-based thresholding on the max softmax probability.
-   *Outcome: works only weakly (about a quarter of zero-day flows detected at ~6% false alarms; 0.04-0.41 depending on the held-out class; no alternative score reliably better; see Task 4 above).*
+   *Outcome: works only weakly (about a quarter of zero-day flows detected at ~6% false alarms; 0.04-0.41 depending on the held-out class; no alternative score reliably better; see the open-set study above).*
 2. **Human-Centered Actionable Explanations** — SHAP-driven plain-language narratives per prediction, checked
    against real data. *Outcome: implemented; two bugs found and fixed through real-data checks (below).*
 3. **Feature-Selection + Explanation Consistency Study** — does shrinking the feature set change accuracy and the

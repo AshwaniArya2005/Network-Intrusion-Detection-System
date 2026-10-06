@@ -2,16 +2,16 @@
 
 Leak-free zero-shot transfer, diagnostic, label-free alignment and the few-shot curve: conclusion, tables, the declared protocol, and the earlier random-split run that the leak-free study contradicts.
 
-File names mentioned inside this file (for example `task_6_tables.md`, `results/task_5_protocol.md` or `xai_audit_40f_example_failures.csv`) are the `Source:` sections of this file or of one of the other numbered files, or files that were removed in the cleanup and are recoverable from the git tags `pre-cleanup-2026-10` and `pre-lean-2026-10`. Text under a `Source:` heading is the original file, unchanged except that its headings are demoted two levels. Two kinds of file moved after the originals were written: the feature rankings are now in `results/rankings/` and the A/B rating sheet, key and instructions in `results/rating/`.
+File names mentioned inside this file (for example `cross_dataset_tables.md`, `results/explanations_protocol.md` or `xai_audit_40f_example_failures.csv`) are the `Source:` sections of this file or of one of the other numbered files, or files that were removed in the cleanup and are recoverable from the git tags `pre-cleanup-2026-10` and `pre-lean-2026-10`. Text under a `Source:` heading is the original file, unchanged except that its headings are demoted two levels. Two kinds of file moved after the originals were written: the feature rankings are now in `results/rankings/` and the A/B rating sheet, key and instructions in `results/rating/`.
 
-## Source: task_6_conclusion.md
+## Source: cross_dataset_conclusion.md
 
-### Task 6 conclusion: cross-dataset generalisation UNSW-NB15 <-> CICIDS2017 (novelty 4), XGBoost
+### Cross-dataset study conclusion: cross-dataset generalisation UNSW-NB15 <-> CICIDS2017 (novelty 4), XGBoost
 
 Binary attack-vs-normal on the 14 common features (8 raw + 6 engineered; no `ct_*` window count among them), seeds 42-46 (and 5 adaptation draws per seed in Step 4), mean +/- std. Protocol, every method, the primary metric and the success level were declared before any result
-(`results/task_6_protocol.md`). **Leak-free for both datasets:** blocks of 1,000 consecutive rows in file order, 200-row gaps between groups, no adaptation row ever evaluated; CICIDS2017 is the eight day files concatenated in file order (Friday-DDoS, Friday-PortScan, Friday-Morning, Monday, Thursday-Afternoon,
+(`results/cross_dataset_protocol.md`). **Leak-free for both datasets:** blocks of 1,000 consecutive rows in file order, 200-row gaps between groups, no adaptation row ever evaluated; CICIDS2017 is the eight day files concatenated in file order (Friday-DDoS, Friday-PortScan, Friday-Morning, Monday, Thursday-Afternoon,
 Thursday-Morning, Tuesday, Wednesday; verified against the original sizes), streamed once and cached. Primary metric: FPR at about 95% detection on the target evaluation blocks, with the threshold chosen on the source validation blocks (zero-shot) or the held-out labelled half (few-shot), always printed with the detection reached;
-also balanced accuracy, AUROC and the threshold-free FPR at exactly 95% detection. Tables: `task_6_tables.md` (sections `cross_dataset_step1_zero_shot.md` ... `cross_dataset_step4_fewshot.md`).
+also balanced accuracy, AUROC and the threshold-free FPR at exactly 95% detection. Tables: `cross_dataset_tables.md` (sections `cross_dataset_step1_zero_shot.md` ... `cross_dataset_step4_fewshot.md`).
 
 #### The claim for novelty 4
 **Zero-shot transfer between UNSW-NB15 and CICIDS2017 does not work on the common flow features, in either direction, under a leak-free protocol** (AUROC 0.49 UNSW to CIC and 0.58 CIC to UNSW, against 0.997 and 0.972 for a model trained on the target's own blocks). The common features carry weak or inconsistent attack signal:
@@ -70,7 +70,7 @@ nothing helps in the other direction. Dropping the most shifted features does li
 | leak-free reference | 0.019 (AUROC 0.997, bal. 0.976) | | | 0.210 (AUROC 0.960, bal. 0.876) | | |
 Caption. **CICIDS2017 as the target:** FPR at or below 0.15 with detection of at least 0.90 is reached at **k = 1,000** by the target-only model (FPR 0.10, detection 0.95) and at k = 5,000 with the source data added; 500 rows are close (0.17). **UNSW-NB15 as the target:** FPR never gets below 0.22 even with 10,000 rows, and the leak-free reference trained on 50,000 rows has FPR 0.21, so on these 14 features UNSW is
 intrinsically hard (the earlier few-shot FPR of 0.09 within UNSW used the 48 features including the `ct_*` window counts, which are not common); the balanced-accuracy criterion (within 0.05 of the reference) is reached at k = 1,000 target-only and 5,000 with source data. **The source data does not help:** source+target is worse than target-only for CIC at every k (FPR +0.02 to +0.16 at k <= 1,000) and equal or slightly worse for UNSW from k = 500; the only gain is on
-UNSW at k = 100 (AUROC 0.81 against 0.75, FPR -0.08 with diverse selection, the only cell where the paired interval excludes 0). Diverse (k-means) selection, which beat random selection within UNSW in Task 2.7, gives no advantage here (CIC target-only k = 1,000: FPR 0.108 against 0.096).
+UNSW at k = 100 (AUROC 0.81 against 0.75, FPR -0.08 with diverse selection, the only cell where the paired interval excludes 0). Diverse (k-means) selection, which beat random selection within UNSW in the FPR-reduction study, gives no advantage here (CIC target-only k = 1,000: FPR 0.108 against 0.096).
 
 #### What it takes to transfer, what did not work, and the limits
 - Zero-shot transfer fails in both directions; the UNSW-NB15 within-dataset ceiling on the 14 common features (FPR 0.16-0.21) is itself modest, and web attacks, Bot and SSH-Patator are barely detectable in CIC from these features even with all labels.
@@ -85,7 +85,7 @@ a hundred rows, since a model trained only on the same few labelled target rows 
 
 ## Source: cross_dataset_step1_zero_shot.md
 
-### Task 6 Step 1: leak-free zero-shot baseline (5 seeds, mean +/- std; target = the evaluation blocks, 200-row gaps)
+### Cross-dataset study Step 1: leak-free zero-shot baseline (5 seeds, mean +/- std; target = the evaluation blocks, 200-row gaps)
 
 #### UNSW -> CIC
 
@@ -155,7 +155,7 @@ Evaluation rows per attack type (mean over seeds, minimum over seeds): types wit
 
 ## Source: cross_dataset_step2_diagnostic.md
 
-### Task 6 Step 2: why zero-shot fails (diagnostic)
+### Cross-dataset study Step 2: why zero-shot fails (diagnostic)
 
 AUROC of each common feature alone for attack against normal (all rows of each dataset; above 0.5 = attack flows have higher values). `absent` = |AUROC - 0.5| < 0.05 in at least one dataset.
 
@@ -182,7 +182,7 @@ Zero-shot AUROC of the common_all model: CIC -> UNSW 0.578 +/- 0.019; UNSW -> CI
 
 ## Source: cross_dataset_step3_align.md
 
-### Task 6 Step 3: label-free alignment (TRANSDUCTIVE) against the zero-shot baseline (5 seeds, mean +/- std)
+### Cross-dataset study Step 3: label-free alignment (TRANSDUCTIVE) against the zero-shot baseline (5 seeds, mean +/- std)
 
 #### UNSW -> CIC
 
@@ -208,7 +208,7 @@ Zero-shot AUROC of the common_all model: CIC -> UNSW 0.578 +/- 0.019; UNSW -> CI
 
 ## Source: cross_dataset_step4_fewshot.md
 
-### Task 6 Step 4: few-shot curve, both directions (25 runs per cell = 5 seeds x 5 draws; mean +/- std)
+### Cross-dataset study Step 4: few-shot curve, both directions (25 runs per cell = 5 seeds x 5 draws; mean +/- std)
 
 k labelled target rows: half retrain the model (together with the source data for source+target), half choose the threshold; evaluation on target rows from other blocks. Success level: FPR at the held-out-half threshold <= 0.15 with detection >= 0.90, or balanced accuracy within 0.05 of the leak-free reference.
 
@@ -280,9 +280,9 @@ Zero-shot baseline on the same evaluation rows (k = 0): FPR 0.000 +/- 0.000, det
 | random | source+target | not reached | 5000 | k=100: -0.021 (no); k=500: -0.011 (no); k=1000: -0.004 (no); k=5000: +0.010 (no); k=10000: +0.008 (no) |
 | random | target_only | not reached | 1000 |  |
 
-## Source: task_6_protocol.md
+## Source: cross_dataset_protocol.md
 
-### Task 6 protocol (declared before any Task 6 result was produced)
+### Cross-dataset study protocol (declared before any the cross-dataset study result was produced)
 
 Novelty 4: cross-dataset generalisation between UNSW-NB15 and CICIDS2017. XGBoost, binary attack-vs-normal, the common feature set only. Zero-shot is the documented baseline; the new work is a leak-free protocol, a diagnostic of why zero-shot fails,
 label-free alignment, and few-shot adaptation with a target-only control. Cap: one session, two heavy jobs at a time.

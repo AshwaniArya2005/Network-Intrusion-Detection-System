@@ -161,7 +161,7 @@ rows, byte-for-byte identical to before the refactor (a one-off check of that re
 ## Reproducing the feature-tier and explanation-stability study for your own model
 
 XGBoost's feature-tier and explanation-stability study (feature tiers, SHAP stability, cross-model agreement) is committed. Each teammate runs the **same** study for their own model
-so the numbers are comparable. The shared rules are on one page in `results/PROTOCOL.md` (read it first); the full declared protocol is inside `results/04_novelty3_feature_tiers.md` (section `Source: task_3_protocol.md`). The rules that make runs comparable:
+so the numbers are comparable. The shared rules are on one page in `results/PROTOCOL.md` (read it first); the full declared protocol is inside `results/04_novelty3_feature_tiers.md` (section `Source: feature_tiers_protocol.md`). The rules that make runs comparable:
 
 - **Zero-shot, official split, scheme `current`.** Nothing is tuned on the official test file.
 - **Block-grouped validation.** Training / validation are rebuilt from contiguous blocks of the training file (`tier_study.block_size` / `tier_study.buffer` in

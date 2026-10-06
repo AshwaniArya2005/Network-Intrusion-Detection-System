@@ -17,7 +17,7 @@ Everything the report and a teammate need, and nothing else. XGBoost is the only
 | `NUMBERS_LEDGER.md` | every headline number the documents quote, with the file, section and cell it comes from (checked by program) |
 | `plots/xgboost/` | the figures: confusion matrix and ROC (40 features), open-set sweep, explanation stability, feature-set metrics, adaptation curves (40 and 48 features), dashboard screenshot |
 | `metrics/xgboost/xai_audit_40f_narratives.csv`, `xai_audit_40f_example_failures.csv`, `narrative_test_40f_narratives.csv` | narrative samples (1,000 audited narratives; ten example failures; the sample the A/B sheet is built from) |
-| `rating/task_5_5_ab_sheet.csv`, `rating/task_5_5_ab_key.csv`, `rating/task_5_5_ab_instructions.md` | the blank A/B rating sheet with its key and instructions (no ratings collected yet). The separate 30-narrative human-audit template was removed; `scripts/make_human_audit_sheet.py` rebuilds it from `xai_audit_40f_narratives.csv`, and tag `pre-lean-2026-10` holds the old copy |
+| `rating/narratives_ab_sheet.csv`, `rating/narratives_ab_key.csv`, `rating/narratives_ab_instructions.md` | the blank A/B rating sheet with its key and instructions (no ratings collected yet). The separate 30-narrative human-audit template was removed; `scripts/make_human_audit_sheet.py` rebuilds it from `xai_audit_40f_narratives.csv`, and tag `pre-lean-2026-10` holds the old copy |
 
 Each numbered file holds the original conclusion, table and protocol files of its area unchanged, one `Source: <original file name>` section each (headings demoted two levels), followed by tables rendered from small CSV files that were removed. The file names mentioned inside them are those `Source:` sections.
 
@@ -32,6 +32,9 @@ Each numbered file holds the original conclusion, table and protocol files of it
 | `metrics/xgboost/shap_importance_xgboost_<N>f.csv`, `shap_boot_xgboost_<N>f.npz` | the XGBoost SHAP files used by the cross-model agreement step |
 
 Outputs of any model go to `results/metrics/<model.type>/`; plots to `results/plots/<model.type>/` (written by the pipelines, hence not moved).
+
+## Other models
+The numbered files, the ledger and `REFERENCE_XGBOOST.csv` describe XGBoost only: they are the reference, and a teammate's results are not added to them. A model's own results go to `metrics/<model.type>/` (the same scripts write that model's tables there, for example `tier_summary_<type>.md` and `stability_<type>.md`) and its plots to `plots/<model.type>/`. To compare, run steps A to C of `../ONBOARDING.md` for the model, fill `TEMPLATE_model_results.csv` from those outputs (a script that fills it automatically does not exist yet) and read it next to `REFERENCE_XGBOOST.csv`, row by row. The shared rules are in `PROTOCOL.md`. A write-up for another model should be its own file (for example `metrics/<type>/README.md`), not an edit of the numbered files.
 
 ## Data version
 All numbers are on the 42-feature UNSW-NB15 training and testing sets (257,673 rows, 162,745 after exact deduplication). `_48f` in a name: the 48-feature pool; no suffix: the 40-feature pool on the same rows and splits. Figures in older documents (78% F1, 67-75% zero-day detection, 0.97 ROC-AUC) are withdrawn. `rankings/feature_ranking_mutual_info.csv` was regenerated on the 42-feature data (commit `70a845d`); results produced before that commit are tied to the older ranking.

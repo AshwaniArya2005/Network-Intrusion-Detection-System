@@ -4,7 +4,7 @@
 
 30 flows from the held-out official-test sample of the 40-feature pool (model seed 42), 5 from each of six strata (Normal, Overlap-Group-1, Fuzzers, flagged Unknown, false-positive Normal and one
 group of the other attack classes), each with the classic and the class-relative narrative side by side as A and B in a seeded random order. The columns for the rater are BLANK; which column is
-which style is only in the key file. Nothing is rated here and no rating is reported. Writes results/rating/task_5_5_ab_sheet.csv and results/rating/task_5_5_ab_key.csv.
+which style is only in the key file. Nothing is rated here and no rating is reported. Writes results/rating/narratives_ab_sheet.csv and results/rating/narratives_ab_key.csv.
 """
 from __future__ import annotations
 
@@ -57,9 +57,9 @@ def write_sheet(sheet: pd.DataFrame, key: pd.DataFrame, out) -> Path:
     """Write the blank sheet and its key into `out` (results/rating/); returns the sheet's path."""
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
-    sheet.to_csv(out / "task_5_5_ab_sheet.csv", index=False)
-    key.to_csv(out / "task_5_5_ab_key.csv", index=False)
-    return out / "task_5_5_ab_sheet.csv"
+    sheet.to_csv(out / "narratives_ab_sheet.csv", index=False)
+    key.to_csv(out / "narratives_ab_key.csv", index=False)
+    return out / "narratives_ab_sheet.csv"
 
 
 def main() -> None:

@@ -223,7 +223,7 @@ One line per headline number that the README, PROJECT_PLAN, the conclusions or t
 
 | # | value | metric and setting | file | where in the file |
 |---|---|---|---|---|
-| 148 | **1,627** | Zero-day flows after deduplication = Shellcode 1,456 + Worms 171 | `results/02_novelty1_open_set.md` | section `Source: task_4_conclusion.md`: stated in the text ("1,627 = Shellcode 1,456") |
+| 148 | **1,627** | Zero-day flows after deduplication = Shellcode 1,456 + Worms 171 | `results/02_novelty1_open_set.md` | section `Source: open_set_conclusion.md`: stated in the text ("1,627 = Shellcode 1,456") |
 
 ### Open-set boosts: calibration (rotation means)
 
@@ -261,10 +261,10 @@ One line per headline number that the README, PROJECT_PLAN, the conclusions or t
 
 | # | value | metric and setting | file | where in the file |
 |---|---|---|---|---|
-| 166 | **0.818** | ensemble MI: mean pseudo-unknown validation AUROC over seeds and inner classes, 40 features | `results/02_novelty1_open_set.md` | section `Source: task_4_conclusion.md`: stated in the text ("0.818 / 0.815 at 40 features") |
-| 167 | **0.815** | P(Unknown): mean pseudo-unknown validation AUROC, 40 features | `results/02_novelty1_open_set.md` | section `Source: task_4_conclusion.md`: stated in the text ("0.818 / 0.815 at 40 features") |
-| 168 | **0.841** | ensemble MI, 48 features | `results/02_novelty1_open_set.md` | section `Source: task_4_conclusion.md`: stated in the text ("0.841 / 0.869 at 48") |
-| 169 | **0.869** | P(Unknown), 48 features | `results/02_novelty1_open_set.md` | section `Source: task_4_conclusion.md`: stated in the text ("0.841 / 0.869 at 48") |
+| 166 | **0.818** | ensemble MI: mean pseudo-unknown validation AUROC over seeds and inner classes, 40 features | `results/02_novelty1_open_set.md` | section `Source: open_set_conclusion.md`: stated in the text ("0.818 / 0.815 at 40 features") |
+| 167 | **0.815** | P(Unknown): mean pseudo-unknown validation AUROC, 40 features | `results/02_novelty1_open_set.md` | section `Source: open_set_conclusion.md`: stated in the text ("0.818 / 0.815 at 40 features") |
+| 168 | **0.841** | ensemble MI, 48 features | `results/02_novelty1_open_set.md` | section `Source: open_set_conclusion.md`: stated in the text ("0.841 / 0.869 at 48") |
+| 169 | **0.869** | P(Unknown), 48 features | `results/02_novelty1_open_set.md` | section `Source: open_set_conclusion.md`: stated in the text ("0.841 / 0.869 at 48") |
 
 ## 03 Explanations and narratives
 
@@ -312,7 +312,7 @@ One line per headline number that the README, PROJECT_PLAN, the conclusions or t
 
 | # | value | metric and setting | file | where in the file |
 |---|---|---|---|---|
-| 190 | **64** | flows of sample_flows.csv for which the API output equals an independent computation on every field | `results/03_novelty2_explanations.md` | section `Source: task_5_conclusion.md`: stated in the text ("matches an independent computation") |
+| 190 | **64** | flows of sample_flows.csv for which the API output equals an independent computation on every field | `results/03_novelty2_explanations.md` | section `Source: explanations_conclusion.md`: stated in the text ("matches an independent computation") |
 
 ### Narratives and false positives: class-relative narrative
 
@@ -442,32 +442,32 @@ One line per headline number that the README, PROJECT_PLAN, the conclusions or t
 
 | # | value | metric and setting | file | where in the file |
 |---|---|---|---|---|
-| 259 | **0.2496** | zero-shot flat default, 40 features | `results/06_fpr_and_adaptation.md` | section `Source: task_2_5_final_table_40f_48f.md`: table row starting `| flat_default |`, column `det95_test_fpr` |
-| 260 | **0.2442** | zero-shot flat default, 48 features | `results/06_fpr_and_adaptation.md` | section `Source: task_2_5_final_table_40f_48f.md`: table row starting `| flat_default |`, column `det95_test_fpr` |
-| 261 | **0.2434** | zero-shot hierarchical, stage 1 tuned, 40 features | `results/06_fpr_and_adaptation.md` | section `Source: task_2_5_final_table_40f_48f.md`: table row starting `| hier_stage1_tuned |`, column `det95_test_fpr` |
-| 262 | **0.2466** | zero-shot hierarchical, stage 1 tuned, 48 features | `results/06_fpr_and_adaptation.md` | section `Source: task_2_5_final_table_40f_48f.md`: table row starting `| hier_stage1_tuned |`, column `det95_test_fpr` |
-| 263 | **0.0940** | few-shot k=5000 (half fit, half threshold), 48 features | `results/06_fpr_and_adaptation.md` | section `Source: task_2_5_final_table_40f_48f.md`: table row starting `| retrain_split_f0.5 | few-shot | 5000 |`, column `det95_test_fpr` |
-| 264 | **0.1578** | few-shot k=1000, 48 features | `results/06_fpr_and_adaptation.md` | section `Source: task_2_5_final_table_40f_48f.md`: table row starting `| retrain_split_f0.5 | few-shot | 1000 |`, column `det95_test_fpr` |
-| 265 | **0.2318** | few-shot k=5000, 40 features | `results/06_fpr_and_adaptation.md` | section `Source: task_2_5_final_table_40f_48f.md`: table row starting `| retrain_split_f0.5 | few-shot | 5000 |`, column `det95_test_fpr` |
-| 266 | **0.2666** | few-shot k=1000, 40 features | `results/06_fpr_and_adaptation.md` | section `Source: task_2_5_final_table_40f_48f.md`: table row starting `| retrain_split_f0.5 | few-shot | 1000 |`, column `det95_test_fpr` |
-| 267 | **0.9523** | detection reached by the 48-feature k=5000 few-shot run (the 0.094 is read at 0.952, not 0.95) | `results/06_fpr_and_adaptation.md` | section `Source: task_2_5_final_table_40f_48f.md`: table row starting `| retrain_split_f0.5 | few-shot | 5000 |`, column `det95_test_detection` |
+| 259 | **0.2496** | zero-shot flat default, 40 features | `results/06_fpr_and_adaptation.md` | section `Source: shift_and_fewshot_final_table_40f_48f.md`: table row starting `| flat_default |`, column `det95_test_fpr` |
+| 260 | **0.2442** | zero-shot flat default, 48 features | `results/06_fpr_and_adaptation.md` | section `Source: shift_and_fewshot_final_table_40f_48f.md`: table row starting `| flat_default |`, column `det95_test_fpr` |
+| 261 | **0.2434** | zero-shot hierarchical, stage 1 tuned, 40 features | `results/06_fpr_and_adaptation.md` | section `Source: shift_and_fewshot_final_table_40f_48f.md`: table row starting `| hier_stage1_tuned |`, column `det95_test_fpr` |
+| 262 | **0.2466** | zero-shot hierarchical, stage 1 tuned, 48 features | `results/06_fpr_and_adaptation.md` | section `Source: shift_and_fewshot_final_table_40f_48f.md`: table row starting `| hier_stage1_tuned |`, column `det95_test_fpr` |
+| 263 | **0.0940** | few-shot k=5000 (half fit, half threshold), 48 features | `results/06_fpr_and_adaptation.md` | section `Source: shift_and_fewshot_final_table_40f_48f.md`: table row starting `| retrain_split_f0.5 | few-shot | 5000 |`, column `det95_test_fpr` |
+| 264 | **0.1578** | few-shot k=1000, 48 features | `results/06_fpr_and_adaptation.md` | section `Source: shift_and_fewshot_final_table_40f_48f.md`: table row starting `| retrain_split_f0.5 | few-shot | 1000 |`, column `det95_test_fpr` |
+| 265 | **0.2318** | few-shot k=5000, 40 features | `results/06_fpr_and_adaptation.md` | section `Source: shift_and_fewshot_final_table_40f_48f.md`: table row starting `| retrain_split_f0.5 | few-shot | 5000 |`, column `det95_test_fpr` |
+| 266 | **0.2666** | few-shot k=1000, 40 features | `results/06_fpr_and_adaptation.md` | section `Source: shift_and_fewshot_final_table_40f_48f.md`: table row starting `| retrain_split_f0.5 | few-shot | 1000 |`, column `det95_test_fpr` |
+| 267 | **0.9523** | detection reached by the 48-feature k=5000 few-shot run (the 0.094 is read at 0.952, not 0.95) | `results/06_fpr_and_adaptation.md` | section `Source: shift_and_fewshot_final_table_40f_48f.md`: table row starting `| retrain_split_f0.5 | few-shot | 5000 |`, column `det95_test_detection` |
 
 ### FPR and adaptation: leakage check (det95 FPR)
 
 | # | value | metric and setting | file | where in the file |
 |---|---|---|---|---|
-| 268 | **0.2442** | zero-shot on the same rows, 48 features, k=5000 | `results/06_fpr_and_adaptation.md` | section `Source: task_2_6_table_40f_48f_45f_41f_38f.md`: table row starting `| 48f | 5000 | twins: all evaluation rows (reproduction) - zero-shot |`, column `FPR at ~95% detection` |
-| 269 | **0.0958** | few-shot, evaluation rows with no near twin, 48 features, k=5000 | `results/06_fpr_and_adaptation.md` | section `Source: task_2_6_table_40f_48f_45f_41f_38f.md`: table row starting `| 48f | 5000 | twins: rows with NO near twin (<= 0.1) in the adaptation set |`, column `FPR at ~95% detection` |
-| 270 | **0.0854** | few-shot, adaptation rows from OTHER row-order blocks (200-row gaps), 48 features, k=5000 | `results/06_fpr_and_adaptation.md` | section `Source: task_2_6_table_40f_48f_45f_41f_38f.md`: table row starting `| 48f | 5000 | blocks: adaptation rows from other blocks (neighbourhood-disjoint) |`, column `FPR at ~95% detection` |
-| 271 | **0.0851** | few-shot, adaptation rows from the evaluation blocks, 48 features, k=5000 | `results/06_fpr_and_adaptation.md` | section `Source: task_2_6_table_40f_48f_45f_41f_38f.md`: table row starting `| 48f | 5000 | blocks: adaptation rows from the evaluation blocks (within-file) |`, column `FPR at ~95% detection` |
-| 272 | **0.1587** | few-shot, no near twin, 48 features, k=1000 | `results/06_fpr_and_adaptation.md` | section `Source: task_2_6_table_40f_48f_45f_41f_38f.md`: table row starting `| 48f | 1000 | twins: rows with NO near twin (<= 0.1) in the adaptation set |`, column `FPR at ~95% detection` |
-| 273 | **0.1528** | few-shot, other blocks, 48 features, k=1000 | `results/06_fpr_and_adaptation.md` | section `Source: task_2_6_table_40f_48f_45f_41f_38f.md`: table row starting `| 48f | 1000 | blocks: adaptation rows from other blocks (neighbourhood-disjoint) |`, column `FPR at ~95% detection` |
-| 274 | **0.2427** | few-shot, other blocks, 40 features, k=5000 | `results/06_fpr_and_adaptation.md` | section `Source: task_2_6_table_40f_48f_45f_41f_38f.md`: table row starting `| 40f | 5000 | blocks: adaptation rows from other blocks (neighbourhood-disjoint) |`, column `FPR at ~95% detection` |
-| 275 | **0.2025** | few-shot, adaptation rows inside the evaluation blocks, 40 features, k=5000 | `results/06_fpr_and_adaptation.md` | section `Source: task_2_6_table_40f_48f_45f_41f_38f.md`: table row starting `| 40f | 5000 | blocks: adaptation rows from the evaluation blocks (within-file) |`, column `FPR at ~95% detection` |
-| 276 | **0.1109** | few-shot without the 3 TTL columns (45 features), k=5000 | `results/06_fpr_and_adaptation.md` | section `Source: task_2_6_table_40f_48f_45f_41f_38f.md`: table row starting `| 45f | 5000 |`, column `FPR at ~95% detection` |
-| 277 | **0.2308** | few-shot without the 7 window-count ct_* columns (41 features), k=5000 | `results/06_fpr_and_adaptation.md` | section `Source: task_2_6_table_40f_48f_45f_41f_38f.md`: table row starting `| 41f | 5000 |`, column `FPR at ~95% detection` |
-| 278 | **0.2281** | few-shot without every ct_* column (38 features), k=5000 | `results/06_fpr_and_adaptation.md` | section `Source: task_2_6_table_40f_48f_45f_41f_38f.md`: table row starting `| 38f | 5000 |`, column `FPR at ~95% detection` |
-| 279 | **0.9318** | detection reached in the other-blocks condition (so FPR at exactly 95% would be higher), 48 features, k=5000 | `results/06_fpr_and_adaptation.md` | section `Source: task_2_6_table_40f_48f_45f_41f_38f.md`: table row starting `| 48f | 5000 | blocks: adaptation rows from other blocks (neighbourhood-disjoint) |`, column `detection` |
+| 268 | **0.2442** | zero-shot on the same rows, 48 features, k=5000 | `results/06_fpr_and_adaptation.md` | section `Source: leakage_check_table_40f_48f_45f_41f_38f.md`: table row starting `| 48f | 5000 | twins: all evaluation rows (reproduction) - zero-shot |`, column `FPR at ~95% detection` |
+| 269 | **0.0958** | few-shot, evaluation rows with no near twin, 48 features, k=5000 | `results/06_fpr_and_adaptation.md` | section `Source: leakage_check_table_40f_48f_45f_41f_38f.md`: table row starting `| 48f | 5000 | twins: rows with NO near twin (<= 0.1) in the adaptation set |`, column `FPR at ~95% detection` |
+| 270 | **0.0854** | few-shot, adaptation rows from OTHER row-order blocks (200-row gaps), 48 features, k=5000 | `results/06_fpr_and_adaptation.md` | section `Source: leakage_check_table_40f_48f_45f_41f_38f.md`: table row starting `| 48f | 5000 | blocks: adaptation rows from other blocks (neighbourhood-disjoint) |`, column `FPR at ~95% detection` |
+| 271 | **0.0851** | few-shot, adaptation rows from the evaluation blocks, 48 features, k=5000 | `results/06_fpr_and_adaptation.md` | section `Source: leakage_check_table_40f_48f_45f_41f_38f.md`: table row starting `| 48f | 5000 | blocks: adaptation rows from the evaluation blocks (within-file) |`, column `FPR at ~95% detection` |
+| 272 | **0.1587** | few-shot, no near twin, 48 features, k=1000 | `results/06_fpr_and_adaptation.md` | section `Source: leakage_check_table_40f_48f_45f_41f_38f.md`: table row starting `| 48f | 1000 | twins: rows with NO near twin (<= 0.1) in the adaptation set |`, column `FPR at ~95% detection` |
+| 273 | **0.1528** | few-shot, other blocks, 48 features, k=1000 | `results/06_fpr_and_adaptation.md` | section `Source: leakage_check_table_40f_48f_45f_41f_38f.md`: table row starting `| 48f | 1000 | blocks: adaptation rows from other blocks (neighbourhood-disjoint) |`, column `FPR at ~95% detection` |
+| 274 | **0.2427** | few-shot, other blocks, 40 features, k=5000 | `results/06_fpr_and_adaptation.md` | section `Source: leakage_check_table_40f_48f_45f_41f_38f.md`: table row starting `| 40f | 5000 | blocks: adaptation rows from other blocks (neighbourhood-disjoint) |`, column `FPR at ~95% detection` |
+| 275 | **0.2025** | few-shot, adaptation rows inside the evaluation blocks, 40 features, k=5000 | `results/06_fpr_and_adaptation.md` | section `Source: leakage_check_table_40f_48f_45f_41f_38f.md`: table row starting `| 40f | 5000 | blocks: adaptation rows from the evaluation blocks (within-file) |`, column `FPR at ~95% detection` |
+| 276 | **0.1109** | few-shot without the 3 TTL columns (45 features), k=5000 | `results/06_fpr_and_adaptation.md` | section `Source: leakage_check_table_40f_48f_45f_41f_38f.md`: table row starting `| 45f | 5000 |`, column `FPR at ~95% detection` |
+| 277 | **0.2308** | few-shot without the 7 window-count ct_* columns (41 features), k=5000 | `results/06_fpr_and_adaptation.md` | section `Source: leakage_check_table_40f_48f_45f_41f_38f.md`: table row starting `| 41f | 5000 |`, column `FPR at ~95% detection` |
+| 278 | **0.2281** | few-shot without every ct_* column (38 features), k=5000 | `results/06_fpr_and_adaptation.md` | section `Source: leakage_check_table_40f_48f_45f_41f_38f.md`: table row starting `| 38f | 5000 |`, column `FPR at ~95% detection` |
+| 279 | **0.9318** | detection reached in the other-blocks condition (so FPR at exactly 95% would be higher), 48 features, k=5000 | `results/06_fpr_and_adaptation.md` | section `Source: leakage_check_table_40f_48f_45f_41f_38f.md`: table row starting `| 48f | 5000 | blocks: adaptation rows from other blocks (neighbourhood-disjoint) |`, column `detection` |
 
 ### FPR and adaptation: shift AUC (seed 42)
 
@@ -531,12 +531,12 @@ One line per headline number that the README, PROJECT_PLAN, the conclusions or t
 
 | # | value | metric and setting | file | where in the file |
 |---|---|---|---|---|
-| 308 | **0.071** | ECE after few-shot adaptation (k=5000 split), 48 features | `results/06_fpr_and_adaptation.md` | section `Source: task_2_5_final_table_40f_48f.md`: table row starting `| retrain_split_f0.5 | few-shot | 5000 |`, column `ece` |
-| 309 | **0.109** | ECE of the default model, 48 features | `results/06_fpr_and_adaptation.md` | section `Source: task_2_5_final_table_40f_48f.md`: table row starting `| flat_default |`, column `ece` |
-| 310 | **0.796** | accuracy after few-shot adaptation (k=5000 split), 48 features | `results/06_fpr_and_adaptation.md` | section `Source: task_2_5_final_table_40f_48f.md`: table row starting `| retrain_split_f0.5 | few-shot | 5000 |`, column `accuracy` |
-| 311 | **0.375** | open-set detection after few-shot adaptation, 48 features | `results/06_fpr_and_adaptation.md` | section `Source: task_2_5_final_table_40f_48f.md`: table row starting `| retrain_split_f0.5 | few-shot | 5000 |`, column `unknown_detection_rate` |
-| 312 | **0.214** | argmax FPR of the hierarchical scheme, 40 features (flat default 0.285) | `results/06_fpr_and_adaptation.md` | section `Source: task_2_5_final_table_40f_48f.md`: table row starting `| hier_default |`, column `false_positive_rate` |
-| 313 | **0.03** | open-set detection of the hierarchical scheme, 40 features (flat 0.26) | `results/06_fpr_and_adaptation.md` | section `Source: task_2_5_final_table_40f_48f.md`: table row starting `| hier_default |`, column `unknown_detection_rate` |
+| 308 | **0.071** | ECE after few-shot adaptation (k=5000 split), 48 features | `results/06_fpr_and_adaptation.md` | section `Source: shift_and_fewshot_final_table_40f_48f.md`: table row starting `| retrain_split_f0.5 | few-shot | 5000 |`, column `ece` |
+| 309 | **0.109** | ECE of the default model, 48 features | `results/06_fpr_and_adaptation.md` | section `Source: shift_and_fewshot_final_table_40f_48f.md`: table row starting `| flat_default |`, column `ece` |
+| 310 | **0.796** | accuracy after few-shot adaptation (k=5000 split), 48 features | `results/06_fpr_and_adaptation.md` | section `Source: shift_and_fewshot_final_table_40f_48f.md`: table row starting `| retrain_split_f0.5 | few-shot | 5000 |`, column `accuracy` |
+| 311 | **0.375** | open-set detection after few-shot adaptation, 48 features | `results/06_fpr_and_adaptation.md` | section `Source: shift_and_fewshot_final_table_40f_48f.md`: table row starting `| retrain_split_f0.5 | few-shot | 5000 |`, column `unknown_detection_rate` |
+| 312 | **0.214** | argmax FPR of the hierarchical scheme, 40 features (flat default 0.285) | `results/06_fpr_and_adaptation.md` | section `Source: shift_and_fewshot_final_table_40f_48f.md`: table row starting `| hier_default |`, column `false_positive_rate` |
+| 313 | **0.03** | open-set detection of the hierarchical scheme, 40 features (flat 0.26) | `results/06_fpr_and_adaptation.md` | section `Source: shift_and_fewshot_final_table_40f_48f.md`: table row starting `| hier_default |`, column `unknown_detection_rate` |
 
 ### Data
 
@@ -555,7 +555,7 @@ One line per headline number that the README, PROJECT_PLAN, the conclusions or t
 
 ## Where the numbers live now, and what was corrected
 
-**Numbers that now exist only as markdown.** 196 of the 316 entries were backed by a CSV that no longer exists; their values are table cells (or means of rendered per-seed rows) in the numbered files. The removed CSVs were: `accuracy_three_numbers_40f_48f_45f.csv`, `cross_dataset_diagnostic_importance_agreement.csv`, `cross_dataset_feature_shift.csv`, `cross_dataset_results.csv`, `experiment_results.csv`, `explanation_stability.csv`, `feature_selection_baselines_summary.csv`, `headline_full_no_ttl_summary.csv`, `headline_summary.csv`, `label_scheme_comparison.csv`, `leakage_40f_shift_auc.csv`, `leakage_40f_validation_blocks.csv`, `leakage_45f_shift_auc.csv`, `leakage_48f_shift_auc.csv`, `methods_zero_shot_b1_40f_summary.csv`, `open_set_boost_selection_40f_scores.csv`, `open_set_boost_selection_48f_scores.csv`, `open_set_step1_40f.csv`, `open_set_step1_45f.csv`, `open_set_step1_48f.csv`, `open_set_step2_40f.csv`, `open_set_step4_40f_48f_41f_38f_48f_t30_48f_t15.csv`, `operating_point_summary_40f.csv`, `operating_point_summary_48f.csv`, `pooled_reference_composition.csv`, `shift_normal_summary_40f.csv`, `shift_normal_summary_45f.csv`, `shift_normal_summary_48f.csv`, `split_comparison.csv`, `split_summary.csv`, `stability_xgboost_48f.csv`, `task_2_5_final_table_40f_48f.csv`, `task_2_6_table_40f_48f_45f_41f_38f.csv`, `tier_summary_xgboost_40f.csv`, `tier_summary_xgboost_45f.csv`, `tier_summary_xgboost_48f.csv`, `tuned_vs_default.csv`. In addition the 49 small CSV and JSON files rendered into the numbered files (confusion matrices, bootstrap intervals, shift and leakage diagnostics, the earlier single-seed run, tuned hyperparameters and others) exist only as markdown tables.
+**Numbers that now exist only as markdown.** 196 of the 316 entries were backed by a CSV that no longer exists; their values are table cells (or means of rendered per-seed rows) in the numbered files. The removed CSVs were: `accuracy_three_numbers_40f_48f_45f.csv`, `cross_dataset_diagnostic_importance_agreement.csv`, `cross_dataset_feature_shift.csv`, `cross_dataset_results.csv`, `experiment_results.csv`, `explanation_stability.csv`, `feature_selection_baselines_summary.csv`, `headline_full_no_ttl_summary.csv`, `headline_summary.csv`, `label_scheme_comparison.csv`, `leakage_40f_shift_auc.csv`, `leakage_40f_validation_blocks.csv`, `leakage_45f_shift_auc.csv`, `leakage_48f_shift_auc.csv`, `methods_zero_shot_b1_40f_summary.csv`, `open_set_boost_selection_40f_scores.csv`, `open_set_boost_selection_48f_scores.csv`, `open_set_step1_40f.csv`, `open_set_step1_45f.csv`, `open_set_step1_48f.csv`, `open_set_step2_40f.csv`, `open_set_step4_40f_48f_41f_38f_48f_t30_48f_t15.csv`, `operating_point_summary_40f.csv`, `operating_point_summary_48f.csv`, `pooled_reference_composition.csv`, `shift_normal_summary_40f.csv`, `shift_normal_summary_45f.csv`, `shift_normal_summary_48f.csv`, `split_comparison.csv`, `split_summary.csv`, `stability_xgboost_48f.csv`, `shift_and_fewshot_final_table_40f_48f.csv`, `leakage_check_table_40f_48f_45f_41f_38f.csv`, `tier_summary_xgboost_40f.csv`, `tier_summary_xgboost_45f.csv`, `tier_summary_xgboost_48f.csv`, `tuned_vs_default.csv`. In addition the 49 small CSV and JSON files rendered into the numbered files (confusion matrices, bootstrap intervals, shift and leakage diagnostics, the earlier single-seed run, tuned hyperparameters and others) exist only as markdown tables.
 
 **Corrected earlier (approved):**
 

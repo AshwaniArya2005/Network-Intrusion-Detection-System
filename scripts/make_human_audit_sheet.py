@@ -4,7 +4,7 @@
 
 Takes 30 narratives from the Step 3 audit of the 40-feature pool (seed 42), stratified over the predicted classes and Unknown (4 per stratum, 5 for Overlap-Group-1 and Unknown), in a seeded
 random order, with a few raw flow values so a rater can judge the flow. The sheet has BLANK rating columns and does not show the flow's true class; nothing is rated here and no rating is
-reported. Writes results/rating/task_5_human_audit_sheet.csv and results/rating/task_5_human_audit_key.csv (sheet id -> flow, stratum; kept apart so the sheet shows no label).
+reported. Writes results/rating/explanations_human_audit_sheet.csv and results/rating/explanations_human_audit_key.csv (sheet id -> flow, stratum; kept apart so the sheet shows no label).
 """
 from __future__ import annotations
 
@@ -39,9 +39,9 @@ def write_sheet(sheet: pd.DataFrame, key: pd.DataFrame, out) -> Path:
     """Write the blank sheet and its key into `out` (results/rating/); returns the sheet's path."""
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
-    sheet.to_csv(out / "task_5_human_audit_sheet.csv", index=False)
-    key.to_csv(out / "task_5_human_audit_key.csv", index=False)
-    return out / "task_5_human_audit_sheet.csv"
+    sheet.to_csv(out / "explanations_human_audit_sheet.csv", index=False)
+    key.to_csv(out / "explanations_human_audit_key.csv", index=False)
+    return out / "explanations_human_audit_sheet.csv"
 
 
 def main() -> None:

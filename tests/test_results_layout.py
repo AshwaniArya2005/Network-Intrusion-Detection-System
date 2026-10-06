@@ -42,7 +42,7 @@ def test_both_sheet_scripts_write_into_the_given_rating_folder(tmp_path):
     from scripts.make_human_audit_sheet import write_sheet as write_audit
     sheet, key = pd.DataFrame({"sheet_id": [1]}), pd.DataFrame({"sheet_id": [1], "flow": [7]})
     out = tmp_path / "results" / "rating"
-    assert write_ab(sheet, key, out) == out / "task_5_5_ab_sheet.csv"
-    assert write_audit(sheet, key, out) == out / "task_5_human_audit_sheet.csv"
-    assert sorted(p.name for p in out.iterdir()) == ["task_5_5_ab_key.csv", "task_5_5_ab_sheet.csv", "task_5_human_audit_key.csv", "task_5_human_audit_sheet.csv"]
-    assert pd.read_csv(out / "task_5_5_ab_key.csv")["flow"].tolist() == [7]
+    assert write_ab(sheet, key, out) == out / "narratives_ab_sheet.csv"
+    assert write_audit(sheet, key, out) == out / "explanations_human_audit_sheet.csv"
+    assert sorted(p.name for p in out.iterdir()) == ["explanations_human_audit_key.csv", "explanations_human_audit_sheet.csv", "narratives_ab_key.csv", "narratives_ab_sheet.csv"]
+    assert pd.read_csv(out / "narratives_ab_key.csv")["flow"].tolist() == [7]

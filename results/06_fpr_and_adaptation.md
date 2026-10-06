@@ -2,21 +2,21 @@
 
 Why the official-split false-positive rate stays high, what lowers it (labels), the neighbour-leakage checks of the few-shot result and of the earlier validation and shift numbers, and every method that did not help: conclusions, tables and the declared protocols.
 
-File names mentioned inside this file (for example `task_6_tables.md`, `results/task_5_protocol.md` or `xai_audit_40f_example_failures.csv`) are the `Source:` sections of this file or of one of the other numbered files, or files that were removed in the cleanup and are recoverable from the git tags `pre-cleanup-2026-10` and `pre-lean-2026-10`. Text under a `Source:` heading is the original file, unchanged except that its headings are demoted two levels. Two kinds of file moved after the originals were written: the feature rankings are now in `results/rankings/` and the A/B rating sheet, key and instructions in `results/rating/`.
+File names mentioned inside this file (for example `cross_dataset_tables.md`, `results/explanations_protocol.md` or `xai_audit_40f_example_failures.csv`) are the `Source:` sections of this file or of one of the other numbered files, or files that were removed in the cleanup and are recoverable from the git tags `pre-cleanup-2026-10` and `pre-lean-2026-10`. Text under a `Source:` heading is the original file, unchanged except that its headings are demoted two levels. Two kinds of file moved after the originals were written: the feature rankings are now in `results/rankings/` and the A/B rating sheet, key and instructions in `results/rating/`.
 
-## Source: task_2_5_conclusion.md
+## Source: shift_and_fewshot_conclusion.md
 
-> **Update after Task 2.6 (`task_2_6_conclusion.md`).** The few-shot result below (48 features, FPR 0.094 at ~95% detection with 5,000 labelled rows) was checked
+> **Update after the leakage check (`leakage_check_conclusion.md`).** The few-shot result below (48 features, FPR 0.094 at ~95% detection with 5,000 labelled rows) was checked
 > for neighbour leakage and holds (0.085-0.096 with no near twins and with adaptation rows from other row-order blocks), but it relies on the window-count `ct_*`
 > columns and is within-capture adaptation, not transfer to a new deployment; on 40 features the small gain is partly neighbour-dependent. The "pooled-split reference
 > of 0.109" is not a like-for-like comparison (that model trains on 68% of the test file). The validation-vs-test gap and the train-vs-test shift AUC quoted from earlier
 > tasks are partly neighbour artefacts: block-built validation gives FPR 0.19-0.25 instead of 0.10-0.12, and block-grouped cross-validation gives shift AUC 0.81-0.84
 > instead of 0.90-0.93.
 
-### Task 2.5 conclusion: the official-split shift and the Normal false-positive rate
+### Shift and few-shot study conclusion: the official-split shift and the Normal false-positive rate
 
-Numbers: `task_2_5_final_table_40f_48f.md` (all methods, access levels, 5 seeds/runs), `shift_conclusion_40f_45f_48f.md`
-(Step A). Protocol and selection rules were declared before any result (`results/task_2_5_protocol.md`).
+Numbers: `shift_and_fewshot_final_table_40f_48f.md` (all methods, access levels, 5 seeds/runs), `shift_conclusion_40f_45f_48f.md`
+(Step A). Protocol and selection rules were declared before any result (`results/shift_and_fewshot_protocol.md`).
 Target hypothesis (a guess): official-split FPR <= 0.15 at about 95% detection, from 0.24-0.25.
 
 #### Result against the target
@@ -60,12 +60,12 @@ labelled examples are available. Caveats: the adaptation rows and the evaluation
 this measures adaptation within that file's distribution, not transfer to a new deployment; and what the shift is made of is
 still unexplained.
 
-## Source: task_2_6_conclusion.md
+## Source: leakage_check_conclusion.md
 
-### Task 2.6 conclusion: is the 48-feature few-shot result adaptation or neighbour leakage?
+### Leakage check conclusion: is the 48-feature few-shot result adaptation or neighbour leakage?
 
-Tables: `task_2_6_table_40f_48f_45f_41f_38f.md` (all rows), `leakage_*_summary.csv`, `leakage_*_validation_blocks*.csv`, `leakage_*_shift_auc.csv`,
-`pooled_reference_composition.csv`. Protocol and decision rule were declared before any result (`results/task_2_6_protocol.md`).
+Tables: `leakage_check_table_40f_48f_45f_41f_38f.md` (all rows), `leakage_*_summary.csv`, `leakage_*_validation_blocks*.csv`, `leakage_*_shift_auc.csv`,
+`pooled_reference_composition.csv`. Protocol and decision rule were declared before any result (`results/leakage_check_protocol.md`).
 Primary metric: FPR at about 95% detection with the threshold chosen on held-out labelled adaptation rows (`retrain_split_f0.5`), 5 runs.
 
 #### What was found in the data
@@ -113,12 +113,12 @@ The pooled random split trains on 109,559 rows, 37,013 of them from the official
 5,000-row few-shot run uses 9.2% of the test file. The comparison 0.094 vs 0.109 is not like for like, and the pooled number is itself neighbour-inflated.
 
 #### Consequences for earlier claims
-- **Validation vs test FPR (Task 2a).** The random 15% validation shares neighbours with the training rows. A validation built from contiguous blocks gives a
+- **Validation vs test FPR (the earlier tuning search).** The random 15% validation shares neighbours with the training rows. A validation built from contiguous blocks gives a
   mean FPR of 0.25 / 0.24 (1,000-row blocks; 40 / 48 features) and 0.19 / 0.19 (200-row blocks) against 0.12 / 0.10 for the random validation, so the
   validation-vs-test gap shrinks from 0.17 / 0.19 to 0.04 / 0.06 (1,000-row blocks) or 0.10 / 0.11 (200-row blocks). The block estimates are very noisy
   (0.03-0.60 across draws), so the size of the neighbour effect is not pinned down, but the "cost of the split shift of 0.15-0.20" overstated the
   distribution shift: part of it is neighbour leakage in the random validation split (and in the pooled split).
-- **Train-vs-test Normal AUC (Task 2.5 Step A).** With random cross-validation 0.899 / 0.929 / 0.930 (40 / 45 / 48 features); with CV grouped by contiguous
+- **Train-vs-test Normal AUC (the shift and few-shot study Step A).** With random cross-validation 0.899 / 0.929 / 0.930 (40 / 45 / 48 features); with CV grouped by contiguous
   blocks 0.814 / 0.836 / 0.837 (seed 42). The shift is real (control 0.50) but about 0.09 of the earlier AUC was neighbour leakage. The per-group AUC changes of
   Step A's ablation used random CV and were not re-run; the Normal -> Fuzzers results on the official test split are unaffected.
 
@@ -135,13 +135,13 @@ adapting inside one capture, whose hosts and campaigns recur across blocks; it d
 that two earlier numbers were partly neighbour artefacts - the random validation FPR (0.10-0.12 against 0.19-0.25 for block-built validation) and the
 train-vs-test shift AUC (0.90-0.93 against 0.81-0.84 with block-grouped cross-validation) - so the distribution shift is real but smaller than first reported.
 
-## Source: task_2_7_conclusion.md
+## Source: fpr_reduction_conclusion.md
 
-### Task 2.7 conclusion: can the zero-shot official-split false-positive rate be lowered? XGBoost
+### FPR-reduction study conclusion: can the zero-shot official-split false-positive rate be lowered? XGBoost
 
 Official split, scheme `current`, flat model, seeds 42-46 (mean +/- std). Every selection used block-grouped validation (1,000-row blocks, 200-row gaps) or, for few-shot, the labelled sample. Protocol and the
-rule for "clearly beats the baseline" were declared before any result (`results/task_2_7_protocol.md`). Primary metric: official-test FPR at about 95% detection with the threshold chosen on validation (`det95 FPR`).
-Tables: `task_2_7_tables.md` (one section per original table: `fpr_study_tuned_40f_45f_48f.md`, `fpr_study_prior_40f_45f_48f.md`, `fpr_study_self_40f_45f_48f.md`, `fpr_study_fewshot_48f_45f_41f.md`, `fpr_study_final_40f_45f_48f.md`; the per-seed rows behind them are in git tag `pre-cleanup-2026-10`).
+rule for "clearly beats the baseline" were declared before any result (`results/fpr_reduction_protocol.md`). Primary metric: official-test FPR at about 95% detection with the threshold chosen on validation (`det95 FPR`).
+Tables: `fpr_reduction_tables.md` (one section per original table: `fpr_study_tuned_40f_45f_48f.md`, `fpr_study_prior_40f_45f_48f.md`, `fpr_study_self_40f_45f_48f.md`, `fpr_study_fewshot_48f_45f_41f.md`, `fpr_study_final_40f_45f_48f.md`; the per-seed rows behind them are in git tag `pre-cleanup-2026-10`).
 
 #### Result against the hypothesis
 Hypothesis (a guess): zero-shot methods reach about 0.20-0.22, and 0.15 or below needs labels. **Zero-shot: not reached.** No zero-shot or transductive method lowered the det95 FPR by the declared 0.02 (the best mean paired
@@ -157,7 +157,7 @@ difference is -0.007); every pool stays at 0.244-0.259 against defaults of 0.256
 | tuned on block-grouped validation, macro F1 | 0.253 +/- 0.014 | 0.255 +/- 0.012 | 0.253 +/- 0.011 |
 Caption. Stronger regularisation and selection on block-grouped validation do not lower the FPR: the mean paired differences are -0.004 to +0.010 and no variant is better in more than 4 of 5 seeds. The search itself found almost nothing to
 improve on validation (best attack AUC 0.9630 against 0.9624 for the default at 40 features). The tuned models do change other things: accuracy rises by 0.01-0.02 at 40 and 48 features, ECE falls (0.093 -> 0.051 at 40,
-0.115 -> 0.074 at 48), and max-softmax open-set detection rises on the 45 and 48-feature pools (0.34-0.35 -> 0.49-0.55), which is relevant to Task 4.5 but is not an FPR gain.
+0.115 -> 0.074 at 48), and max-softmax open-set detection rises on the 45 and 48-feature pools (0.34-0.35 -> 0.49-0.55), which is relevant to the open-set boost study but is not an FPR gain.
 
 #### Step 2 (TRANSDUCTIVE): temperature scaling and EM class-prior correction
 | det95 FPR | 40 features | 45 features | 48 features |
@@ -195,7 +195,7 @@ Caption. At exactly 95% detection the smallest budget that gets the FPR to 0.15 
 41-feature pool, which has no window-count `ct_*` column, so the dependence on those columns holds for every strategy and budget. The strategy matters little at equal detection (differences of 0.01-0.03 with a spread of about 0.04). The headline columns
 `det95 FPR` (threshold chosen on the held-out labelled half) look better for diverse selection (0.126 at k=500, 0.099 at k=2,500 on 48 features) because its held-out half is not representative of the test flows and the chosen threshold lands at a test
 detection of 0.89-0.93, not 0.95; compared at the same detection that advantage mostly disappears. Entropy-selected rows are 70-90% attacks at small k, which makes the held-out half a poor guide for the threshold (held-out-half FPR 0.88 at k=100 against a
-test FPR near 0.2). The earlier "about 0.09 with 5,000 rows" (Tasks 2.5 / 2.6) is the det95 FPR at a test detection of 0.93; at exactly 95% detection the same budget gives 0.12-0.13.
+test FPR near 0.2). The earlier "about 0.09 with 5,000 rows" (the shift and few-shot study and the leakage check) is the det95 FPR at a test detection of 0.93; at exactly 95% detection the same budget gives 0.12-0.13.
 
 #### Step 5: the declared combination and the final table
 Declared rule (chosen on each seed's validation rows only): the block-validation-tuned configuration if its validation attack AUC is at least the default's (used in 2 of 5 seeds on every pool), temperature scaling, and the EM correction only when its
@@ -217,9 +217,9 @@ The false-positive rate on the shifted official test split could not be lowered 
 diagnostic suggests the shift sits in the Normal flows themselves, not in how common each class is. Labelled rows from the same capture do lower it, but a budget of about 2,500-5,000 rows (5-9% of the test file) is needed to reach 0.15 at exactly 95% detection (the earlier
 0.09 was read at 93% detection), the choice of which rows to label matters little, and nothing works on the pool without the window-count `ct_*` columns. These are within-capture results on one dataset; transfer to another capture was not tested.
 
-## Source: task_2_5_final_table_40f_48f.md
+## Source: shift_and_fewshot_final_table_40f_48f.md
 
-### Task 2.5 final table (official split; mean +/- std over 5 seeds or runs)
+### Shift and few-shot study final table (official split; mean +/- std over 5 seeds or runs)
 
 Access: zero-shot = training data only; transductive = also the unlabelled test features; few-shot = also k labelled test rows (excluded from evaluation). `det95` columns are the validation-chosen 95%-detection operating point (thr_adapt: chosen on the k rows). Macro F1 is not comparable between hierarchical (8 classes) and flat (6 classes) models.
 
@@ -277,15 +277,15 @@ Access: zero-shot = training data only; transductive = also the unlabelled test 
 
 The markdown shows k = 1,000 and 5,000 and omits retrain_f0.1; the CSV holds every k and method (k = 100 / 500 too).
 
-## Source: task_2_6_table_40f_48f_45f_41f_38f.md
+## Source: leakage_check_table_40f_48f_45f_41f_38f.md
 
-### Task 2.6: is the few-shot result adaptation or neighbour leakage? (official split, mean +/- std over 5 runs)
+### Leakage check: is the few-shot result adaptation or neighbour leakage? (official split, mean +/- std over 5 runs)
 
 Few-shot = k labelled test rows (half retrain, half choose the 95%-detection threshold), evaluated on rows not used for adaptation. Zero-shot rows use the validation-chosen threshold.
 
 | pool | k | row | access | FPR at ~95% detection | detection | accuracy | ECE |
 |---|---|---|---|---|---|---|---|
-| 40f | 1000 | original Task 2.5 result (retrain_split_f0.5, random adaptation rows) | few-shot | 0.2666 +/- 0.0378 | 0.9541 +/- 0.0143 | 0.7515 +/- 0.0013 | 0.0858 +/- 0.0013 |
+| 40f | 1000 | original the shift and few-shot study result (retrain_split_f0.5, random adaptation rows) | few-shot | 0.2666 +/- 0.0378 | 0.9541 +/- 0.0143 | 0.7515 +/- 0.0013 | 0.0858 +/- 0.0013 |
 | 40f | 1000 | twins: all evaluation rows (reproduction) | few-shot | 0.2666 +/- 0.0378 | 0.9541 +/- 0.0143 | 0.7515 +/- 0.0013 | 0.0858 +/- 0.0013 |
 | 40f | 1000 | twins: all evaluation rows (reproduction) - zero-shot | zero-shot | 0.2498 +/- 0.0024 | 0.9464 +/- 0.0017 | 0.7425 +/- 0.0009 | 0.0878 +/- 0.0010 |
 | 40f | 1000 | twins: rows with NO near twin (<= 0.1) in the adaptation set | few-shot | 0.3563 +/- 0.0525 | 0.9510 +/- 0.0157 | 0.7038 +/- 0.0012 | 0.0988 +/- 0.0017 |
@@ -295,7 +295,7 @@ Few-shot = k labelled test rows (half retrain, half choose the 95%-detection thr
 | 40f | 1000 | blocks: adaptation rows from the evaluation blocks (within-file) | few-shot | 0.2519 +/- 0.0649 | 0.9457 +/- 0.0293 | 0.7497 +/- 0.0253 | 0.0851 +/- 0.0104 |
 | 40f | 1000 | blocks: adaptation rows from other blocks (neighbourhood-disjoint) | few-shot | 0.3045 +/- 0.0812 | 0.9622 +/- 0.0232 | 0.7472 +/- 0.0285 | 0.0862 +/- 0.0134 |
 | 40f | 1000 | blocks: same rows - zero-shot | zero-shot | 0.2508 +/- 0.0411 | 0.9456 +/- 0.0103 | 0.7388 +/- 0.0298 | 0.0879 +/- 0.0132 |
-| 40f | 5000 | original Task 2.5 result (retrain_split_f0.5, random adaptation rows) | few-shot | 0.2318 +/- 0.0108 | 0.9513 +/- 0.0032 | 0.7801 +/- 0.0021 | 0.0600 +/- 0.0019 |
+| 40f | 5000 | original the shift and few-shot study result (retrain_split_f0.5, random adaptation rows) | few-shot | 0.2318 +/- 0.0108 | 0.9513 +/- 0.0032 | 0.7801 +/- 0.0021 | 0.0600 +/- 0.0019 |
 | 40f | 5000 | twins: all evaluation rows (reproduction) | few-shot | 0.2318 +/- 0.0108 | 0.9513 +/- 0.0032 | 0.7801 +/- 0.0021 | 0.0600 +/- 0.0019 |
 | 40f | 5000 | twins: all evaluation rows (reproduction) - zero-shot | zero-shot | 0.2497 +/- 0.0033 | 0.9466 +/- 0.0012 | 0.7424 +/- 0.0010 | 0.0877 +/- 0.0011 |
 | 40f | 5000 | twins: rows with NO near twin (<= 0.1) in the adaptation set | few-shot | 0.3493 +/- 0.0185 | 0.9457 +/- 0.0050 | 0.7236 +/- 0.0035 | 0.0671 +/- 0.0031 |
@@ -305,7 +305,7 @@ Few-shot = k labelled test rows (half retrain, half choose the 95%-detection thr
 | 40f | 5000 | blocks: adaptation rows from the evaluation blocks (within-file) | few-shot | 0.2025 +/- 0.0481 | 0.9398 +/- 0.0114 | 0.7809 +/- 0.0175 | 0.0571 +/- 0.0057 |
 | 40f | 5000 | blocks: adaptation rows from other blocks (neighbourhood-disjoint) | few-shot | 0.2427 +/- 0.0468 | 0.9449 +/- 0.0191 | 0.7666 +/- 0.0296 | 0.0703 +/- 0.0137 |
 | 40f | 5000 | blocks: same rows - zero-shot | zero-shot | 0.2508 +/- 0.0411 | 0.9456 +/- 0.0103 | 0.7388 +/- 0.0298 | 0.0879 +/- 0.0132 |
-| 48f | 1000 | original Task 2.5 result (retrain_split_f0.5, random adaptation rows) | few-shot | 0.1578 +/- 0.0374 | 0.9472 +/- 0.0164 | 0.7598 +/- 0.0015 | 0.1033 +/- 0.0017 |
+| 48f | 1000 | original the shift and few-shot study result (retrain_split_f0.5, random adaptation rows) | few-shot | 0.1578 +/- 0.0374 | 0.9472 +/- 0.0164 | 0.7598 +/- 0.0015 | 0.1033 +/- 0.0017 |
 | 48f | 1000 | twins: all evaluation rows (reproduction) | few-shot | 0.1578 +/- 0.0374 | 0.9472 +/- 0.0164 | 0.7598 +/- 0.0015 | 0.1033 +/- 0.0017 |
 | 48f | 1000 | twins: all evaluation rows (reproduction) - zero-shot | zero-shot | 0.2444 +/- 0.0068 | 0.9525 +/- 0.0013 | 0.7400 +/- 0.0021 | 0.1093 +/- 0.0026 |
 | 48f | 1000 | twins: rows with NO near twin (<= 0.1) in the adaptation set | few-shot | 0.1587 +/- 0.0376 | 0.9463 +/- 0.0168 | 0.7600 +/- 0.0013 | 0.1024 +/- 0.0016 |
@@ -315,7 +315,7 @@ Few-shot = k labelled test rows (half retrain, half choose the 95%-detection thr
 | 48f | 1000 | blocks: adaptation rows from the evaluation blocks (within-file) | few-shot | 0.1395 +/- 0.0442 | 0.9337 +/- 0.0227 | 0.7574 +/- 0.0266 | 0.1028 +/- 0.0129 |
 | 48f | 1000 | blocks: adaptation rows from other blocks (neighbourhood-disjoint) | few-shot | 0.1528 +/- 0.0466 | 0.9362 +/- 0.0284 | 0.7521 +/- 0.0279 | 0.1084 +/- 0.0151 |
 | 48f | 1000 | blocks: same rows - zero-shot | zero-shot | 0.2463 +/- 0.0400 | 0.9511 +/- 0.0086 | 0.7348 +/- 0.0304 | 0.1123 +/- 0.0160 |
-| 48f | 5000 | original Task 2.5 result (retrain_split_f0.5, random adaptation rows) | few-shot | 0.0940 +/- 0.0156 | 0.9523 +/- 0.0076 | 0.7957 +/- 0.0031 | 0.0708 +/- 0.0028 |
+| 48f | 5000 | original the shift and few-shot study result (retrain_split_f0.5, random adaptation rows) | few-shot | 0.0940 +/- 0.0156 | 0.9523 +/- 0.0076 | 0.7957 +/- 0.0031 | 0.0708 +/- 0.0028 |
 | 48f | 5000 | twins: all evaluation rows (reproduction) | few-shot | 0.0940 +/- 0.0156 | 0.9523 +/- 0.0076 | 0.7957 +/- 0.0031 | 0.0708 +/- 0.0028 |
 | 48f | 5000 | twins: all evaluation rows (reproduction) - zero-shot | zero-shot | 0.2442 +/- 0.0074 | 0.9527 +/- 0.0017 | 0.7398 +/- 0.0023 | 0.1094 +/- 0.0027 |
 | 48f | 5000 | twins: rows with NO near twin (<= 0.1) in the adaptation set | few-shot | 0.0958 +/- 0.0159 | 0.9492 +/- 0.0082 | 0.7990 +/- 0.0033 | 0.0656 +/- 0.0028 |
@@ -337,9 +337,9 @@ Few-shot = k labelled test rows (half retrain, half choose the 95%-detection thr
 
 ## Source: fpr_study_tuned_40f_45f_48f.md
 
-### Task 2.7 Step 1 (ZERO-SHOT): re-tuning on block-grouped validation, official test, mean +/- std over seeds 42-46
+### FPR-reduction study Step 1 (ZERO-SHOT): re-tuning on block-grouped validation, official test, mean +/- std over seeds 42-46
 
-Primary metric `det95_test_fpr` (threshold at 95% detection chosen on block-grouped validation). `earlier_tuned_*` = the Task 2a search on random validation (40 and 48 features only); `blockval_tuned_*` = the 40-trial search on block-grouped validation with the regularised space. Verdict = the declared rule against `default` on the same seeds.
+Primary metric `det95_test_fpr` (threshold at 95% detection chosen on block-grouped validation). `earlier_tuned_*` = the earlier tuning search on random validation (40 and 48 features only); `blockval_tuned_*` = the 40-trial search on block-grouped validation with the regularised space. Verdict = the declared rule against `default` on the same seeds.
 
 #### 40f
 
@@ -390,7 +390,7 @@ Primary metric `det95_test_fpr` (threshold at 95% detection chosen on block-grou
 
 ## Source: fpr_study_prior_40f_45f_48f.md
 
-### Task 2.7 Step 2: temperature scaling and class-prior correction, official test, mean +/- std over seeds 42-46
+### FPR-reduction study Step 2: temperature scaling and class-prior correction, official test, mean +/- std over seeds 42-46
 
 `calibrated` and `calibrated_valprior` are ZERO-SHOT; `calibrated_em` is TRANSDUCTIVE (uses the unlabelled test features). The same transformation is applied to validation and test; the det95 threshold is chosen on the transformed validation scores.
 
@@ -474,7 +474,7 @@ Temperature (mean) 1.26. Diagnostic only, the true shares never enter a fit: L1 
 
 ## Source: fpr_study_self_40f_45f_48f.md
 
-### Task 2.7 Step 3 (TRANSDUCTIVE): self-training, mean +/- std over seeds 42-46
+### FPR-reduction study Step 3 (TRANSDUCTIVE): self-training, mean +/- std over seeds 42-46
 
 Two rounds, tau = 0.90, pseudo-labelled rows carry 20% of the sample weight, rounds are not cumulative. Pseudo-labels come from the unlabelled blocks and every metric is on the other blocks (200-row gaps). `validation` rows are the check made before looking at the test file (half of the block-grouped validation blocks treated as unlabelled).
 
@@ -573,7 +573,7 @@ Round 2 minus round 0: argmax FPR +0.0054 (lower in 0 of 5 seeds), macro F1 +0.0
 
 ## Source: fpr_study_fewshot_48f_45f_41f.md
 
-### Task 2.7 Step 4 (FEW-SHOT): label budget and selection strategy, mean +/- std over 5 runs
+### FPR-reduction study Step 4 (FEW-SHOT): label budget and selection strategy, mean +/- std over 5 runs
 
 Half of the k labelled rows retrain the model (weight fraction 0.5), the other half chooses the 95%-detection threshold. Candidates and evaluation rows come from different time blocks (200-row gaps); every method is scored on the same evaluation rows as the zero-shot baseline. Two FPRs are shown: `det95 FPR` at the threshold chosen on the held-out labelled half (its test detection is in the next column and is often below 95%, which flatters the FPR) and the threshold-free FPR at exactly 95% detection. Smallest k with mean FPR <= 0.15 is stated per strategy for both.
 
@@ -693,7 +693,7 @@ Zero-shot baseline on the same rows: det95 FPR 0.260 +/- 0.042, threshold-free F
 
 ## Source: fpr_study_final_40f_45f_48f.md
 
-### Task 2.7 Step 5: final table (official split, mean +/- std over seeds 42-46)
+### FPR-reduction study Step 5: final table (official split, mean +/- std over seeds 42-46)
 
 #### 40f
 
@@ -770,12 +770,12 @@ Few-shot strategy chosen by the declared rule (lowest held-out-half FPR at k = 1
 
 Few-shot strategy chosen by the declared rule (lowest held-out-half FPR at k = 1,000): **diverse**.
 
-## Source: task_2_5_protocol.md
+## Source: shift_and_fewshot_protocol.md
 
-### Task 2.5 protocol (declared before any Task 2.5 result was produced)
+### Shift and few-shot study protocol (declared before any the shift and few-shot study result was produced)
 
 Goal: characterise the official-split shift (Step A), then try to lower the official-split Normal false-positive rate
-(Step B). Baseline numbers are those of Task 2 (commits ebef719 .. 32e9ae1); they are not re-litigated here.
+(Step B). Baseline numbers are those of the earlier headline study (commits ebef719 .. 32e9ae1); they are not re-litigated here.
 
 #### Access levels (every method is labelled with one)
 - **ZERO-SHOT**: uses the training split (train + validation) only.
@@ -809,11 +809,11 @@ Goal: characterise the official-split shift (Step A), then try to lower the offi
 - 0.912 / 0.921 is an empirical feature-space ceiling (best accuracy of any classifier that assigns one label per
   distinct feature vector in this data), not a Bayes ceiling.
 
-## Source: task_2_6_protocol.md
+## Source: leakage_check_protocol.md
 
-### Task 2.6 protocol (declared before any Task 2.6 result was produced)
+### Leakage check protocol (declared before any the leakage check result was produced)
 
-Question: is the 48-feature few-shot result of Task 2.5 (FPR 0.094 at about 95% detection with 5,000 labelled rows, against 0.232
+Question: is the 48-feature few-shot result of the shift and few-shot study (FPR 0.094 at about 95% detection with 5,000 labelled rows, against 0.232
 on 40 features) real adaptation, or does it come from neighbouring rows shared between the adaptation rows and the evaluation rows
 (both are random draws from the same official test file)? The earlier B2/B4 result files are not modified.
 
@@ -841,7 +841,7 @@ Zero-shot is reported on the same evaluation rows.
    40% of the blocks (random per run) supply adaptation rows, the others are evaluation rows; 200 rows on each side of every block
    boundary between the two groups are dropped from both (a sliding window of 100 connections cannot span the gap). Three conditions
    are scored on the SAME evaluation rows: zero-shot; adaptation rows drawn at random from the evaluation blocks themselves
-   ("within-file", the Task 2.5 style); adaptation rows from the other blocks ("neighbourhood-disjoint").
+   ("within-file", the shift and few-shot study style); adaptation rows from the other blocks ("neighbourhood-disjoint").
 3. **ct_* ablation.** The 5,000- and 1,000-row `retrain_split_f0.5` runs on: `full_no_ct_window` = 48 features minus the seven window-count
    columns (ct_src_dport_ltm, ct_dst_sport_ltm, ct_srv_src, ct_dst_ltm, ct_src_ltm, ct_srv_dst, ct_dst_src_ltm; 41 features),
    `full_no_ct_any` = minus every column named ct_* (those seven plus ct_state_ttl, ct_flw_http_mthd, ct_ftp_cmd; 38 features), and the
@@ -849,7 +849,7 @@ Zero-shot is reported on the same evaluation rows.
 4. **Pooled-reference composition.** What the pooled-split model trains on (rows, and the share of each official file), so the
    0.094 vs 0.109 comparison is explained.
 5. **(Added because of the ordering finding.)** Validation built from contiguous blocks of the training file (same block / gap sizes)
-   instead of a random 15%: does the validation-vs-test FPR gap of Task 2a shrink?
+   instead of a random 15%: does the validation-vs-test FPR gap of the earlier tuning search shrink?
 
 #### Decision rule (declared now)
 Applied to the 48-feature pool at k = 5,000 with the mean over the 5 runs, using the worse (higher FPR) of the no-near-twin subset (check 1)
@@ -859,9 +859,9 @@ and the neighbourhood-disjoint condition (check 2):
 - Between 0.15 and 0.20: reported as partly dependent on neighbourhood overlap, with both numbers shown.
 Nothing is tuned to rescue the result.
 
-## Source: task_2_7_protocol.md
+## Source: fpr_reduction_protocol.md
 
-### Task 2.7 protocol (declared before any Task 2.7 result was produced)
+### FPR-reduction study protocol (declared before any the FPR-reduction study result was produced)
 
 Goal: lower the official-split Normal false-positive rate. XGBoost, flat model, scheme `current`, official split, seeds 42-46 (run i = model seed 42 + i), mean and std.
 Pools: 40 (base), 45 (`full_no_ttl`), 48 (full); Step 4 uses 48, 45 and 41 (`full_no_ct_window`) so the `ct_*` dependence stays visible.
@@ -874,11 +874,11 @@ zero-shot baseline of the same pool and rows next to every adapted row.
 #### Selection data and baselines
 - Every selection (hyperparameters, thresholds, temperature, rules, strategies) uses the **block-grouped validation split** (`block_validation_splits`, 1,000-row blocks, 200-row gaps,
   `data.val_size` 0.15, block draw seeded by the run's seed) or, for few-shot only, the declared labelled adaptation sample. Official-test labels are used only to report.
-- Baseline = the default configuration (config.yaml, class-weight exponent 0.5) trained on the same block-grouped split, zero-shot, evaluated on the same rows. For reference Task 3 gave
+- Baseline = the default configuration (config.yaml, class-weight exponent 0.5) trained on the same block-grouped split, zero-shot, evaluated on the same rows. For reference the feature-tier study gave
   block-validated det95 FPR 0.257 / 0.248 / 0.247 (40 / 45 / 48 features).
 - **Primary metric:** official-test FPR at about 95% detection with the threshold on 1 - P(Normal) chosen on block-grouped validation (`det95_test_fpr`; few-shot: chosen on the held-out half of the
   labelled sample). Also reported: argmax FPR, threshold-free FPR at 95% detection, detection at the chosen threshold, accuracy, macro F1, ECE (`evaluation.ece_bins`),
-  open-set detection (max-softmax at the 5% false-Unknown threshold of Task 4, Worms + Shellcode held out).
+  open-set detection (max-softmax at the 5% false-Unknown threshold of the open-set study, Worms + Shellcode held out).
 - **"Clearly beats the baseline"** (declared now): the mean paired (same seed) difference in `det95_test_fpr` is at most -0.02, the method is better in at least 4 of 5 seeds, and its detection at the
   operating point is not more than 0.02 below the baseline's.
 
@@ -913,7 +913,7 @@ zero-shot baseline of the same pool and rows next to every adapted row.
 - Budgets k = 100, 250, 500, 1,000, 2,500, 5,000. Strategies: `random` (uniform, labels unused), `entropy` (the k highest-entropy rows of the zero-shot model), `diverse` (rows nearest the centroids of k-means, k clusters, scaled preprocessed features,
   MiniBatchKMeans seed 0), `mix` (half entropy, half diverse). Selection uses only unlabelled features and the zero-shot model; labels are revealed for the chosen rows only.
 - Candidates are the rows of the adaptation blocks (`block_split`, 1,000 / 200, share 0.4, draw seed 1000 + run); evaluation rows are the other blocks (200-row gaps). The chosen rows are split at random into two halves: one retrains the model
-  (weight fraction 0.5), the other chooses the det95 threshold. 5 runs (model seed 42 + i with draw seed 1000 + i; the "5 draws x 5 seeds" are the same five runs, as in Tasks 2.5 / 2.6). Pools 48, 45, 41.
+  (weight fraction 0.5), the other chooses the det95 threshold. 5 runs (model seed 42 + i with draw seed 1000 + i; the "5 draws x 5 seeds" are the same five runs, as in the shift and few-shot study and the leakage check). Pools 48, 45, 41.
 - Reported per strategy: FPR and detection vs k against the zero-shot baseline on the same rows, and the smallest k whose mean det95 FPR is at most 0.15, if any. The random-split figure is not used. The held-out-half FPR of each run is recorded for the Step 5 choice.
 
 #### Step 5: combination and final table

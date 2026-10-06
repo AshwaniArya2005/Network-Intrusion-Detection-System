@@ -1,16 +1,16 @@
 # Novelty 2: faithful, human-centred explanations
 
-Faithfulness, narrative audit, class-relative narratives and false-positive explanations: conclusions, tables and the declared protocols. The blank rating sheet is `task_5_5_ab_sheet.csv` (with its key and instructions); the 30-narrative human-audit template mentioned in the conclusion was removed (rebuild it with `scripts/make_human_audit_sheet.py`, or recover it from git tag `pre-lean-2026-10`); samples are `xai_audit_40f_narratives.csv`, `xai_audit_40f_example_failures.csv` and `narrative_test_40f_narratives.csv`.
+Faithfulness, narrative audit, class-relative narratives and false-positive explanations: conclusions, tables and the declared protocols. The blank rating sheet is `narratives_ab_sheet.csv` (with its key and instructions); the 30-narrative human-audit template mentioned in the conclusion was removed (rebuild it with `scripts/make_human_audit_sheet.py`, or recover it from git tag `pre-lean-2026-10`); samples are `xai_audit_40f_narratives.csv`, `xai_audit_40f_example_failures.csv` and `narrative_test_40f_narratives.csv`.
 
-File names mentioned inside this file (for example `task_6_tables.md`, `results/task_5_protocol.md` or `xai_audit_40f_example_failures.csv`) are the `Source:` sections of this file or of one of the other numbered files, or files that were removed in the cleanup and are recoverable from the git tags `pre-cleanup-2026-10` and `pre-lean-2026-10`. Text under a `Source:` heading is the original file, unchanged except that its headings are demoted two levels. Two kinds of file moved after the originals were written: the feature rankings are now in `results/rankings/` and the A/B rating sheet, key and instructions in `results/rating/`.
+File names mentioned inside this file (for example `cross_dataset_tables.md`, `results/explanations_protocol.md` or `xai_audit_40f_example_failures.csv`) are the `Source:` sections of this file or of one of the other numbered files, or files that were removed in the cleanup and are recoverable from the git tags `pre-cleanup-2026-10` and `pre-lean-2026-10`. Text under a `Source:` heading is the original file, unchanged except that its headings are demoted two levels. Two kinds of file moved after the originals were written: the feature rankings are now in `results/rankings/` and the A/B rating sheet, key and instructions in `results/rating/`.
 
-## Source: task_5_conclusion.md
+## Source: explanations_conclusion.md
 
-### Task 5 conclusion: are the explanations faithful and are the narratives correct? (novelty 2), XGBoost
+### Explanation study conclusion: are the explanations faithful and are the narratives correct? (novelty 2), XGBoost
 
-Official split, scheme `current`, flat model, ZERO-SHOT, models trained as in Task 3 (block-grouped training / validation), seeds 42-46 (mean +/- std), pools 40 / 45 / 48 and the 30- and 15-feature tiers of each. Protocol, primary metrics and readings were declared
-before any result (`results/task_5_protocol.md`). Tables: `task_5_tables.md` (sections `xai_faithfulness_40f_45f_48f.md` for Steps 1-2 and `xai_audit_40f_48f.md` for Steps 1 and 3, with the shift comparison; a 1,000-narrative sample `xai_audit_40f_narratives.csv` and ten example failures `xai_audit_40f_example_failures.csv`), `dashboard_end_to_end_40f.csv` (Step 4), `results/task_5_human_audit_sheet.csv` (Step 5).
-Explanation stability was measured in Task 3 and is not repeated.
+Official split, scheme `current`, flat model, ZERO-SHOT, models trained as in the feature-tier study (block-grouped training / validation), seeds 42-46 (mean +/- std), pools 40 / 45 / 48 and the 30- and 15-feature tiers of each. Protocol, primary metrics and readings were declared
+before any result (`results/explanations_protocol.md`). Tables: `explanations_tables.md` (sections `xai_faithfulness_40f_45f_48f.md` for Steps 1-2 and `xai_audit_40f_48f.md` for Steps 1 and 3, with the shift comparison; a 1,000-narrative sample `xai_audit_40f_narratives.csv` and ten example failures `xai_audit_40f_example_failures.csv`), `dashboard_end_to_end_40f.csv` (Step 4), `results/explanations_human_audit_sheet.csv` (Step 5).
+Explanation stability was measured in the feature-tier study and is not repeated.
 
 #### The claim for novelty 2
 For the XGBoost model, the SHAP explanations are faithful to the model (removing the features the explanation names as most important changes the prediction far more than removing random ones, on shifted test flows as much as on validation flows), and the analyst narratives built from them
@@ -62,7 +62,7 @@ values (the dashboard was fixed earlier, the script was not); both now use `stan
 exactly), which shows the sample is hard, not that the pipeline differs.
 
 #### Step 5: human audit sheet
-`results/task_5_human_audit_sheet.csv` (30 narratives: 4 per predicted class, 5 for Overlap-Group-1 and 5 for Unknown, with raw flow values, blank rating columns and no true label), `task_5_human_audit_key.csv` and `task_5_human_audit_instructions.md`. Nothing is rated or reported.
+`results/explanations_human_audit_sheet.csv` (30 narratives: 4 per predicted class, 5 for Overlap-Group-1 and 5 for Unknown, with raw flow values, blank rating columns and no true label), `explanations_human_audit_key.csv` and `explanations_human_audit_instructions.md`. Nothing is rated or reported.
 
 #### What did not hold
 - Not every narrative is informative: 36-47% of cited features read "typical", and for Overlap-Group-1 and Generic the cue direction often disagrees with the model's general behaviour for that feature (check f), although the text is locally true.
@@ -78,10 +78,10 @@ understandable and actionable is not measured here; the 30-narrative sheet is re
 
 ---
 
-### Task 5.5: a more informative narrative, and the explanations of false positives (novelty 2)
+### Narrative study: a more informative narrative, and the explanations of false positives (novelty 2)
 
-Official split, XGBoost, ZERO-SHOT, seeds 42-46, pools 40 and 48, models trained as in Task 5. Protocol, rule and primary metrics were declared before any result (`results/task_5_5_protocol.md`). The rule was inspected only on block-grouped validation flows (model seed 42, 40 features) and
-**not changed** after that inspection; it was then evaluated once on a fresh official-test sample (sampling seed 5000 + the model seed, so the flows differ from Task 5's). Tables: `task_5_tables.md` (sections `narrative_test_40f_48f.md` for Step 1 and `narrative_falsepos_40f_48f.md` for Step 2), `results/task_5_5_ab_sheet.csv` (Step 3).
+Official split, XGBoost, ZERO-SHOT, seeds 42-46, pools 40 and 48, models trained as in the explanation study. Protocol, rule and primary metrics were declared before any result (`results/narratives_protocol.md`). The rule was inspected only on block-grouped validation flows (model seed 42, 40 features) and
+**not changed** after that inspection; it was then evaluated once on a fresh official-test sample (sampling seed 5000 + the model seed, so the flows differ from the explanation study's). Tables: `explanations_tables.md` (sections `narrative_test_40f_48f.md` for Step 1 and `narrative_falsepos_40f_48f.md` for Step 2), `results/narratives_ab_sheet.csv` (Step 3).
 The classic generator is kept (`narrative.style: classic`, the default); `class_relative` is switched on in `configs/config.yaml`.
 
 #### The updated claim for novelty 2
@@ -117,13 +117,13 @@ to zero: the calibrated estimate is still too high on shifted flows, it reads "a
 | 1 - calibrated confidence | 0.63 / 0.57 | 0.89 / 0.89 | | | | |
 | class-atypicality of the cited features (share outside the class's interquartile range) | 0.47 / 0.52 | 0.55 / 0.58 | | | | |
 Caption. (a) The explanations of false positives are faithful: removing the top-5 SHAP features lowers the predicted-class probability 0.35-0.51 more than removing random ones (interval above 0 in 5 of 5 seeds for every group and pool), close to true Fuzzers (0.44-0.56) and much higher than for correctly predicted Normal on 40 features (0.18, the
-weak spot of Task 5). (b) The narratives of FP-Fuzzers cite the same features as those of true Fuzzers: on 40 features dload (88% / 76%), service (77% / 75%), sbytes (55% / 70%); on 48 features sttl in 100% of both. (c) The model is less confident on false positives (raw 0.68-0.74 against 0.93-0.94 for correct Normal flows, and 0.77-0.78 for true Fuzzers) and calibration lowers it a little more,
+weak spot of the explanation study). (b) The narratives of FP-Fuzzers cite the same features as those of true Fuzzers: on 40 features dload (88% / 76%), service (77% / 75%), sbytes (55% / 70%); on 48 features sttl in 100% of both. (c) The model is less confident on false positives (raw 0.68-0.74 against 0.93-0.94 for correct Normal flows, and 0.77-0.78 for true Fuzzers) and calibration lowers it a little more,
 but confidence only separates a false positive from a correct *Fuzzers* alert weakly (AUROC 0.58-0.63; 11-17% of FP-Fuzzers still have a raw probability of 0.90 or more), the open-set flag catches 4-13% of false positives, and the class-atypicality of the cited features carries no information (0.47-0.52 against FP-Fuzzers vs TP-Fuzzers; the false positives are not more atypical for the predicted class than true Fuzzers).
 **Plainly:** an analyst reading the narrative of a false-positive Fuzzers alert would see the reasons they would see for a real one, with a confidence of about 70% (calibrated about 66%) against about 77% for a real alert; from these metrics the only reason to doubt it is that lower number, which is a weak signal. The explanation is a correct account of why the model said Fuzzers, which is not the same as a reason to believe it.
 
 #### Step 3: A/B sheet
-`results/task_5_5_ab_sheet.csv`: 30 flows (5 each from Normal, Overlap-Group-1, Fuzzers, flagged Unknown, false-positive Normal and one group of the other attack classes) with the classic and the class-relative narrative as A and B in a random order, blank columns for "clearer" and "more actionable"; the key (which column is which) is in `task_5_5_ab_key.csv`;
-instructions in `task_5_5_ab_instructions.md`. Nothing is rated.
+`results/narratives_ab_sheet.csv`: 30 flows (5 each from Normal, Overlap-Group-1, Fuzzers, flagged Unknown, false-positive Normal and one group of the other attack classes) with the classic and the class-relative narrative as A and B in a random order, blank columns for "clearer" and "more actionable"; the key (which column is which) is in `narratives_ab_key.csv`;
+instructions in `narratives_ab_instructions.md`. Nothing is rated.
 
 #### What did not improve, and the limits
 - The cue-direction agreement (f) is unchanged (0.78 / 0.73; Overlap-Group-1 0.44 / 0.55, Generic on 48 features 0.26): the rule changes what is cited, not what a cue means.
@@ -132,14 +132,14 @@ instructions in `task_5_5_ab_instructions.md`. Nothing is rated.
 - The new narrative does not help to spot a false positive: the cited features and their atypicality for the predicted class are the same as for a true positive, and confidence is a weak separator.
 - Limits: faithful to the model, not to the truth; the confidence is not calibrated on this split; no human study (both sheets are blank templates).
 
-#### One paragraph (Task 5.5)
+#### One paragraph (the narrative study)
 The class-relative narratives are more informative in the way we set out to measure: no "typical" reason is cited any more (it was 45% and 37% of the cited numeric features), each narrative cites about 2.6 features instead of 4.1, every statement is checked against the training flows and correct, and a calibrated confidence now sits next to the raw one (ECE 0.093 -> 0.070 and 0.115 -> 0.086), while the cue direction, which depends on the cue and not on the
 omission, still agrees with the model's general behaviour only 73-78% of the time. The check on false positives exposed a limit rather than a bug: the explanation of a false-positive Normal flow is as faithful to the model as that of a true attack (0.35-0.51 against 0.44-0.56), but it cites the same features, is no more atypical for the predicted class, and differs from a real alert only by a lower and still poorly
 calibrated confidence, so a narrative on its own does not give an analyst a reason to doubt a false alarm. What remains: a human rating of the old and the new wording (the A/B sheet), a way to bring information about doubt into the narrative (for example a measure of how far the flow sits from the class, or the open-set score) and a better calibration on the shifted split.
 
 ## Source: xai_faithfulness_40f_45f_48f.md
 
-### Task 5 Steps 1-2: SHAP additivity and faithfulness (XGBoost, official split, 5 seeds)
+### Explanation study Steps 1-2: SHAP additivity and faithfulness (XGBoost, official split, 5 seeds)
 
 Sample: 300 flows per predicted class + 200 flagged-Unknown flows per model and source (official test = known + zero-day flows; validation = block-grouped validation flows).
 
@@ -257,7 +257,7 @@ Comprehensiveness = the deletion drop; sufficiency = the original probability mi
 
 ## Source: xai_audit_40f_48f.md
 
-### Task 5 Steps 1 and 3: narrative audit through the dashboard path (XGBoost, official split, 5 seeds x 200 flows per pool)
+### Explanation study Steps 1 and 3: narrative audit through the dashboard path (XGBoost, official split, 5 seeds x 200 flows per pool)
 
 | check | 40f | 48f |
 |---|---|---|
@@ -335,7 +335,7 @@ Most frequent reasons:
 
 ## Source: narrative_test_40f_48f.md
 
-### Task 5.5 Step 1: classic against class-relative narratives (test flows, 5 seeds, mean +/- std)
+### Narrative study Step 1: classic against class-relative narratives (test flows, 5 seeds, mean +/- std)
 
 #### 40f
 
@@ -417,7 +417,7 @@ Failures other than the cue-direction check (f): 0.
 
 ## Source: narrative_falsepos_40f_48f.md
 
-### Task 5.5 Step 2: explanations of false-positive flows (official test, 5 seeds, 300 flows per group and model, mean +/- std)
+### Narrative study Step 2: explanations of false-positive flows (official test, 5 seeds, 300 flows per group and model, mean +/- std)
 
 FP-attack = true Normal predicted as an attack; FP-Fuzzers = true Normal predicted as Fuzzers; TN = true Normal predicted Normal; TP-Fuzzers = true Fuzzers predicted Fuzzers.
 
@@ -501,13 +501,13 @@ FP-attack = true Normal predicted as an attack; FP-Fuzzers = true Normal predict
 | FP-Fuzzers | sttl (100%), smean (52%), sbytes (51%), ct_dst_src_ltm (48%), ct_srv_dst (39%) |
 | TP-Fuzzers | sttl (100%), sbytes (62%), smean (38%), dbytes (36%), service (33%) |
 
-## Source: task_5_protocol.md
+## Source: explanations_protocol.md
 
-### Task 5 protocol (declared before any Task 5 result was produced)
+### Explanation study protocol (declared before any the explanation study result was produced)
 
-Novelty 2: human-centered, actionable explanations. XGBoost, flat model, official split, scheme `current`, ZERO-SHOT throughout. Models are trained exactly as in Task 3 (block-grouped training / validation split of the training file,
+Novelty 2: human-centered, actionable explanations. XGBoost, flat model, official split, scheme `current`, ZERO-SHOT throughout. Models are trained exactly as in the feature-tier study (block-grouped training / validation split of the training file,
 seed 42-46 for the split and the model; `pipelines/run_tier_study.prepare`), pools 40 (base), 45 (`full_no_ttl`) and 48 (full), and the 30- and 15-feature mutual-information tiers of each pool (shared blockval rankings), i.e. nine configurations x 5 seeds.
-Mean and std over seeds. Explanation stability is not repeated (Task 3). Nothing is selected on the official-test labels; the test labels are used only to report.
+Mean and std over seeds. Explanation stability is not repeated (the feature-tier study). Nothing is selected on the official-test labels; the test labels are used only to report.
 
 #### Samples (stratified, seeded; rule and size stated here)
 - A flow's stratum is its predicted class (6 classes: Normal, Overlap-Group-1, Exploits, Fuzzers, Generic, Reconnaissance) or **Unknown** when the open-set rule flags it (max-softmax below the 5% false-Unknown threshold fixed on the block-grouped validation split, the
@@ -551,16 +551,16 @@ The FastAPI app (`dashboard.backend.main:app`) is called with `data/samples/samp
 the prediction and explanation view is taken; otherwise the report says the frontend was not run.
 
 #### Step 5 (small): human audit sheet
-`results/task_5_human_audit_sheet.csv`: 30 narratives stratified over the predicted classes and Unknown, with blank rating columns (understandable, actionable, agrees with the rater's judgement of the flow). It is a template only; no rating is filled in or reported.
+`results/explanations_human_audit_sheet.csv`: 30 narratives stratified over the predicted classes and Unknown, with blank rating columns (understandable, actionable, agrees with the rater's judgement of the flow). It is a template only; no rating is filled in or reported.
 
 #### Not claimed
 The explanations describe the model, not the traffic: a faithful explanation of a wrong prediction is still a wrong prediction. Teammates' model families are not run or quoted here.
 
-## Source: task_5_5_protocol.md
+## Source: narratives_protocol.md
 
-### Task 5.5 protocol (declared before any Task 5.5 result was produced)
+### Narrative study protocol (declared before any the narrative study result was produced)
 
-A more informative narrative and a faithfulness check on false-positive explanations. XGBoost, flat model, official split, scheme `current`, ZERO-SHOT, models trained as in Tasks 3 and 5 (block-grouped training / validation), seeds 42-46, pools 40 (base) and 48 (full), whole pool.
+A more informative narrative and a faithfulness check on false-positive explanations. XGBoost, flat model, official split, scheme `current`, ZERO-SHOT, models trained as in the feature-tier and explanation studies (block-grouped training / validation), seeds 42-46, pools 40 (base) and 48 (full), whole pool.
 Nothing about the model or SHAP changes; only the sentence built from them. The existing generator stays: `narrative.style: classic` (the default, unchanged behaviour) or `class_relative`.
 
 #### The class-relative rule (the only rule that is evaluated; no variants are tried on the held-out sample)
@@ -571,23 +571,23 @@ For a flow predicted as class c, the narrative still cites the positive-SHAP fea
 2. **Categorical feature** (proto, service, state): `<description>=<category> (seen in A% of all flows; seen in B% of <c> flows)` with A / B the shares of all / class-c training flows with that category (the class part omitted for Unknown flows).
 3. If no feature is left after omission the narrative says what the classic one says for no reasons ("No single feature dominated the decision; the pattern was diffuse across many features.").
 The first sentence, the suggested action and everything else are unchanged. **Calibrated confidence (class_relative style only):** after the first sentence, `Calibrated estimate: about X% (the model's raw probability tends to be too high on new traffic; treat both numbers as estimates, not guarantees).`, with
-X = 100 x the predicted-class probability after temperature scaling (T in [0.25, 5] fitted by negative log-likelihood on the block-grouped validation split of the model, as in Task 4.5); the raw value is kept in the first sentence. ECE (15 bins) of the raw and calibrated probabilities on the known official-test flows is reported per seed.
+X = 100 x the predicted-class probability after temperature scaling (T in [0.25, 5] fitted by negative log-likelihood on the block-grouped validation split of the model, as in the open-set boost study); the raw value is kept in the first sentence. ECE (15 bins) of the raw and calibrated probabilities on the known official-test flows is reported per seed.
 Percentiles and quartiles come from 1,001 quantile grid points per feature (all training flows and each class's flows), saved with the model (`class_reference_<set>.npz`, no pickle).
 
 #### Development and evaluation discipline
 - The rule above is fixed. It is developed and inspected only on a sample of **block-grouped validation flows** (training file) of model seed 42, pool 40; any change after that inspection is limited to correctness defects (a wrong number or a broken sentence), is listed in the report, and is never made to move a metric.
-- It is then evaluated **once** on a fresh official-test sample drawn with sampling seed 5000 + the model seed (Task 5 used the model seed itself, so the flows differ): per model 25 flows for each of the six predicted classes, 50 flagged-Unknown flows and 30 **false-positive Normal flows** (true Normal flows predicted as an attack and not flagged Unknown, drawn from the whole test file and
+- It is then evaluated **once** on a fresh official-test sample drawn with sampling seed 5000 + the model seed (the explanation study used the model seed itself, so the flows differ): per model 25 flows for each of the six predicted classes, 50 flagged-Unknown flows and 30 **false-positive Normal flows** (true Normal flows predicted as an attack and not flagged Unknown, drawn from the whole test file and
   excluded from the class strata), 230 flows, through the dashboard's `PredictionService` once with each style (the two services load the same saved artifacts).
 
 #### Step 1 primary metrics (held-out sample, pools 40 and 48, overall and per predicted class, classic against class-relative)
 1. The share of cited numeric features that read "typical", and the number of features cited per narrative (mean; share of narratives that cite no numeric feature).
-2. The cue-direction agreement (f), definition unchanged from Task 5 (sign of the Spearman correlation between the value and the SHAP value of the predicted class on 3,000 training rows against the cue direction; |rho| < 0.10 = no monotone relation; "typical" = no direction claimed).
-3. Checks (a)-(e) as in Task 5, which must stay at 1.000; and a new check **(g)** on the new content: the percentages and the interquartile statement in every clause equal an independent computation from the raw training frame (tolerance 1 percentage point; the interquartile statement exact), and the categorical shares likewise. Also the quoted raw confidence is unchanged and the calibrated number
+2. The cue-direction agreement (f), definition unchanged from the explanation study (sign of the Spearman correlation between the value and the SHAP value of the predicted class on 3,000 training rows against the cue direction; |rho| < 0.10 = no monotone relation; "typical" = no direction claimed).
+3. Checks (a)-(e) as in the explanation study, which must stay at 1.000; and a new check **(g)** on the new content: the percentages and the interquartile statement in every clause equal an independent computation from the raw training frame (tolerance 1 percentage point; the interquartile statement exact), and the categorical shares likewise. Also the quoted raw confidence is unchanged and the calibrated number
    equals 100 x the temperature-scaled probability (1 percentage point).
 
 #### Step 2: false-positive explanations (official test, pools 40 and 48, 5 seeds)
 Groups, 300 flows each per model (all of them when fewer): **FP-attack** (true Normal predicted as any attack class), **FP-Fuzzers** (true Normal predicted as Fuzzers), **TN** (true Normal predicted Normal) and **TP-Fuzzers** (true Fuzzers predicted Fuzzers); flows flagged Unknown are included in their group and counted.
-- (a) Deletion faithfulness as in Task 5: top-SHAP minus random removal of 5 features, median baseline (and a random training row), probability drop and flip rate, bootstrap interval over flows per seed; declared reading as in Task 5 (at least 0.05 with the interval above 0 in all 5 seeds).
+- (a) Deletion faithfulness as in the explanation study: top-SHAP minus random removal of 5 features, median baseline (and a random training row), probability drop and flip rate, bootstrap interval over flows per seed; declared reading as in the explanation study (at least 0.05 with the interval above 0 in all 5 seeds).
 - (b) The features the narratives cite per group (classic: the positive top-5 features; class-relative: the numeric ones that survive the omission rule) with the share of narratives citing each.
 - (c) Raw and calibrated confidence: mean, share at or above 0.90, share flagged Unknown; and whether anything separates a false positive from a correct flow: AUROC (positive = FP-Fuzzers, negative = TP-Fuzzers, and FP-attack against TN) of the raw confidence (1 - confidence), of the calibrated confidence and of the **class-atypicality** of the narrative = the share of its cited numeric features that lie outside the predicted class's interquartile range (computed from the same reference the narrative uses).
 - A plain-language reading of whether an analyst would get a usable reason to doubt a false positive is given from these numbers only; no human result is claimed.

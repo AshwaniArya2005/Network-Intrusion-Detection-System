@@ -2,16 +2,16 @@
 
 The tier study and the stability of SHAP explanations across tiers: conclusion, tables and the declared protocol. The shared rules and commands for running the same study with another model are in `PROTOCOL.md` and `ONBOARDING.md`; the XGBoost SHAP files used for the cross-model comparison are `metrics/xgboost/shap_importance_xgboost_<N>f.csv` and `shap_boot_xgboost_<N>f.npz`.
 
-File names mentioned inside this file (for example `task_6_tables.md`, `results/task_5_protocol.md` or `xai_audit_40f_example_failures.csv`) are the `Source:` sections of this file or of one of the other numbered files, or files that were removed in the cleanup and are recoverable from the git tags `pre-cleanup-2026-10` and `pre-lean-2026-10`. Text under a `Source:` heading is the original file, unchanged except that its headings are demoted two levels. Two kinds of file moved after the originals were written: the feature rankings are now in `results/rankings/` and the A/B rating sheet, key and instructions in `results/rating/`.
+File names mentioned inside this file (for example `cross_dataset_tables.md`, `results/explanations_protocol.md` or `xai_audit_40f_example_failures.csv`) are the `Source:` sections of this file or of one of the other numbered files, or files that were removed in the cleanup and are recoverable from the git tags `pre-cleanup-2026-10` and `pre-lean-2026-10`. Text under a `Source:` heading is the original file, unchanged except that its headings are demoted two levels. Two kinds of file moved after the originals were written: the feature rankings are now in `results/rankings/` and the A/B rating sheet, key and instructions in `results/rating/`.
 
-## Source: task_3_conclusion.md
+## Source: feature_tiers_conclusion.md
 
-### Task 3 conclusion: feature selection and explanation consistency (novelty 3), XGBoost
+### Feature-tier study conclusion: feature selection and explanation consistency (novelty 3), XGBoost
 
 Zero-shot throughout (training data only); official split, scheme `current`; seeds 42-46, mean +/- std. Training / validation come from contiguous
 blocks of the training file (1,000-row blocks, 200-row gaps), because a random validation split shares neighbouring flows with the training rows and is
-optimistic. Protocol declared before any result: `results/task_3_protocol.md` (two amendments: the other model families are teammates' and are not run here).
-Tables: `task_3_tables.md` (sections `tier_summary_xgboost.md` for Step 1 and `stability_xgboost.md` for Step 2; per-tier CSVs `tier_summary_xgboost_<N>f.csv`, `stability_xgboost_<N>f.csv`). Steps 3 and 4 (other model families, cross-model agreement) are not part of
+optimistic. Protocol declared before any result: `results/feature_tiers_protocol.md` (two amendments: the other model families are teammates' and are not run here).
+Tables: `feature_tiers_tables.md` (sections `tier_summary_xgboost.md` for Step 1 and `stability_xgboost.md` for Step 2; per-tier CSVs `tier_summary_xgboost_<N>f.csv`, `stability_xgboost_<N>f.csv`). Steps 3 and 4 (other model families, cross-model agreement) are not part of
 this work package; `pipelines/run_tier_study.py --model <type>` and `scripts/cross_model_agreement.py` are ready, with the same rankings, seeds and splits.
 
 #### The claim for novelty 3
@@ -43,7 +43,7 @@ open-set detection on the 45 / 48-feature pools (open-set AUROC 0.83 -> 0.76). C
 own std is large). All drops stay below the 0.02 practical bound. The det95 operating point is chosen on the block-grouped validation split.
 
 - **Which extra official columns survive.** The window-count ct_* columns (seven in the 45 / 48 pools) fall to 4 / 2 at 30 features and to **none at 20 or 15** on every pool; the three TTL
-  columns stay in every tier of the 48 pool. The within-capture few-shot result of Task 2.5 / 2.6 depended on the window-count ct_* columns, so it does not carry to the 20 / 15-feature tiers.
+  columns stay in every tier of the 48 pool. The within-capture few-shot result of the shift and few-shot study and the leakage check depended on the window-count ct_* columns, so it does not carry to the 20 / 15-feature tiers.
 - **Ranked vs random vs worst-N.** The mutual-information ranking beats 10 random subsets only at 30 features on the 40-feature pool (ranked 0.7141 vs random 0.7049 +/- 0.0035, z 2.68);
   elsewhere it is indistinguishable from random (z -0.6 to 1.2), and the worst-N subsets are far worse (macro F1 0.47-0.62). Random subsets at 20 / 15 features vary widely (std up to 0.06):
   which features matter is real, the ranking does not reliably pick better-than-random sets, as in the earlier study.
@@ -80,7 +80,7 @@ validation predicts the test FPR to within 0.03-0.05). Whether other model famil
 
 ## Source: tier_summary_xgboost.md
 
-### Task 3 Step 1: tier study, xgboost (official split, block-grouped validation, mean +/- std over 5 seeds)
+### Feature-tier study Step 1: tier study, xgboost (official split, block-grouped validation, mean +/- std over 5 seeds)
 
 Ranked top-N tiers (mutual information on the training split). `det95 FPR` is the 95%-detection operating point chosen on the BLOCK-GROUPED validation split. The pooled random split is a best case: it shares neighbouring flows with its training rows and is optimistic. `noise` / `practical`: macro F1 drop from the full pool within 2 x seed std / within 0.02.
 
@@ -139,7 +139,7 @@ Ranked vs 10 random subsets vs worst-N (48f, macro F1):
 
 ## Source: stability_xgboost.md
 
-### Task 3 Step 2: explanation stability, xgboost (mean over seeds 42-46; zero-shot)
+### Feature-tier study Step 2: explanation stability, xgboost (mean over seeds 42-46; zero-shot)
 
 Tier agreement = SHAP importance of two tiers of the same seed; noise floor = the same tier under two seeds. Spearman rank correlation / cosine / top-10 Jaccard. Stability is evidence about the explanations, not about the cause of the official-split shift.
 
@@ -204,9 +204,9 @@ Tier agreement: Spearman 0.916-0.992 (mean 0.952), cosine 0.978-0.999, top-10 Ja
 | same_tier_seeds | 20 | 20 | 20 | 0.968 +/- 0.018 | 0.991 +/- 0.005 | 0.821 +/- 0.079 |
 | same_tier_seeds | 15 | 15 | 15 | 0.946 +/- 0.033 | 0.992 +/- 0.005 | 0.873 +/- 0.088 |
 
-## Source: task_3_protocol.md
+## Source: feature_tiers_protocol.md
 
-### Task 3 protocol (declared before any Task 3 result was produced)
+### Feature-tier study protocol (declared before any the feature-tier study result was produced)
 
 Novelty 3: feature selection and explanation consistency. Everything is ZERO-SHOT (training data only), official split, scheme `current`.
 
@@ -214,7 +214,7 @@ Novelty 3: feature selection and explanation consistency. Everything is ZERO-SHO
 - **Block-grouped validation.** The training / validation split of every run is built from contiguous blocks of the training file
   (block size 1,000 rows, 200-row gap on each side of every boundary, `data.val_size` = 15% of the blocks;
   `pipelines/train_pipeline.block_validation_splits`). A random validation split shares neighbouring flows with the training rows and is
-  optimistic (Task 2.6); it is used only for comparison. The validation-chosen 95%-detection operating point (`det95`) is therefore chosen
+  optimistic (the leakage check); it is used only for comparison. The validation-chosen 95%-detection operating point (`det95`) is therefore chosen
   on the block-grouped validation split; the random-validation counterpart is quoted from the earlier headline / operating-point files for
   the full pools (40 / 48 features; the 45-feature pool is run once with `run_operating_point.py`).
 - **Seeds 42-46** change the model seed and the block draw (which blocks are validation); the official test file is fixed.
@@ -259,13 +259,13 @@ three models), averaged over the seeds. Whether agreement drops for the smaller 
 #### Not claimed
 Stability is evidence about the explanations, not about the cause of the official-split shift, which remains undetermined.
 
-#### Amendment (declared before any Task 3 result was read)
+#### Amendment (declared before any the feature-tier study result was read)
 Logistic regression belongs to a teammate's work package and is **not part of this task's results**: no logistic-regression tier study, stability or
 agreement results are produced or kept. Its code path (`model_config`, the declared `max_iter` 300, the LinearExplainer route) stays in the repository and
 is exercised by tests only. Steps 3 and 4 therefore compare XGBoost with the random forest (the Step 4 agreement is between those two models; the script
 accepts any number of models). The random forest is run with the declared settings above.
 
-#### Second amendment (declared before any Task 3 result was read)
+#### Second amendment (declared before any the feature-tier study result was read)
 The other model families (logistic regression, random forest) are teammates' work packages; this task's results are **XGBoost only**. Steps 3 and 4 (other
 model families, cross-model agreement) are therefore not run here: no logistic-regression or random-forest tier, stability or agreement results are
 produced or kept. The code for them (`model_config`, the declared per-family parameters, the SHAP paths, `scripts/cross_model_agreement.py`) stays in the

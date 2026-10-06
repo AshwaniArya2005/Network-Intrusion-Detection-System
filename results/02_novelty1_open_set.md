@@ -2,16 +2,16 @@
 
 Open-set studies and their boosts: conclusions, tables and the declared protocols.
 
-File names mentioned inside this file (for example `task_6_tables.md`, `results/task_5_protocol.md` or `xai_audit_40f_example_failures.csv`) are the `Source:` sections of this file or of one of the other numbered files, or files that were removed in the cleanup and are recoverable from the git tags `pre-cleanup-2026-10` and `pre-lean-2026-10`. Text under a `Source:` heading is the original file, unchanged except that its headings are demoted two levels. Two kinds of file moved after the originals were written: the feature rankings are now in `results/rankings/` and the A/B rating sheet, key and instructions in `results/rating/`.
+File names mentioned inside this file (for example `cross_dataset_tables.md`, `results/explanations_protocol.md` or `xai_audit_40f_example_failures.csv`) are the `Source:` sections of this file or of one of the other numbered files, or files that were removed in the cleanup and are recoverable from the git tags `pre-cleanup-2026-10` and `pre-lean-2026-10`. Text under a `Source:` heading is the original file, unchanged except that its headings are demoted two levels. Two kinds of file moved after the originals were written: the feature rankings are now in `results/rankings/` and the A/B rating sheet, key and instructions in `results/rating/`.
 
-## Source: task_4_conclusion.md
+## Source: open_set_conclusion.md
 
-### Task 4 conclusion: open-set / zero-day detection under an honest protocol (novelty 1), XGBoost
+### Open-set study conclusion: open-set / zero-day detection under an honest protocol (novelty 1), XGBoost
 
-ZERO-SHOT throughout; official split, scheme `current`, flat model; seeds 42-46, mean +/- std. Protocol declared before any result: `results/task_4_protocol.md`.
+ZERO-SHOT throughout; official split, scheme `current`, flat model; seeds 42-46, mean +/- std. Protocol declared before any result: `results/open_set_protocol.md`.
 Thresholds come only from KNOWN validation flows (block-grouped, 1,000-row blocks / 200-row gaps; threshold half vs calibration half) at a **5% false-Unknown** target; the
 combination rule and the "best" score were chosen on pseudo-unknowns carved from known classes (Reconnaissance / Generic held out of inner models), never on the zero-day flows.
-Tables: `task_4_tables.md` (sections `open_set_step1_40f_45f_48f.md`, `open_set_step2_40f_48f.md` + `open_set_step2_sources_40f_45f_48f.md`, `open_set_step3_40f_45f_48f.md`, `open_set_step4_*.md`; CSVs `open_set_step1_<N>f.csv`, `open_set_step2_<N>f.csv`, `open_set_step4_*.csv`).
+Tables: `open_set_tables.md` (sections `open_set_step1_40f_45f_48f.md`, `open_set_step2_40f_48f.md` + `open_set_step2_sources_40f_45f_48f.md`, `open_set_step3_40f_45f_48f.md`, `open_set_step4_*.md`; CSVs `open_set_step1_<N>f.csv`, `open_set_step2_<N>f.csv`, `open_set_step4_*.csv`).
 Zero-day flows after deduplication (Worms + Shellcode): 1,627 = Shellcode 1,456 (89.5%) + Worms 171. The earlier "67-75% detection at 26-28% false alarms" came from a threshold tuned on the
 zero-day flows and is withdrawn.
 
@@ -103,12 +103,12 @@ against 8-17% on validation. Confidence is not reliable under the official-split
 
 ---
 
-### Task 4.5: trying to improve zero-day detection (novelty 1, ZERO-SHOT)
+### Open-set boost study: trying to improve zero-day detection (novelty 1, ZERO-SHOT)
 
-Protocol declared before any result: `results/task_4_5_protocol.md`. Same evaluation as above: thresholds at 5% false-Unknown from known block-grouped validation, the nine-class rotation, the Overlap-Group-1 trio
+Protocol declared before any result: `results/open_set_boost_protocol.md`. Same evaluation as above: thresholds at 5% false-Unknown from known block-grouped validation, the nine-class rotation, the Overlap-Group-1 trio
 and Worms + Shellcode, seeds 42-46. Score selection used the pseudo-unknown validation only (inner models without Reconnaissance or Generic), never the real zero-day classes. Declared rule: a score **clearly beats**
 max-softmax when its rotation-mean detection is at least 0.05 higher, its rotation-mean AUROC is not lower, it is better in at least 4 of 5 seeds and its Worms + Shellcode detection is not more than 0.02 lower.
-Tables: `task_4_5_tables.md` (one section `open_set_boost_<idea>_40f_48f.md` for each of calibration, perclass, ensemble, distance, oe, combo and iforest; the pseudo-unknown selection scores are `open_set_boost_selection_<N>f_scores.csv`).
+Tables: `open_set_boost_tables.md` (one section `open_set_boost_<idea>_40f_48f.md` for each of calibration, perclass, ensemble, distance, oe, combo and iforest; the pseudo-unknown selection scores are `open_set_boost_selection_<N>f_scores.csv`).
 
 #### The updated claim for novelty 1
 Cheap changes to the confidence score do not make zero-day detection good. Under an honest protocol the best result is a rank-average of ensemble mutual information and an Unknown-class probability, which raises the
@@ -120,7 +120,7 @@ Per-class thresholds, ensemble variance, and kNN / Mahalanobis distance are wors
 | idea | score | 40 features | 48 features | clearly beats max-softmax (40, 48) |
 |---|---|---|---|---|
 | baseline | max-softmax | 0.769 / 0.213; W+S 0.224 | 0.774 / 0.234; W+S 0.334 | |
-| baseline (Task 4) | entropy | 0.810 / 0.266; W+S 0.159 | 0.811 / 0.283; W+S 0.294 | no, no |
+| baseline (the open-set study) | entropy | 0.810 / 0.266; W+S 0.159 | 0.811 / 0.283; W+S 0.294 | no, no |
 | 1 calibration | max-softmax, temperature-scaled | 0.780 / 0.230; W+S 0.232 | 0.787 / 0.260; W+S 0.347 | no, no |
 | 1 calibration | entropy, temperature-scaled | 0.819 / 0.276; W+S 0.165 | 0.826 / 0.304; W+S 0.317 | no, **yes** |
 | 2 per-class thresholds | max-softmax / entropy | 0.705 / 0.160; 0.742 / 0.216 | 0.687 / 0.170; 0.717 / 0.253 | no, no |
@@ -138,7 +138,7 @@ more normal than normal.
 | score | 40 features | 48 features | clearly beats max-softmax (40, 48) |
 |---|---|---|---|
 | max-softmax of the model trained without them (baseline) | 0.730 / 0.128; W+S 0.248 | 0.754 / 0.209; W+S 0.416 | |
-| entropy of that model (Task 4 baseline) | 0.765 / 0.200; W+S 0.462 | 0.782 / 0.318; W+S 0.598 | yes, yes (a baseline, not a new idea) |
+| entropy of that model (the open-set study baseline) | 0.765 / 0.200; W+S 0.462 | 0.782 / 0.318; W+S 0.598 | yes, yes (a baseline, not a new idea) |
 | P(Unknown) of the Unknown-class model | 0.842 / 0.179; W+S 0.049 | 0.868 / 0.239; W+S 0.101 | no, no |
 | max-softmax of the Unknown-class model | 0.754 / 0.195; W+S 0.230 | 0.752 / 0.212; W+S 0.390 | yes, no |
 | **rank-average of ensemble mutual information and P(Unknown)** (chosen on pseudo-unknown validation, both pools) | 0.794 / **0.268**; W+S 0.236 | 0.810 / **0.335**; W+S 0.466 | **yes, yes** |
@@ -165,24 +165,24 @@ send 4-6% of Normal flows to review and the confident-alert FPR still stays at 0
 
 #### Isolation-forest check
 The sign is right: on the official test the isolation-forest score ranks known attacks above Normal flows (AUROC 0.67 on 40 features, 0.72 on 48; the same over the nine rotation runs). The zero-day flows split: Worms look more anomalous than a typical known test flow (mean percentile 0.68 / 0.71) but
-Shellcode looks like an inlier (0.41 / 0.47), and Shellcode is 89.5% of the set, which is why the Task 4 union AUROC was below 0.5. The kNN score shows the same split (0.63 / 0.52 and 0.39 / 0.29); the Mahalanobis score ranks attacks below Normal (AUROC 0.41 / 0.43) and does not look
+Shellcode looks like an inlier (0.41 / 0.47), and Shellcode is 89.5% of the set, which is why the open-set study union AUROC was below 0.5. The kNN score shows the same split (0.63 / 0.52 and 0.39 / 0.29); the Mahalanobis score ranks attacks below Normal (AUROC 0.41 / 0.43) and does not look
 like an anomaly score on this data.
 
 #### What did not work, and the hypothesis
 - Hypothesis (a guess): rotation mean detection rises from about 21% to 30-35%. **Partly:** 0.268 / 0.335 for the combination in the outlier-exposure setting, 0.276 / 0.304 for calibrated entropy in the full known set; but the first uses a smaller known set with its own lower baseline
   and the gain over entropy is 0.02-0.07.
 - Per-class thresholds, ensemble variance and mutual information on their own, kNN and Mahalanobis distance, and P(Unknown) alone are not better than max-softmax at the declared threshold.
-- The pseudo-unknown validation chose the same pair on both pools, so it was never tested on a case where it picks a bad one (as it did for the isolation-forest combination in Task 4).
+- The pseudo-unknown validation chose the same pair on both pools, so it was never tested on a case where it picks a bad one (as it did for the isolation-forest combination in the open-set study).
 - The review queue does not lower the alert FPR for any score.
 
-#### One paragraph (Task 4.5)
+#### One paragraph (the open-set boost study)
 Of six ideas for improving zero-day detection, only two produce a gain that holds over seeds: temperature-scaled entropy in the full known set (detection 0.304 against 0.234 for max-softmax on 48 features) and a rank-average of ensemble disagreement and an Unknown-class probability trained
 with two known classes as stand-ins (0.27 / 0.34 against 0.13 / 0.21 for max-softmax in the same, smaller setting). Both gains depend on the held-out class (Exploits, Generic, Reconnaissance and Worms gain; Shellcode and Fuzzers do not), the second removes two known attack classes from what the model can recognise,
 and neither changes what the analyst receives: most of the flagged flows are still known traffic and the confidently wrong Normal alerts are not reduced. Distance-based scores fail because the most common zero-day class sits inside the training data, and one fitted anomaly score is not a reliable guide to novelty on this capture.
 
 ## Source: open_set_step1_40f_45f_48f.md
 
-### Task 4 Step 1: open-set scoring functions (XGBoost, official split, block-grouped validation, threshold at 5% false-Unknown, mean +/- std over 5 seeds)
+### Open-set study Step 1: open-set scoring functions (XGBoost, official split, block-grouped validation, threshold at 5% false-Unknown, mean +/- std over 5 seeds)
 
 Zero-day = Worms + Shellcode (Shellcode is 89.5% of the 1,627 flows). Threshold fixed on the known THRESHOLD half of the validation flows; `false-Unknown cal half` is the held-out validation half, `false-Unknown test` the official test known flows (the gap to 5% is the cost of the shift). `chosen` = candidates after the rule choice; `*` = best on pseudo-unknown validation (used downstream), `+` = best on the real zero-day AUROC (reported only). Pseudo-unknown AUROC = validation flows of Reconnaissance / Generic held out of an inner model.
 
@@ -242,7 +242,7 @@ Zero-day = Worms + Shellcode (Shellcode is 89.5% of the 1,627 flows). Threshold 
 
 ## Source: open_set_step2_40f_48f.md
 
-### Task 4 Step 2: leave-one-attack-class-out (XGBoost, official split, threshold at 5% false-Unknown on block-grouped known validation, mean +/- std over 5 seeds)
+### Open-set study Step 2: leave-one-attack-class-out (XGBoost, official split, threshold at 5% false-Unknown on block-grouped known validation, mean +/- std over 5 seeds)
 
 Each class is held out in turn (never trained on); `best` = the pool's pseudo-unknown-selected score, compared with `msp`. Overlap-Group-1 members are held out one at a time (siblings stay known and still form the merged group); the trio is also held out as a unit. `exact twin share` = share of the class's flows with an identical feature vector among the known flows.
 
@@ -306,7 +306,7 @@ Each class is held out in turn (never trained on); `best` = the pool's pseudo-un
 
 ## Source: open_set_step2_sources_40f_45f_48f.md
 
-### Task 4 Step 2 (continued): known classes behind the false-Unknown alarms
+### Open-set study Step 2 (continued): known classes behind the false-Unknown alarms
 
 #### 40f: where the false-Unknown alarms come from (Worms + Shellcode held out, threshold at 5%, mean over 5 seeds)
 
@@ -400,7 +400,7 @@ Each class is held out in turn (never trained on); `best` = the pool's pseudo-un
 
 ## Source: open_set_step3_40f_45f_48f.md
 
-### Task 4 Step 3: alert-level FPR and the review queue (XGBoost, official split, mean +/- std over 5 seeds)
+### Open-set study Step 3: alert-level FPR and the review queue (XGBoost, official split, mean +/- std over 5 seeds)
 
 Alert FPR OFF = Normal flows predicted as any attack class. Alert FPR ON = Normal flows predicted as an attack class OR sent to review as Unknown (it can only be higher). Confident-alert FPR = Normal flows called an attack and NOT sent to review (the alerts that skip the queue). Review rate = Normal flows sent to Unknown (the cost). Zero-day catch = zero-day flows flagged Unknown or called an attack. The declared operating point is the 5% target, chosen on validation only.
 
@@ -496,7 +496,7 @@ Alert FPR OFF = Normal flows predicted as any attack class. Alert FPR ON = Norma
 
 ## Source: open_set_step4_40f_48f_41f_38f_48f_t30_48f_t15.md
 
-### Task 4 Step 4: does ct_* carry the open-set gain? (XGBoost, official split, threshold at 5% false-Unknown, mean +/- std over 5 seeds)
+### Open-set study Step 4: does ct_* carry the open-set gain? (XGBoost, official split, threshold at 5% false-Unknown, mean +/- std over 5 seeds)
 
 msp detection: 40f 0.223, 48f 0.333 (gap 0.110); without the 7 window-count ct_* columns 0.172 (drop 0.161). Declared reading: **confirmed**.
 
@@ -517,7 +517,7 @@ msp detection: 40f 0.223, 48f 0.333 (gap 0.110); without the 7 window-count ct_*
 
 ## Source: open_set_boost_calibration_40f_48f.md
 
-### Task 4.5: calibration
+### Open-set boost study: calibration
 
 #### calibration (40f, mean over seeds 42-46)
 
@@ -590,7 +590,7 @@ Baseline for the verdict: `msp`. Thresholds at 5% false-Unknown on the known thr
 | msp_cal | 372 of 1456 | 6 of 171 | 427 of 7590 | 310 of 4810 | 139 of 3418 | 109 of 2469 | 224 of 1694 | 52 of 438 | 42 of 345 | 1785 of 33832 | 0.111 |
 | entropy_cal | 264 of 1456 | 4 of 171 | 250 of 7590 | 215 of 4810 | 103 of 3418 | 121 of 2469 | 208 of 1694 | 95 of 438 | 61 of 345 | 249 of 33832 | 0.179 |
 
-##### Alert FPR and the review queue at the 5% target (Task 4 Step 3 measures; Worms + Shellcode held out)
+##### Alert FPR and the review queue at the 5% target (the open-set study Step 3 measures; Worms + Shellcode held out)
 
 | score | alert FPR off | alert FPR on | confident-alert FPR | review rate on Normal | false alerts that skip review | zero-day catch | zero-day flagged Unknown |
 |---|---|---|---|---|---|---|---|
@@ -686,7 +686,7 @@ Baseline for the verdict: `msp`. Thresholds at 5% false-Unknown on the known thr
 | msp_cal | 554 of 1456 | 9 of 171 | 319 of 7590 | 456 of 4810 | 117 of 3418 | 108 of 2469 | 235 of 1694 | 93 of 438 | 83 of 345 | 987 of 33832 | 0.201 |
 | entropy_cal | 510 of 1456 | 6 of 171 | 263 of 7590 | 355 of 4810 | 100 of 3418 | 127 of 2469 | 242 of 1694 | 118 of 438 | 96 of 345 | 253 of 33832 | 0.264 |
 
-##### Alert FPR and the review queue at the 5% target (Task 4 Step 3 measures; Worms + Shellcode held out)
+##### Alert FPR and the review queue at the 5% target (the open-set study Step 3 measures; Worms + Shellcode held out)
 
 | score | alert FPR off | alert FPR on | confident-alert FPR | review rate on Normal | false alerts that skip review | zero-day catch | zero-day flagged Unknown |
 |---|---|---|---|---|---|---|---|
@@ -713,7 +713,7 @@ Baseline for the verdict: `msp`. Thresholds at 5% false-Unknown on the known thr
 
 ## Source: open_set_boost_perclass_40f_48f.md
 
-### Task 4.5: perclass
+### Open-set boost study: perclass
 
 #### perclass (40f, mean over seeds 42-46)
 
@@ -786,7 +786,7 @@ Baseline for the verdict: `msp`. Thresholds at 5% false-Unknown on the known thr
 | msp_pc | 341 of 1456 | 7 of 171 | 438 of 7590 | 431 of 4810 | 169 of 3418 | 106 of 2469 | 161 of 1694 | 23 of 438 | 19 of 345 | 2896 of 33832 | 0.081 |
 | entropy_pc | 540 of 1456 | 11 of 171 | 488 of 7590 | 443 of 4810 | 195 of 3418 | 129 of 2469 | 168 of 1694 | 30 of 438 | 21 of 345 | 2810 of 33832 | 0.123 |
 
-##### Alert FPR and the review queue at the 5% target (Task 4 Step 3 measures; Worms + Shellcode held out)
+##### Alert FPR and the review queue at the 5% target (the open-set study Step 3 measures; Worms + Shellcode held out)
 
 | score | alert FPR off | alert FPR on | confident-alert FPR | review rate on Normal | false alerts that skip review | zero-day catch | zero-day flagged Unknown |
 |---|---|---|---|---|---|---|---|
@@ -866,7 +866,7 @@ Baseline for the verdict: `msp`. Thresholds at 5% false-Unknown on the known thr
 | msp_pc | 518 of 1456 | 12 of 171 | 391 of 7590 | 727 of 4810 | 134 of 3418 | 111 of 2469 | 185 of 1694 | 57 of 438 | 50 of 345 | 2782 of 33832 | 0.114 |
 | entropy_pc | 743 of 1456 | 25 of 171 | 446 of 7590 | 956 of 4810 | 171 of 3418 | 119 of 2469 | 176 of 1694 | 59 of 438 | 41 of 345 | 3035 of 33832 | 0.138 |
 
-##### Alert FPR and the review queue at the 5% target (Task 4 Step 3 measures; Worms + Shellcode held out)
+##### Alert FPR and the review queue at the 5% target (the open-set study Step 3 measures; Worms + Shellcode held out)
 
 | score | alert FPR off | alert FPR on | confident-alert FPR | review rate on Normal | false alerts that skip review | zero-day catch | zero-day flagged Unknown |
 |---|---|---|---|---|---|---|---|
@@ -877,7 +877,7 @@ Baseline for the verdict: `msp`. Thresholds at 5% false-Unknown on the known thr
 
 ## Source: open_set_boost_ensemble_40f_48f.md
 
-### Task 4.5: ensemble
+### Open-set boost study: ensemble
 
 #### ensemble (40f, mean over seeds 42-46)
 
@@ -963,7 +963,7 @@ Baseline for the verdict: `msp`. Thresholds at 5% false-Unknown on the known thr
 | ens_var | 145 of 1456 | 18 of 171 | 741 of 7590 | 363 of 4810 | 193 of 3418 | 139 of 2469 | 280 of 1694 | 40 of 438 | 15 of 345 | 1684 of 33832 | 0.045 |
 | ens_msp | 365 of 1456 | 6 of 171 | 437 of 7590 | 323 of 4810 | 139 of 3418 | 114 of 2469 | 218 of 1694 | 51 of 438 | 38 of 345 | 1962 of 33832 | 0.103 |
 
-##### Alert FPR and the review queue at the 5% target (Task 4 Step 3 measures; Worms + Shellcode held out)
+##### Alert FPR and the review queue at the 5% target (the open-set study Step 3 measures; Worms + Shellcode held out)
 
 | score | alert FPR off | alert FPR on | confident-alert FPR | review rate on Normal | false alerts that skip review | zero-day catch | zero-day flagged Unknown |
 |---|---|---|---|---|---|---|---|
@@ -1057,7 +1057,7 @@ Baseline for the verdict: `msp`. Thresholds at 5% false-Unknown on the known thr
 | ens_var | 339 of 1456 | 22 of 171 | 743 of 7590 | 913 of 4810 | 211 of 3418 | 152 of 2469 | 361 of 1694 | 77 of 438 | 52 of 345 | 1886 of 33832 | 0.076 |
 | ens_msp | 588 of 1456 | 11 of 171 | 369 of 7590 | 497 of 4810 | 125 of 3418 | 113 of 2469 | 251 of 1694 | 97 of 438 | 88 of 345 | 1283 of 33832 | 0.184 |
 
-##### Alert FPR and the review queue at the 5% target (Task 4 Step 3 measures; Worms + Shellcode held out)
+##### Alert FPR and the review queue at the 5% target (the open-set study Step 3 measures; Worms + Shellcode held out)
 
 | score | alert FPR off | alert FPR on | confident-alert FPR | review rate on Normal | false alerts that skip review | zero-day catch | zero-day flagged Unknown |
 |---|---|---|---|---|---|---|---|
@@ -1069,7 +1069,7 @@ Baseline for the verdict: `msp`. Thresholds at 5% false-Unknown on the known thr
 
 ## Source: open_set_boost_distance_40f_48f.md
 
-### Task 4.5: distance
+### Open-set boost study: distance
 
 #### distance (40f, mean over seeds 42-46)
 
@@ -1142,7 +1142,7 @@ Baseline for the verdict: `msp`. Thresholds at 5% false-Unknown on the known thr
 | knn | 16 of 1456 | 24 of 171 | 690 of 7590 | 317 of 4810 | 377 of 3418 | 42 of 2469 | 195 of 1694 | 73 of 438 | 62 of 345 | 1626 of 33832 | 0.012 |
 | maha | 9 of 1456 | 10 of 171 | 283 of 7590 | 285 of 4810 | 35 of 3418 | 23 of 2469 | 105 of 1694 | 12 of 438 | 10 of 345 | 2123 of 33832 | 0.007 |
 
-##### Alert FPR and the review queue at the 5% target (Task 4 Step 3 measures; Worms + Shellcode held out)
+##### Alert FPR and the review queue at the 5% target (the open-set study Step 3 measures; Worms + Shellcode held out)
 
 | score | alert FPR off | alert FPR on | confident-alert FPR | review rate on Normal | false alerts that skip review | zero-day catch | zero-day flagged Unknown |
 |---|---|---|---|---|---|---|---|
@@ -1222,7 +1222,7 @@ Baseline for the verdict: `msp`. Thresholds at 5% false-Unknown on the known thr
 | knn | 23 of 1456 | 22 of 171 | 468 of 7590 | 355 of 4810 | 462 of 3418 | 45 of 2469 | 205 of 1694 | 90 of 438 | 86 of 345 | 1587 of 33832 | 0.014 |
 | maha | 19 of 1456 | 6 of 171 | 205 of 7590 | 297 of 4810 | 66 of 3418 | 21 of 2469 | 94 of 1694 | 11 of 438 | 8 of 345 | 3394 of 33832 | 0.006 |
 
-##### Alert FPR and the review queue at the 5% target (Task 4 Step 3 measures; Worms + Shellcode held out)
+##### Alert FPR and the review queue at the 5% target (the open-set study Step 3 measures; Worms + Shellcode held out)
 
 | score | alert FPR off | alert FPR on | confident-alert FPR | review rate on Normal | false alerts that skip review | zero-day catch | zero-day flagged Unknown |
 |---|---|---|---|---|---|---|---|
@@ -1233,7 +1233,7 @@ Baseline for the verdict: `msp`. Thresholds at 5% false-Unknown on the known thr
 
 ## Source: open_set_boost_oe_40f_48f.md
 
-### Task 4.5: oe
+### Open-set boost study: oe
 
 #### oe (40f, mean over seeds 42-46)
 
@@ -1306,7 +1306,7 @@ Baseline for the verdict: `noP_msp`. Thresholds at 5% false-Unknown on the known
 | oe_pu | 69 of 1456 | 11 of 171 | 566 of 7590 | 112 of 4810 | 152 of 1694 | 53 of 438 | 45 of 345 | 57 of 33832 | 0.078 |
 | oe_msp | 368 of 1456 | 7 of 171 | 441 of 7590 | 342 of 4810 | 205 of 1694 | 32 of 438 | 31 of 345 | 2191 of 33832 | 0.108 |
 
-##### Alert FPR and the review queue at the 5% target (Task 4 Step 3 measures; Worms + Shellcode held out)
+##### Alert FPR and the review queue at the 5% target (the open-set study Step 3 measures; Worms + Shellcode held out)
 
 | score | alert FPR off | alert FPR on | confident-alert FPR | review rate on Normal | false alerts that skip review | zero-day catch | zero-day flagged Unknown |
 |---|---|---|---|---|---|---|---|
@@ -1402,7 +1402,7 @@ Baseline for the verdict: `noP_msp`. Thresholds at 5% false-Unknown on the known
 | oe_pu | 153 of 1456 | 11 of 171 | 573 of 7590 | 114 of 4810 | 169 of 1694 | 76 of 438 | 64 of 345 | 32 of 33832 | 0.153 |
 | oe_msp | 621 of 1456 | 14 of 171 | 397 of 7590 | 545 of 4810 | 255 of 1694 | 88 of 438 | 85 of 345 | 1547 of 33832 | 0.186 |
 
-##### Alert FPR and the review queue at the 5% target (Task 4 Step 3 measures; Worms + Shellcode held out)
+##### Alert FPR and the review queue at the 5% target (the open-set study Step 3 measures; Worms + Shellcode held out)
 
 | score | alert FPR off | alert FPR on | confident-alert FPR | review rate on Normal | false alerts that skip review | zero-day catch | zero-day flagged Unknown |
 |---|---|---|---|---|---|---|---|
@@ -1429,7 +1429,7 @@ Baseline for the verdict: `noP_msp`. Thresholds at 5% false-Unknown on the known
 
 ## Source: open_set_boost_combo_40f_48f.md
 
-### Task 4.5: combo
+### Open-set boost study: combo
 
 #### combo (40f, mean over seeds 42-46)
 
@@ -1515,7 +1515,7 @@ Baseline for the verdict: `noP_msp`. Thresholds at 5% false-Unknown on the known
 | oe_pu | 69 of 1456 | 11 of 171 | 566 of 7590 | 112 of 4810 | 152 of 1694 | 53 of 438 | 45 of 345 | 57 of 33832 | 0.078 |
 | combo | 334 of 1456 | 51 of 171 | 980 of 7590 | 321 of 4810 | 376 of 1694 | 59 of 438 | 52 of 345 | 1376 of 33832 | 0.107 |
 
-##### Alert FPR and the review queue at the 5% target (Task 4 Step 3 measures; Worms + Shellcode held out)
+##### Alert FPR and the review queue at the 5% target (the open-set study Step 3 measures; Worms + Shellcode held out)
 
 | score | alert FPR off | alert FPR on | confident-alert FPR | review rate on Normal | false alerts that skip review | zero-day catch | zero-day flagged Unknown |
 |---|---|---|---|---|---|---|---|
@@ -1625,7 +1625,7 @@ Baseline for the verdict: `noP_msp`. Thresholds at 5% false-Unknown on the known
 | ens_mi | 382 of 1456 | 21 of 171 | 742 of 7590 | 999 of 4810 | 360 of 1694 | 80 of 438 | 55 of 345 | 1921 of 33832 | 0.090 |
 | combo | 716 of 1456 | 41 of 171 | 957 of 7590 | 740 of 4810 | 496 of 1694 | 138 of 438 | 133 of 345 | 1248 of 33832 | 0.174 |
 
-##### Alert FPR and the review queue at the 5% target (Task 4 Step 3 measures; Worms + Shellcode held out)
+##### Alert FPR and the review queue at the 5% target (the open-set study Step 3 measures; Worms + Shellcode held out)
 
 | score | alert FPR off | alert FPR on | confident-alert FPR | review rate on Normal | false alerts that skip review | zero-day catch | zero-day flagged Unknown |
 |---|---|---|---|---|---|---|---|
@@ -1653,7 +1653,7 @@ Baseline for the verdict: `noP_msp`. Thresholds at 5% false-Unknown on the known
 
 ## Source: open_set_boost_iforest_40f_48f.md
 
-### Task 4.5: iforest
+### Open-set boost study: iforest
 
 #### isolation-forest sign check (40f, mean over seeds 42-46)
 
@@ -1679,9 +1679,9 @@ Worms + Shellcode held out.
 
 Known attacks vs Normal, averaged over the nine rotation runs: iforest AUROC 0.719; knn AUROC 0.625; maha AUROC 0.419.
 
-## Source: task_4_protocol.md
+## Source: open_set_protocol.md
 
-### Task 4 protocol (declared before any Task 4 result was produced)
+### Open-set study protocol (declared before any the open-set study result was produced)
 
 Novelty 1: open-set / zero-day detection. XGBoost, flat model (not the hierarchical scheme), official split, scheme `current`, ZERO-SHOT throughout
 (training data only), seeds 42-46, mean and std.
@@ -1739,15 +1739,15 @@ window-count columns lowers the `msp` detection by at least half of the 40 -> 48
 #### Not claimed
 Calibration under the official-split shift is poor, so confidence is not assumed reliable; the results are reported as measured. Teammates' model families are not run or quoted here.
 
-## Source: task_4_5_protocol.md
+## Source: open_set_boost_protocol.md
 
-### Task 4.5 protocol (declared before any Task 4.5 result was produced)
+### Open-set boost study protocol (declared before any the open-set boost study result was produced)
 
 Goal: improve zero-day (open-set) detection. XGBoost, flat model, official split, scheme `current`, ZERO-SHOT throughout, seeds 42-46 (mean and std), pools 40 (base) and 48 (full).
-Everything of Task 4 that is not changed stays: block-grouped validation (1,000-row blocks, 200-row gaps) split into a THRESHOLD half and a CALIBRATION half by whole blocks; a flow is flagged
+Everything of the open-set study that is not changed stays: block-grouped validation (1,000-row blocks, 200-row gaps) split into a THRESHOLD half and a CALIBRATION half by whole blocks; a flow is flagged
 Unknown when its score exceeds the 95th percentile of the known threshold-half scores (5% false-Unknown target); no zero-day flow and no official-test label ever enters a threshold, a fit,
-a parameter or a choice (`results/task_4_protocol.md`). Evaluation sets are the same as Task 4: Worms + Shellcode (the Step 1 setting), the nine-class leave-one-class-out rotation, and the
-Overlap-Group-1 trio held out together (merged-group handling as in Task 4).
+a parameter or a choice (`results/open_set_protocol.md`). Evaluation sets are the same as the open-set study: Worms + Shellcode (the Step 1 setting), the nine-class leave-one-class-out rotation, and the
+Overlap-Group-1 trio held out together (merged-group handling as in the open-set study).
 
 #### Baselines and the declared success rule
 Baselines, rerun in the same pass: max-softmax (`msp`) and `entropy`. A score **clearly beats** max-softmax when (all three) the rotation-mean detection (nine classes) is at least 0.05 higher, the
@@ -1771,12 +1771,12 @@ max-softmax's. Hypothesis (a guess): rotation-mean detection rises from about 0.
    (`noP_msp`, `noP_entropy`) on the same known flows. The cost to known-class recall is reported: macro recall over the remaining known classes of the Unknown-class model (a flow predicted Unknown counts as missed)
    against the model trained without P, and the attack classes in P can no longer be recognised.
 6. **Combination.** Rank-average (`mean` of the empirical-CDF ranks fitted on the calibration half) of the two individual scores with the highest mean pseudo-unknown validation AUROC among
-   {msp, entropy, msp_cal, entropy_cal, ens_mi, ens_var, ens_msp, knn, maha, oe_pu}. The selection uses the Task 4 pseudo-unknown validation (inner models trained without Reconnaissance or Generic; the
+   {msp, entropy, msp_cal, entropy_cal, ens_mi, ens_var, ens_msp, knn, maha, oe_pu}. The selection uses the open-set study pseudo-unknown validation (inner models trained without Reconnaissance or Generic; the
    validation flows of the held-out class are the pseudo-unknowns, the other known threshold-half flows the knowns; for the Unknown-class model P excludes the inner held-out class by the same rule), averaged
    over the 5 seeds and the two inner classes, once per pool. The real zero-day classes and the rotation are never used to choose.
 
 #### Isolation-forest check (diagnostic)
-Using the Task 4 score (isolation forest on Normal training flows, score = minus `score_samples`, higher = more anomalous) on the official test: AUROC of the score for known attacks (positive) against known Normal
+Using the open-set study score (isolation forest on Normal training flows, score = minus `score_samples`, higher = more anomalous) on the official test: AUROC of the score for known attacks (positive) against known Normal
 flows; the mean percentile of Worms and Shellcode scores among the known test scores (above 50% = the zero-day flows look more anomalous than a typical known flow); the same two numbers for `knn` and `maha`.
 
 #### Reporting (per idea and for the combination)
@@ -1784,6 +1784,6 @@ flows; the mean percentile of Worms and Shellcode scores among the known test sc
   predicted as an attack class. Diagnostic column, never used for selection: detection at the threshold that gives the SAME realised test false-Unknown rate as `msp` in the same run.
 - Composition of the flagged-Unknown bucket on the official test (Worms + Shellcode held out, 5% threshold): counts of Shellcode, Worms, each known attack class and Normal, and the precision of Unknown (zero-day
   share of the flagged flows).
-- Effect on alert FPR and the review queue (Task 4 Step 3 measures): alert FPR with the wrapper off / on, confident-alert FPR, review rate on Normal, zero-day catch, at the 5% target and over the target curve.
+- Effect on alert FPR and the review queue (the open-set study Step 3 measures): alert FPR with the wrapper off / on, confident-alert FPR, review rate on Normal, zero-day catch, at the 5% target and over the target curve.
 - Output under `results/metrics/xgboost/` with the pool in the file name, never overwriting earlier files; each new function has a test; each idea is its own commit (`--idea calibration|perclass|ensemble|distance|oe|combo`).
-- One claim for novelty 1 and the protocol behind it; `task_4_conclusion.md`, README.md and PROJECT_PLAN.md are updated only for facts established here. Then stop and wait before Task 5.
+- One claim for novelty 1 and the protocol behind it; `open_set_conclusion.md`, README.md and PROJECT_PLAN.md are updated only for facts established here. Then stop and wait before the explanation study.

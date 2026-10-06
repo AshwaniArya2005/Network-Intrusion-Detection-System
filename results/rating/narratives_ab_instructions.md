@@ -1,6 +1,6 @@
 # A/B sheet: instructions for raters
 
-File: `task_5_5_ab_sheet.csv` (30 flows; the columns after the two narratives are blank on purpose). `task_5_5_ab_key.csv` says which of A / B is the older narrative and which is the new one and
+File: `narratives_ab_sheet.csv` (30 flows; the columns after the two narratives are blank on purpose). `narratives_ab_key.csv` says which of A / B is the older narrative and which is the new one and
 keeps the flow's predicted class; do not open it before rating.
 
 Each row is one flow (raw values: duration, protocol, service, state, packets, bytes, rate) with two narratives for the same prediction, A and B, in a random order. The two differ only in how the reasons
