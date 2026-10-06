@@ -1,4 +1,4 @@
-"""Task 5.5 runner on small synthetic data, and the pieces of it that can be checked by hand."""
+"""Narrative study runner on small synthetic data, and the pieces of it that can be checked by hand."""
 import numpy as np
 import pandas as pd
 import pytest

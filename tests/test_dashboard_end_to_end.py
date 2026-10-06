@@ -1,4 +1,4 @@
-"""Task 5 Step 4: the dashboard service and an independent computation from the same saved artifact must agree exactly."""
+"""Explanation study, step 4: the dashboard service and an independent computation from the same saved artifact must agree exactly."""
 import pandas as pd
 import pytest
 

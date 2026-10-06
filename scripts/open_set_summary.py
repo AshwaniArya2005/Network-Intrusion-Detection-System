@@ -1,4 +1,4 @@
-"""Task 4 summaries: turn the raw open-set runs into one table per step (mean +/- std over seeds 42-46).
+"""Open-set study summaries: turn the raw open-set runs into one table per step (mean +/- std over seeds 42-46).
 
     python scripts/open_set_summary.py [--pools 40f 45f 48f] [--rotation-pools 40f 48f] [--variants 41f 38f 48f_t30 48f_t15]
 

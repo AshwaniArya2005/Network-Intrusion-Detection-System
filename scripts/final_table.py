@@ -1,4 +1,4 @@
-"""Task 2.5 final table: every method with its access level on the official split (mean +/- std over 5 seeds / runs), next to
+"""The final table of the shift and few-shot study: every method with its access level on the official split (mean +/- std over 5 seeds / runs), next to
 the 40- and 48-feature defaults.
 
     python scripts/final_table.py

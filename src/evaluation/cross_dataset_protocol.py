@@ -1,4 +1,4 @@
-"""Leak-free cross-dataset protocol (Task 6; protocol: results/05_novelty4_cross_dataset.md, section `Source: cross_dataset_protocol.md`).
+"""Leak-free cross-dataset protocol (the cross-dataset study; protocol: results/05_novelty4_cross_dataset.md, section `Source: cross_dataset_protocol.md`).
 
 Everything here works on feature MATRICES of the 14 common features (engineered exactly as the models see them), so every split, metric and transform is a small pure function:
   split_positions / cap_blocks / thin_blocks   block-disjoint splits of row positions in file order, with a gap between groups, for ANY subset of rows

@@ -66,7 +66,7 @@ def model_config(cfg: dict, model_type: str, seed: int) -> dict:
 
 def prepare(config: dict, feature_sets: dict, pool: str, model_type: str, seed: int, pooled: bool = False):
     """(config, feature_sets, splits) of one run: block-grouped train / validation on the official split (or the pooled random split), and the
-    ranking file name set so the Task 3 rankings never overwrite the earlier ones."""
+    ranking file name set so the feature-tier study rankings never overwrite the earlier ones."""
     cfg = model_config(apply_pool_variant(config, pool), model_type, seed)
     splits = load_split_data(cfg, use_official_split=not pooled)
     if not pooled:

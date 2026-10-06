@@ -1,4 +1,4 @@
-"""Task 5: are the explanations faithful and are the narratives correct? (protocol: results/03_novelty2_explanations.md, section `Source: explanations_protocol.md`). XGBoost, official split, `current` scheme, ZERO-SHOT.
+"""Are the explanations faithful and are the narratives correct? (protocol: results/03_novelty2_explanations.md, section `Source: explanations_protocol.md`). XGBoost, official split, `current` scheme, ZERO-SHOT.
 
     python pipelines/run_xai_study.py --part faithfulness [--pools full base full_no_ttl]   (default: full) [--seeds 42 43 44 45 46]
     python pipelines/run_xai_study.py --part audit        [--pools full base]   (default: the primary pool 48 only)
@@ -146,7 +146,7 @@ def correlation_matrix(model, pre, train_df: pd.DataFrame, features: list[str], 
 def audit_flows(frame: pd.DataFrame, results: list[dict], model, pre, cfg: dict, train_df: pd.DataFrame, rho: np.ndarray, features: list[str], seed: int, label: str,
                 strata: np.ndarray, flow_index: np.ndarray, relative_temperature: float | None = None) -> tuple[list[dict], list[dict]]:
     """Check every narrative of `results` (the dashboard's output for the rows of `frame`) against independent computations. Returns (one row per narrative, one row per failure).
-    With `relative_temperature` (the class-relative style of Task 5.5) check (g) is added: every clause against the raw training frame, and the calibrated number against the temperature."""
+    With `relative_temperature` (the class-relative style of the narrative study) check (g) is added: every clause against the raw training frame, and the calibrated number against the temperature."""
     classes = list(pre.target_encoder.classes_)
     X = pre.transform_features(frame)
     proba = model.predict_proba(X)

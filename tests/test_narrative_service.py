@@ -1,4 +1,4 @@
-"""Task 5.5: training saves the class reference and the temperature; the dashboard service serves both narrative styles from the same saved model."""
+"""Narrative study: training saves the class reference and the temperature; the dashboard service serves both narrative styles from the same saved model."""
 import copy
 
 import pandas as pd

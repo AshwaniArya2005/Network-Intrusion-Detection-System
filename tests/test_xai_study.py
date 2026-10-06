@@ -1,4 +1,4 @@
-"""Task 5 runner on small synthetic data: faithfulness, additivity and the audit through the dashboard's PredictionService."""
+"""Explanation study runner on small synthetic data: faithfulness, additivity and the audit through the dashboard's PredictionService."""
 import numpy as np
 import pandas as pd
 import pytest

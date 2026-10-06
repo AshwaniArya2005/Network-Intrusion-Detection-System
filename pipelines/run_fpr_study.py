@@ -1,4 +1,4 @@
-"""Task 2.7: lower the official-split false-positive rate (protocol: results/06_fpr_and_adaptation.md, section `Source: fpr_reduction_protocol.md`).
+"""Lower the official-split false-positive rate (protocol: results/06_fpr_and_adaptation.md, section `Source: fpr_reduction_protocol.md`).
 
     python pipelines/run_fpr_study.py --step tuned    [--pools full base full_no_ttl]   (default: full) [--seeds 42 43 44 45 46]
     python pipelines/run_fpr_study.py --step prior    ...   TRANSDUCTIVE class-prior correction (+ ZERO-SHOT temperature scaling and a zero-shot control)

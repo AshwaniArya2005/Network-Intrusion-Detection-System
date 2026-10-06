@@ -1,4 +1,4 @@
-"""Task 3 Step 2: stability of global SHAP importance across feature tiers, with the same-tier / different-seed noise floor.
+"""Feature-tier study, step 2: stability of global SHAP importance across feature tiers, with the same-tier / different-seed noise floor.
 
     python scripts/explanation_stability_tiers.py [--model xgboost] [--pools 40f 45f 48f]
 

@@ -1,4 +1,4 @@
-"""Task 3 Step 4: do XGBoost, logistic regression and the random forest agree on which features matter?
+"""Feature-tier study, step 4: do XGBoost, logistic regression and the random forest agree on which features matter?
 
     python scripts/cross_model_agreement.py [--pools 40f 45f 48f]
 

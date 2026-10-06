@@ -1,4 +1,4 @@
-"""Task 4.5 runner (pipelines/run_openset_boost.py): every idea end to end on small synthetic data, plus the invariants that make the comparison fair."""
+"""Open-set boost study runner (pipelines/run_openset_boost.py): every idea end to end on small synthetic data, plus the invariants that make the comparison fair."""
 import numpy as np
 import pandas as pd
 import pytest

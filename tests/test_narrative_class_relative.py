@@ -1,4 +1,4 @@
-"""Class-relative narrative style (Task 5.5), checked by hand; the classic style must be unchanged."""
+"""Class-relative narrative style (the narrative study), checked by hand; the classic style must be unchanged."""
 import numpy as np
 import pandas as pd
 import pytest

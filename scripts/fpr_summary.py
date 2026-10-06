@@ -1,4 +1,4 @@
-"""Tables for Task 2.7 from results/metrics/xgboost/fpr_study_<step>_<N>f_runs.csv (protocol: results/06_fpr_and_adaptation.md, section `Source: fpr_reduction_protocol.md`).
+"""Tables for the FPR-reduction study from results/metrics/xgboost/fpr_study_<step>_<N>f_runs.csv (protocol: results/06_fpr_and_adaptation.md, section `Source: fpr_reduction_protocol.md`).
 
     python scripts/fpr_summary.py --step tuned|prior|self|fewshot --pools 40f 45f 48f
 

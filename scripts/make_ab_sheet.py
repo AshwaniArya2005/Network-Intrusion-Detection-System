@@ -1,4 +1,4 @@
-"""Task 5.5 Step 3: a blank A/B sheet for teammates (protocol: results/03_novelty2_explanations.md, section `Source: narratives_protocol.md`).
+"""Narrative study, step 3: a blank A/B sheet for teammates (protocol: results/03_novelty2_explanations.md, section `Source: narratives_protocol.md`).
 
     python scripts/make_ab_sheet.py
 
@@ -68,7 +68,7 @@ def main() -> None:
     pairs = pair_narratives(narratives[narratives["seed"] == 42])
     chosen = assign_ab(pick_flows(pairs, GROUPS, PER_GROUP))
     splits = load_split_data(config)
-    candidates = pd.concat([splits.test, splits.unknown], ignore_index=True)       # the flow numbers index this frame, as in the Task 5 sheet
+    candidates = pd.concat([splits.test, splits.unknown], ignore_index=True)       # the flow numbers index this frame, as in the explanation study sheet
     flows = candidates.loc[chosen["flow"], FLOW_COLUMNS].reset_index(drop=True)
     sheet = pd.concat([pd.DataFrame({"sheet_id": range(1, len(chosen) + 1)}), flows, chosen[["narrative_A", "narrative_B"]]], axis=1)
     for col in RATING_COLUMNS:

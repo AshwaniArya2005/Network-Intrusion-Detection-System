@@ -1,4 +1,4 @@
-"""Task 5 faithfulness machinery, checked by hand."""
+"""Explanation study: faithfulness machinery, checked by hand."""
 import numpy as np
 import pytest
 

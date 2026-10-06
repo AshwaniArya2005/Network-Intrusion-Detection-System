@@ -1,4 +1,4 @@
-"""Task 3 Step 1 summary: the tier study as one table per pool (mean +/- std over the 5 seeds), the shrinking-claim test and the random-subset comparison.
+"""Feature-tier study, step 1 summary: the tier study as one table per pool (mean +/- std over the 5 seeds), the shrinking-claim test and the random-subset comparison.
 
     python scripts/tier_summary.py [--model xgboost] [--pools 40f 45f 48f]
 

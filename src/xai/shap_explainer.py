@@ -155,7 +155,7 @@ class SHAPExplainer:
         return pd.DataFrame(np.vstack(rows), columns=self.feature_names)
 
     def expected_values(self, X: np.ndarray) -> np.ndarray:
-        """The explainer's expected value (the base value of the raw margin) for every class, shape (n_classes,). Tree explainers only (the additivity check of Task 5)."""
+        """The explainer's expected value (the base value of the raw margin) for every class, shape (n_classes,). Tree explainers only (the additivity check of the explanation study)."""
         base = np.atleast_1d(np.asarray(self._get_explainer(X).expected_value, dtype=float))
         return base
 

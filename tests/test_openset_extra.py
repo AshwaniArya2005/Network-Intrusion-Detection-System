@@ -1,4 +1,4 @@
-"""Task 4.5 scores, checked by hand."""
+"""Open-set boost study scores, checked by hand."""
 import numpy as np
 import pandas as pd
 import pytest

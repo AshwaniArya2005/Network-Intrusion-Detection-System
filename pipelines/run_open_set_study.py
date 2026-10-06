@@ -1,4 +1,4 @@
-"""Task 4: open-set / zero-day detection under an honest protocol (protocol: results/02_novelty1_open_set.md, section `Source: open_set_protocol.md`). XGBoost, flat model, official split, ZERO-SHOT.
+"""Open-set / zero-day detection under an honest protocol (protocol: results/02_novelty1_open_set.md, section `Source: open_set_protocol.md`). XGBoost, flat model, official split, ZERO-SHOT.
 
     python pipelines/run_open_set_study.py --step scores   [--pools full base full_no_ttl]   (default: full) [--seeds 42 43 44 45 46]
     python pipelines/run_open_set_study.py --step rotation [--pools full base]   (default: the primary pool 48 only)
@@ -68,7 +68,7 @@ class OpenSetRun:
         self.cfg, self.seed = cfg, seed
         self.normal = cfg["data"]["normal_category"]
         self.pre, self.model, X_train, y_train = fit_closed_set(cfg, train_df, features)
-        self.X_train, self.y_train, self.train_df, self.features = X_train, y_train, train_df, features   # kept for the Task 4.5 scores (distance, ensemble, outlier exposure)
+        self.X_train, self.y_train, self.train_df, self.features = X_train, y_train, train_df, features   # kept for the open-set boost study scores (distance, ensemble, outlier exposure)
         self.flaggers = {}   # name -> f(part, target) -> boolean flags, for rules that are not one threshold on one score (per-class thresholds)
         self.classes = list(self.pre.target_encoder.classes_)
         self.normal_index = self.classes.index(self.normal)

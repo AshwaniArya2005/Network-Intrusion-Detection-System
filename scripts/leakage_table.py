@@ -1,4 +1,4 @@
-"""Task 2.6 table: the original few-shot result next to the leakage checks (mean +/- std over 5 runs).
+"""The leakage check table: the original few-shot result next to the leakage checks (mean +/- std over 5 runs).
 
     python scripts/leakage_table.py
 
@@ -44,7 +44,7 @@ def build(metrics_dir: Path, main_pools: dict[str, str], ablation_pools: dict[st
         rows.append({"pool": label, "k_labelled": k, "row": source, "access": access, "pool_description": desc, **values})
 
     for label, desc in main_pools.items():
-        original = metrics_dir / f"adaptation_{label}_split_summary.csv"       # the Task 2.5 result files, read only
+        original = metrics_dir / f"adaptation_{label}_split_summary.csv"       # the shift and few-shot study result files, read only
         leak = metrics_dir / f"leakage_{label}_summary.csv"
         for k in ks:
             if original.exists():

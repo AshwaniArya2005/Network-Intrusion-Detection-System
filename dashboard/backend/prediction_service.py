@@ -58,7 +58,7 @@ class PredictionService:
         self.wrapper = OpenSetWrapper(self.model, threshold) if self.open_set_enabled else None
 
         self.explainer = SHAPExplainer(self.model, self.features, background_samples=self.config["xai"]["shap_background_samples"])
-        # narrative.style: "classic" (default) or "class_relative" (Task 5.5: needs class_reference_<set>.npz and calibration_<set>.json saved with the model)
+        # narrative.style: "classic" (default) or "class_relative" (the narrative study: needs class_reference_<set>.npz and calibration_<set>.json saved with the model)
         self.narrative_style = self.config["narrative"].get("style", "classic")
         reference, self.temperature = None, None
         if self.narrative_style == "class_relative":

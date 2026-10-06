@@ -1,4 +1,4 @@
-"""Task 6 runner on small synthetic data: every step, and the leak-free properties of the splits."""
+"""Cross-dataset study runner on small synthetic data: every step, and the leak-free properties of the splits."""
 import numpy as np
 import pandas as pd
 import pytest

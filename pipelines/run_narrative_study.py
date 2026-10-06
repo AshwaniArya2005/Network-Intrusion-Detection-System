@@ -1,11 +1,11 @@
-"""Task 5.5: a more informative narrative, and the explanations of false positives (protocol: results/03_novelty2_explanations.md, section `Source: narratives_protocol.md`). XGBoost, official split, `current` scheme, ZERO-SHOT.
+"""A more informative narrative, and the explanations of false positives (protocol: results/03_novelty2_explanations.md, section `Source: narratives_protocol.md`). XGBoost, official split, `current` scheme, ZERO-SHOT.
 
     python pipelines/run_narrative_study.py --part narrative --source validation --seeds 42 --pools base   # development on block-grouped validation flows only
     python pipelines/run_narrative_study.py --part narrative                                              # the one evaluation on a fresh official-test sample
     python pipelines/run_narrative_study.py --part falsepos
 
 narrative  per model: the narratives of the classic and the class-relative style for the same flows, both through the dashboard's PredictionService on the same saved artifacts, audited with
-           checks a-f of Task 5 and the new check g (clauses and calibrated number against independent computations). Writes narrative_<source>_<N>f_{narratives,failures,summary,calibration}.csv.
+           checks a-f of the explanation study and the new check g (clauses and calibrated number against independent computations). Writes narrative_<source>_<N>f_{narratives,failures,summary,calibration}.csv.
 falsepos   official-test groups (false-positive Normal flows, true Normal flows predicted Normal, true Fuzzers): deletion faithfulness, cited features, raw and calibrated confidence and what
            separates a false positive from a correct flow. Writes narrative_falsepos_<N>f_{faithfulness,groups,features,separation}.csv.
 """

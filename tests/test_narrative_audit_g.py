@@ -1,4 +1,4 @@
-"""Check (g) and the parser for the class-relative style (Task 5.5), checked by hand against narratives from the real generator."""
+"""Check (g) and the parser for the class-relative style (the narrative study), checked by hand against narratives from the real generator."""
 import numpy as np
 import pandas as pd
 import pytest

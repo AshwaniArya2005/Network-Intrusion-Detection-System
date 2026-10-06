@@ -1,4 +1,4 @@
-"""Task 2.7 runner (pipelines/run_fpr_study.py): metrics by hand, label hygiene of the self-training rows, and a small end-to-end run of every step."""
+"""FPR-reduction study runner (pipelines/run_fpr_study.py): metrics by hand, label hygiene of the self-training rows, and a small end-to-end run of every step."""
 import numpy as np
 import pandas as pd
 import pytest

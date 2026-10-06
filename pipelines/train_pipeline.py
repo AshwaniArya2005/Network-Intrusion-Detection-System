@@ -138,7 +138,7 @@ def block_validation_splits(config: dict, splits: Splits, seed: int, block_size:
     """`splits` with the training / validation parts rebuilt from contiguous blocks of the training file (in file order): `data.val_size` of
     the blocks, drawn with `seed`, form the validation set and `buffer` rows on each side of every block boundary are dropped from both, so no
     validation row has a neighbour (a row within the sliding window) in training. The official test and zero-day parts are unchanged. A random
-    validation split shares neighbours with the training rows and is optimistic (Task 2.6)."""
+    validation split shares neighbours with the training rows and is optimistic (the leakage check)."""
     from dataclasses import replace
     from src.neighbours import block_split
     ordered = ordered_training_rows(config)
@@ -347,7 +347,7 @@ def train_and_evaluate(
         model_dir.mkdir(parents=True, exist_ok=True)
         model.save(str(model_dir / f"{model_name}{artifact_suffix(model_cfg['type'])}"))
         joblib.dump(preprocessor, model_dir / f"preprocessor_{feature_set_name}{scheme_tag(config)}.pkl")
-        # Task 5.5: where flows sit among the training flows of each class, and a temperature fitted on the validation split, for the class-relative narrative and its calibrated confidence
+        # Narrative study: where flows sit among the training flows of each class, and a temperature fitted on the validation split, for the class-relative narrative and its calibrated confidence
         ClassReference.fit(X_train, y_train, list(preprocessor.target_encoder.classes_), list(features), list(preprocessor.categorical_features)
                            ).save(model_dir / f"class_reference_{feature_set_name}{scheme_tag(config)}.npz")
         (model_dir / f"calibration_{feature_set_name}{scheme_tag(config)}.json").write_text(json.dumps({"temperature": fit_temperature(proba_val, y_val)}))

@@ -1,4 +1,4 @@
-"""Extra open-set scores of Task 4.5 (protocol: results/02_novelty1_open_set.md, section `Source: open_set_boost_protocol.md`). Every score is "higher = more likely Unknown" and is fitted on known training / validation
+"""Extra open-set scores of the open-set boost study (protocol: results/02_novelty1_open_set.md, section `Source: open_set_boost_protocol.md`). Every score is "higher = more likely Unknown" and is fitted on known training / validation
 flows only; nothing here sees a zero-day flow or an official-test label.
 
   per_class_thresholds / shift_by_class   one threshold per predicted class (the same false-Unknown rate inside every predicted class)

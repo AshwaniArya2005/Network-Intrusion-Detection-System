@@ -1,4 +1,4 @@
-"""Task 6: cross-dataset generalisation UNSW-NB15 <-> CICIDS2017 under a leak-free protocol (protocol: results/05_novelty4_cross_dataset.md, section `Source: cross_dataset_protocol.md`). XGBoost, binary, 14 common features.
+"""Cross-dataset generalisation UNSW-NB15 <-> CICIDS2017 under a leak-free protocol (protocol: results/05_novelty4_cross_dataset.md, section `Source: cross_dataset_protocol.md`). XGBoost, binary, 14 common features.
 
     python pipelines/run_cross_dataset_study.py --step zero_shot      # Step 1 (+ the block mix tables)
     python pipelines/run_cross_dataset_study.py --step diagnostic    # Step 2
