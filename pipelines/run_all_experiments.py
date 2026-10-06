@@ -36,8 +36,8 @@ from src.evaluation.plots import generate_all_plots, write_tier_plots
 from src.models.model_factory import create_model
 from src.preprocessing import Preprocessor, balanced_sample_weight
 from src.utils.config_loader import (
-    choose_pool, get_active_features, get_label_scheme, get_metrics_dir, get_random_features, get_worst_features,
-    load_config, load_feature_sets, resolve_path, tagged,
+    choose_pool, get_active_features, get_label_scheme, get_metrics_dir, get_plots_dir, get_random_features, get_worst_features,
+    load_config, load_feature_sets, model_folder, resolve_path, tagged,
 )
 from src.utils.logger import add_file_logging, get_logger
 from src.xai.explanation_stability import compare_importances, run_stability_study
@@ -56,7 +56,7 @@ CROSS_DATASET_COMMON_FEATURES = [
 def run_experiment_grid(config: dict, feature_sets: dict, splits: Splits) -> pd.DataFrame:
     metrics_dir = get_metrics_dir(config)
     metrics_dir.mkdir(parents=True, exist_ok=True)
-    plots_dir = resolve_path(config["paths"]["results_dir"]) / "plots" / config["model"]["type"]
+    plots_dir = get_plots_dir(config)
     scheme_name, merge_groups, _ = get_label_scheme(config)
     rows = []
     for feature_set_name in config["experiments"]["feature_sets"]:
@@ -301,7 +301,7 @@ def main() -> None:
 
     results = run_all(config, feature_sets)
     plots_dir = generate_all_plots(
-        config["model"]["type"], resolve_path(config["paths"]["results_dir"]), scheme=get_label_scheme(config)[0],
+        model_folder(config), resolve_path(config["paths"]["results_dir"]), scheme=get_label_scheme(config)[0],
         experiment_df=results["experiments"], stability_df=results["stability"],
         cross_dataset_df=results["cross_dataset"],
     )

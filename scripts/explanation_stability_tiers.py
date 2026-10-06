@@ -47,7 +47,7 @@ def stability_table(importances: pd.DataFrame, top_k: int = 10) -> pd.DataFrame:
 
 
 def render(model: str, tables: dict[str, pd.DataFrame]) -> str:
-    lines = [f"# Task 3 Step 2: explanation stability, {model} (mean over seeds 42-46; zero-shot)", "",
+    lines = [f"# Feature-tier study Step 2: explanation stability, {model} (mean over seeds 42-46; zero-shot)", "",
              "Tier agreement = SHAP importance of two tiers of the same seed; noise floor = the same tier under two seeds. Spearman rank correlation / cosine / top-10 Jaccard. "
              "Stability is evidence about the explanations, not about the cause of the official-split shift.", ""]
     for label, t in tables.items():

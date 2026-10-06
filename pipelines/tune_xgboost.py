@@ -146,7 +146,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--pools", nargs="*", default=["full"], help="default: the primary pool 48 (full); add base (40) or an experiments.pool_variants name")
     parser.add_argument("--stage1", action="store_true", help="search the binary attack-vs-normal first stage of the hierarchical model")
-    parser.add_argument("--block-validation", action="store_true", help="select on block-grouped validation with the regularised space (Task 2.7)")
+    parser.add_argument("--block-validation", action="store_true", help="select on block-grouped validation with the regularised space (the FPR-reduction study)")
     args = parser.parse_args()
     config = load_config()
     if config["model"]["type"] != "xgboost":

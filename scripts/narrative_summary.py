@@ -51,7 +51,7 @@ def per_class(summary: pd.DataFrame, pool: str) -> list[str]:
 
 
 def render_narrative(summary: pd.DataFrame, calibration: pd.DataFrame, failures: pd.DataFrame, source: str) -> str:
-    out = [f"# Task 5.5 Step 1: classic against class-relative narratives ({source} flows, 5 seeds, mean +/- std)", ""]
+    out = [f"# Narrative study Step 1: classic against class-relative narratives ({source} flows, 5 seeds, mean +/- std)", ""]
     for pool in sorted(summary["pool_label"].unique()):
         out += [f"## {pool}", "", *side_by_side(summary, pool), "", f"### {pool} per predicted class", "", *per_class(summary, pool), ""]
     out += ["## Calibration (temperature fitted on block-grouped validation; ECE of the known official-test flows, 15 bins)", "", "| pool | temperature | ECE raw | ECE calibrated |", "|---|---|---|---|"]
@@ -73,7 +73,7 @@ def faithful_reading(g: pd.DataFrame) -> bool:
 
 
 def render_falsepos(tables: dict[str, pd.DataFrame]) -> str:
-    out = ["# Task 5.5 Step 2: explanations of false-positive flows (official test, 5 seeds, 300 flows per group and model, mean +/- std)", "",
+    out = ["# Narrative study Step 2: explanations of false-positive flows (official test, 5 seeds, 300 flows per group and model, mean +/- std)", "",
            "FP-attack = true Normal predicted as an attack; FP-Fuzzers = true Normal predicted as Fuzzers; TN = true Normal predicted Normal; TP-Fuzzers = true Fuzzers predicted Fuzzers.", ""]
     faith, groups, feats, sep = tables["faithfulness"], tables["groups"], tables["features"], tables["separation"]
     for pool in sorted(faith["pool_label"].unique()):

@@ -34,7 +34,7 @@ from src.fpr_methods import (
 from src.models.open_set_wrapper import select_threshold
 from src.neighbours import block_split
 from src.preprocessing import balanced_sample_weight
-from src.utils.config_loader import get_metrics_dir, load_config, load_feature_sets, pool_label, resolve_path
+from src.utils.config_loader import get_metrics_dir, load_config, load_feature_sets, pool_label, require_xgboost, resolve_path
 from src.utils.logger import add_file_logging, get_logger
 
 logger = get_logger(__name__)
@@ -333,6 +333,7 @@ def main() -> None:
     parser.add_argument("--ks", nargs="*", type=int)
     args = parser.parse_args()
     config, feature_sets = load_config(), load_feature_sets()
+    require_xgboost(config, "the FPR-reduction study")
     add_file_logging(str(resolve_path(config["logging"]["log_file"])))
     metrics_dir = get_metrics_dir(config)
     metrics_dir.mkdir(parents=True, exist_ok=True)

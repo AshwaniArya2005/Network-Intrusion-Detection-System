@@ -6,7 +6,7 @@ Columns: FPR at about 95% detection (threshold chosen on held-out labelled adapt
 accuracy, ECE. Rows per pool and k: the original result (`retrain_split_f0.5` of pipelines/run_adaptation.py, read only), the same model on
 all evaluation rows of the leakage run (a reproduction), on the evaluation rows with NO near twin (<= 0.1) in the adaptation set, on the rows
 with one, and the neighbourhood-disjoint block conditions; plus the 41-, 38- and 45-feature ablations. Zero-shot rows are on the same
-evaluation rows. Writes task_2_6_table_<pools>.csv / .md under results/metrics/<model.type>/.
+evaluation rows. Writes leakage_check_table_<pools>.csv / .md under results/metrics/<model.type>/.
 """
 from __future__ import annotations
 
@@ -49,7 +49,7 @@ def build(metrics_dir: Path, main_pools: dict[str, str], ablation_pools: dict[st
         for k in ks:
             if original.exists():
                 o = pd.read_csv(original)
-                add(label, desc, k, "original Task 2.5 result (retrain_split_f0.5, random adaptation rows)", "few-shot",
+                add(label, desc, k, "original shift and few-shot study result (retrain_split_f0.5, random adaptation rows)", "few-shot",
                     cell(o[o["k"] == k], method="retrain_split_f0.5"))
             if leak.exists():
                 s = pd.read_csv(leak)
@@ -80,7 +80,7 @@ def build(metrics_dir: Path, main_pools: dict[str, str], ablation_pools: dict[st
 
 def render(df: pd.DataFrame) -> str:
     fmt = lambda m, s: "n/a" if pd.isna(m) else f"{m:.4f} +/- {s:.4f}"  # noqa: E731
-    lines = ["# Task 2.6: is the few-shot result adaptation or neighbour leakage? (official split, mean +/- std over 5 runs)", "",
+    lines = ["# Leakage check: is the few-shot result adaptation or neighbour leakage? (official split, mean +/- std over 5 runs)", "",
              "Few-shot = k labelled test rows (half retrain, half choose the 95%-detection threshold), evaluated on rows not used for adaptation. "
              "Zero-shot rows use the validation-chosen threshold.", "",
              "| pool | k | row | access | FPR at ~95% detection | detection | accuracy | ECE |", "|---|---|---|---|---|---|---|---|"]
@@ -96,8 +96,8 @@ def main() -> None:
     ablation = {"45f": "48 minus sttl, dttl, ct_state_ttl", "41f": "48 minus the 7 window-count ct_* columns", "38f": "48 minus every ct_* column"}
     df = build(metrics_dir, main_pools, ablation)
     tag = "_".join([*main_pools, *ablation])
-    df.to_csv(metrics_dir / f"task_2_6_table_{tag}.csv", index=False)
-    (metrics_dir / f"task_2_6_table_{tag}.md").write_text(render(df), encoding="utf-8")
+    df.to_csv(metrics_dir / f"leakage_check_table_{tag}.csv", index=False)
+    (metrics_dir / f"leakage_check_table_{tag}.md").write_text(render(df), encoding="utf-8")
     print(render(df))
 
 

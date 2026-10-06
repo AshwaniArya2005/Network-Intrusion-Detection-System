@@ -30,7 +30,7 @@ from src.neighbours import exact_twin_mask
 from src.openset_extra import matched_detection
 from src.openset_scores import BASE_SCORES, RULES, ScoreSuite, flag_threshold, unknown_auroc
 from src.preprocessing import Preprocessor, balanced_sample_weight
-from src.utils.config_loader import get_active_features, get_metrics_dir, load_config, load_feature_sets, pool_label, resolve_path
+from src.utils.config_loader import get_active_features, get_metrics_dir, load_config, load_feature_sets, pool_label, require_xgboost, resolve_path
 from src.utils.logger import add_file_logging, get_logger
 
 logger = get_logger(__name__)
@@ -252,6 +252,7 @@ def main() -> None:
     parser.add_argument("--classes", nargs="*", help="rotation: held-out classes (default: all nine plus the trio)")
     args = parser.parse_args()
     config, feature_sets = load_config(), load_feature_sets()
+    require_xgboost(config, "the open-set study")
     add_file_logging(str(resolve_path(config["logging"]["log_file"])))
     seeds = args.seeds or config["tier_study"]["seeds"]
     if args.step == "scores":

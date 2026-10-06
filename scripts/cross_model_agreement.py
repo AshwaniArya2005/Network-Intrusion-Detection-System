@@ -81,7 +81,7 @@ def cross_model_table(config: dict, label: str, models=MODELS, in_dir: str | Non
 
 
 def render(tables: dict[str, pd.DataFrame]) -> str:
-    lines = ["# Task 3 Step 4: cross-model agreement of global SHAP importance (zero-shot; mean over seeds 42-46, 95% bootstrap interval over the explained rows)", "",
+    lines = ["# Feature-tier study Step 4: cross-model agreement of global SHAP importance (zero-shot; mean over seeds 42-46, 95% bootstrap interval over the explained rows)", "",
              "Spearman rank correlation / cosine similarity / top-10 Jaccard between two models on the same tier and seed. Agreement of explanations says nothing about "
              "the cause of the official-split shift.", ""]
     for label, t in tables.items():

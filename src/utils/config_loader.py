@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import copy
+import os
 from pathlib import Path
 from typing import Any
 
@@ -27,8 +28,17 @@ def load_yaml(path: str | Path) -> dict[str, Any]:
         return yaml.safe_load(f)
 
 
-def load_config(config_path: str | Path = "configs/config.yaml") -> dict[str, Any]:
-    """Load the main pipeline config."""
+DEFAULT_CONFIG = "configs/config.yaml"
+CONFIG_ENV = "XAI_IDS_CONFIG"   # path of a config file that replaces configs/config.yaml for every entry point of the process
+
+
+def load_config(config_path: str | Path = DEFAULT_CONFIG) -> dict[str, Any]:
+    """Load the main pipeline config; $XAI_IDS_CONFIG replaces the default path, and any file other than the default is logged when loaded."""
+    override = os.environ.get(CONFIG_ENV)
+    if override and str(config_path) == DEFAULT_CONFIG:
+        config_path = override
+    if str(config_path) != DEFAULT_CONFIG:
+        logger.info(f"Config: {Path(config_path) if Path(config_path).is_absolute() else PROJECT_ROOT / config_path}" + (f" (from ${CONFIG_ENV})" if override else ""))
     return load_yaml(config_path)
 
 
@@ -200,18 +210,40 @@ def get_dashboard_paths(config: dict[str, Any]) -> tuple[Path, Path]:
     """
     model_type = config["model"]["type"]
     feature_set = config["dashboard"]["feature_set"]
-    model_dir = resolve_path(config["paths"]["models_dir"]) / model_type
+    model_dir = get_models_dir(config)
     tag = scheme_tag(config)
     model_path = model_dir / f"{model_type}_{feature_set}_closed{tag}{artifact_suffix(model_type)}"
     preprocessor_path = model_dir / f"preprocessor_{feature_set}{tag}.pkl"
     return model_path, preprocessor_path
 
 
-def get_metrics_dir(config: dict[str, Any]) -> Path:
-    """Directory for a model type's CSV outputs: results/metrics/<model.type>/ —
-    mirrors get_dashboard_paths' reasoning and results/plots/<model.type>/: every
-    experiment/evaluation/diagnostic CSV is namespaced by model.type, so training a
-    different model never silently overwrites another model's reported numbers.
+def model_folder(config: dict[str, Any], model_type: str | None = None) -> str:
+    """Folder name of one model's outputs: `<model.type>`, or `<model.type>__<project.run_name>` when a run name is set,
+    so several hyperparameter sets of one model type can sit side by side. Every output folder below is named by this."""
+    run_name = (config.get("project") or {}).get("run_name")
+    return f"{model_type or config['model']['type']}__{run_name}" if run_name else (model_type or config["model"]["type"])
+
+
+def get_models_dir(config: dict[str, Any], model_type: str | None = None) -> Path:
+    """models_saved/<model folder>/ (see `model_folder`): saved models and preprocessors."""
+    return resolve_path(config["paths"]["models_dir"]) / model_folder(config, model_type)
+
+
+def get_plots_dir(config: dict[str, Any], model_type: str | None = None) -> Path:
+    """results/plots/<model folder>/ (see `model_folder`): confusion matrices, ROC curves and the study figures."""
+    return resolve_path(config["paths"]["results_dir"]) / "plots" / model_folder(config, model_type)
+
+
+def get_metrics_dir(config: dict[str, Any], model_type: str | None = None) -> Path:
+    """Directory for a model's CSV outputs: results/metrics/<model folder>/ (see `model_folder`), like the plots and
+    models folders, so training a different model never silently overwrites another model's reported numbers.
     Created on demand by the caller (mkdir(parents=True, exist_ok=True)).
     """
-    return resolve_path(config["paths"]["results_dir"]) / "metrics" / config["model"]["type"]
+    return resolve_path(config["paths"]["results_dir"]) / "metrics" / model_folder(config, model_type)
+
+
+def require_xgboost(config: dict[str, Any], study: str) -> None:
+    """Stop an XGBoost-only study when `model.type` is another model: it would train XGBoost but write into that model's folders."""
+    if config["model"]["type"] != "xgboost":
+        raise SystemExit(f"{study} is an XGBoost-only study (it trains XGBoost whatever model.type says); set model.type: xgboost, "
+                         f"or run the shared workflow for {config['model']['type']!r}: python pipelines/run_model.py")

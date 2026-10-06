@@ -53,7 +53,7 @@ def tier_table(runs: pd.DataFrame, full_tier: str | None = None, noise_multiple:
 
 def render(model: str, tables: dict[str, pd.DataFrame], baselines: dict[str, pd.DataFrame], pooled: dict[str, pd.DataFrame]) -> str:
     fmt = lambda m, s: "n/a" if pd.isna(m) else f"{m:.4f} +/- {s:.4f}"  # noqa: E731
-    lines = [f"# Task 3 Step 1: tier study, {model} (official split, block-grouped validation, mean +/- std over 5 seeds)", "",
+    lines = [f"# Feature-tier study Step 1: tier study, {model} (official split, block-grouped validation, mean +/- std over 5 seeds)", "",
              "Ranked top-N tiers (mutual information on the training split). `det95 FPR` is the 95%-detection operating point chosen on the BLOCK-GROUPED "
              "validation split. The pooled random split is a best case: it shares neighbouring flows with its training rows and is optimistic. "
              "`noise` / `practical`: macro F1 drop from the full pool within 2 x seed std / within 0.02.", ""]

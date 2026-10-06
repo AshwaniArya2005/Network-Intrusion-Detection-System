@@ -23,7 +23,7 @@ from scipy.stats import spearmanr
 from src.data_loader import load_cic_common, load_unsw
 from src.evaluation import cross_dataset_protocol as cdp
 from src.fpr_methods import diverse_selection, random_selection
-from src.utils.config_loader import get_metrics_dir, load_config, resolve_path
+from src.utils.config_loader import get_metrics_dir, load_config, require_xgboost, resolve_path
 from src.utils.logger import add_file_logging, get_logger
 
 logger = get_logger(__name__)
@@ -273,6 +273,7 @@ def main() -> None:
     parser.add_argument("--seeds", nargs="*", type=int)
     args = parser.parse_args()
     config = load_config()
+    require_xgboost(config, "the cross-dataset study")
     add_file_logging(str(resolve_path(config["logging"]["log_file"])))
     st = Settings(seeds=tuple(args.seeds)) if args.seeds else Settings()
     domains = load_domains(config)

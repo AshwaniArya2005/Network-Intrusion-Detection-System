@@ -34,7 +34,7 @@ from src.models.model_factory import create_scheme_model
 from src.models.open_set_wrapper import OpenSetWrapper, select_threshold
 from src.preprocessing import Preprocessor, add_merged_label, balanced_sample_weight, split_known_unknown
 from src.utils.config_loader import (
-    artifact_suffix, choose_pool, get_active_features, get_label_scheme, get_metrics_dir, load_config, load_feature_sets,
+    artifact_suffix, choose_pool, get_active_features, get_label_scheme, get_metrics_dir, get_models_dir, get_plots_dir, load_config, load_feature_sets,
     ranking_path, resolve_path, scheme_tag, tagged,
 )
 from src.utils.logger import add_file_logging, get_logger
@@ -343,7 +343,7 @@ def train_and_evaluate(
         # so every artifact for a given model — all feature sets, closed/open-set,
         # preprocessors — lives together instead of a flat, hard-to-scan directory.
         # XGBoost artifacts are .json (native format), everything else .pkl.
-        model_dir = resolve_path(config["paths"]["models_dir"]) / model_cfg["type"]
+        model_dir = get_models_dir(config, model_cfg["type"])
         model_dir.mkdir(parents=True, exist_ok=True)
         model.save(str(model_dir / f"{model_name}{artifact_suffix(model_cfg['type'])}"))
         joblib.dump(preprocessor, model_dir / f"preprocessor_{feature_set_name}{scheme_tag(config)}.pkl")
@@ -383,8 +383,7 @@ def main() -> None:
     )
     logger.info(f"Training complete: {result}")
 
-    results_dir = resolve_path(config["paths"]["results_dir"])
-    plots_dir = results_dir / "plots" / config["model"]["type"]
+    plots_dir = get_plots_dir(config)
     scheme_name, merge_groups, _ = get_label_scheme(config)
     write_tier_plots(predictions_out, plots_dir, len(feature_sets["feature_pool"]), feature_set_name, scheme_name, merge_groups,
                      config["data"]["normal_category"], config["model"]["type"])   # confusion_matrix_<T>f.png, roc_curve_<T>f.png

@@ -34,7 +34,7 @@ from src.openset_extra import (
 )
 from src.openset_scores import RankNormalizer, combine, unknown_auroc
 from src.preprocessing import Preprocessor, balanced_sample_weight
-from src.utils.config_loader import get_metrics_dir, load_config, load_feature_sets, pool_label, resolve_path
+from src.utils.config_loader import get_metrics_dir, load_config, load_feature_sets, pool_label, require_xgboost, resolve_path
 from src.utils.logger import add_file_logging, get_logger
 
 logger = get_logger(__name__)
@@ -381,6 +381,7 @@ def main() -> None:
     parser.add_argument("--specs", nargs="*", help="held-out sets by name (default: Worms + Shellcode, the nine classes and the trio)")
     args = parser.parse_args()
     config, feature_sets = load_config(), load_feature_sets()
+    require_xgboost(config, "the open-set boost study")
     add_file_logging(str(resolve_path(config["logging"]["log_file"])))
     seeds = args.seeds or config["tier_study"]["seeds"]
     for pool in args.pools:

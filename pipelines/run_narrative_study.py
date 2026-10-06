@@ -27,7 +27,7 @@ from dashboard.backend.prediction_service import PredictionService
 from pipelines.run_tier_study import prepare
 from pipelines.run_xai_study import LABEL_COLUMNS, audit_flows, audit_summary, correlation_matrix, strata_of, train_and_save
 from src.fpr_methods import apply_temperature, fit_temperature
-from src.utils.config_loader import get_metrics_dir, load_config, load_feature_sets, pool_label, resolve_path
+from src.utils.config_loader import get_metrics_dir, load_config, load_feature_sets, pool_label, require_xgboost, resolve_path
 from src.utils.logger import add_file_logging, get_logger
 from src.xai.faithfulness import bootstrap_mean_interval, faithfulness_curves
 from src.xai.narrative_audit import parse_narrative
@@ -235,6 +235,7 @@ def main() -> None:
     parser.add_argument("--source", choices=["test", "validation"], default="test")
     args = parser.parse_args()
     config, feature_sets = load_config(), load_feature_sets()
+    require_xgboost(config, "the narrative study")
     add_file_logging(str(resolve_path(config["logging"]["log_file"])))
     seeds = tuple(args.seeds) if args.seeds else SEEDS
     for pool in args.pools:

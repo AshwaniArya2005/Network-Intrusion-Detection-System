@@ -17,15 +17,6 @@ from src.utils.logger import get_logger
 logger = get_logger(__name__)
 
 
-def select_features(df: pd.DataFrame, feature_list: list[str]) -> pd.DataFrame:
-    """Return only the columns in feature_list that exist in df (missing ones logged, not fatal)."""
-    available = [f for f in feature_list if f in df.columns]
-    missing = set(feature_list) - set(available)
-    if missing:
-        logger.warning(f"Feature selection: {len(missing)} requested features not in dataframe: {sorted(missing)}")
-    return df[available]
-
-
 def rank_by_mutual_info(X: np.ndarray, y: np.ndarray, feature_names: list[str], seed: int = 42,
                         discrete: list[str] | None = None) -> pd.Series:
     """Statistical feature ranking via mutual information with the target.

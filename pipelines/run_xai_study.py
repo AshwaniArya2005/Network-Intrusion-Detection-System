@@ -28,7 +28,7 @@ from pipelines.train_pipeline import train_and_evaluate
 from src.fpr_methods import apply_temperature
 from src.models.open_set_wrapper import select_threshold
 from src.preprocessing import _clean_numeric, engineer_features
-from src.utils.config_loader import get_active_features, get_metrics_dir, load_config, load_feature_sets, pool_label, resolve_path
+from src.utils.config_loader import get_active_features, get_metrics_dir, load_config, load_feature_sets, pool_label, require_xgboost, resolve_path
 from src.utils.logger import add_file_logging, get_logger
 from src.xai.faithfulness import (
     KS, METHODS, additivity_error, bootstrap_mean_interval, faithfulness_curves, stratified_sample,
@@ -298,6 +298,7 @@ def main() -> None:
     parser.add_argument("--source", choices=["test", "validation"], default="test", help="audit: flows from the official test file (default) or from block-grouped validation (the shift check)")
     args = parser.parse_args()
     config, feature_sets = load_config(), load_feature_sets()
+    require_xgboost(config, "the explanation study")
     add_file_logging(str(resolve_path(config["logging"]["log_file"])))
     seeds = tuple(args.seeds) if args.seeds else SEEDS
     for pool in args.pools or ["full"]:   # the primary pool 48; --pools base full_no_ttl adds the comparison pools

@@ -89,7 +89,7 @@ is implemented (FastAPI + React) and covered by API tests; it was not re-run end
 
 ```
 configs/            All hyperparameters, paths, and feature-set definitions (YAML)
-data/                Raw/processed data + standalone load/preprocess CLI scripts
+data/                Raw data (data/raw), cached processed files, demo flows (data/samples)
 src/                 Core library: data loading, preprocessing, models, XAI, evaluation
 pipelines/           Training / evaluation / full-experiment-suite entrypoints
 dashboard/           FastAPI backend + React/Vite frontend
@@ -128,7 +128,7 @@ Everything is driven by `configs/config.yaml` (settings, `model.type`, `model.pa
 | False-positive rate and adaptation | `pipelines/run_fpr_study.py`, `run_methods.py`, `run_operating_point.py`, `run_adaptation.py`, `run_leakage_checks.py`, `tune_xgboost.py` | `scripts/fpr_summary.py`, `final_table.py`, `leakage_table.py`, `accuracy_table.py`, `compare_tuned.py`, `compare_pools.py` |
 | Diagnostics | `pipelines/run_bootstrap.py`, `run_label_scheme_comparison.py`, `scripts/overlap_analysis.py`, `normal_fpr_floor.py`, `diagnose_normal_fuzzers.py`, `characterize_shift.py`, `pooled_reference_composition.py` | writes its own tables |
 
-**Data and notebooks.** `scripts/setup.sh` creates the virtual environment and installs everything; `scripts/download_datasets.py` fetches the data files (and checks their columns); `data/scripts/load_data.py` and `preprocess.py` cache processed data under `data/processed/`. The notebooks in `notebooks/` read `configs/` and `src/` and are exploratory only. `tests/` is the pytest suite (338 tests, synthetic data only, nothing is written outside a temporary folder).
+**Data and notebooks.** `scripts/setup.sh` creates the virtual environment and installs everything; `scripts/download_datasets.py` fetches the data files (and checks their columns). The notebooks in `notebooks/` read `configs/` and `src/` and are exploratory only. `tests/` is the pytest suite (338 tests, synthetic data only, nothing is written outside a temporary folder).
 
 Every default run uses the primary pool 48; comparison pools 40 and 45 only with `--pools base` / `--pools full_no_ttl`.
 

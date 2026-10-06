@@ -163,7 +163,7 @@ def load_unsw(train_path: str | Path, test_path: str | Path | None = None, seed:
             frames.append(pd.read_csv(test_path).assign(split="test"))
         df = pd.concat(frames, ignore_index=True)
     else:
-        logger.warning(f"UNSW-NB15 file not found at {train_path}; using synthetic fallback data.")
+        logger.warning(f"SYNTHETIC DATA: UNSW-NB15 file not found at {train_path}; using generated fallback data. Numbers from this run are not results; fetch the real files with python scripts/download_datasets.py.")
         df = make_synthetic_unsw(n_rows=synthetic_rows, seed=seed).assign(split="train")
 
     df.columns = [c.strip().lower() for c in df.columns]
@@ -240,7 +240,7 @@ def load_cic(cic_path: str | Path, seed: int = 7, synthetic_rows: int = 3000) ->
         logger.info(f"Loading CICIDS2017 data from {cic_path}")
         df = pd.read_csv(cic_path)
     else:
-        logger.warning(f"CICIDS2017 file not found at {cic_path}; using synthetic fallback data.")
+        logger.warning(f"SYNTHETIC DATA: CICIDS2017 file not found at {cic_path}; using generated fallback data. Numbers from this run are not results; fetch the real file with python scripts/download_datasets.py.")
         df = make_synthetic_cic(n_rows=synthetic_rows, seed=seed)
     return _normalise_cic(df)
 

@@ -52,7 +52,7 @@ def step1_table(runs: pd.DataFrame, selection: pd.DataFrame) -> tuple[pd.DataFra
 
 
 def render_step1(tables: dict[str, tuple[pd.DataFrame, dict]]) -> str:
-    lines = ["# Task 4 Step 1: open-set scoring functions (XGBoost, official split, block-grouped validation, threshold at 5% false-Unknown, mean +/- std over 5 seeds)", "",
+    lines = ["# Open-set study Step 1: open-set scoring functions (XGBoost, official split, block-grouped validation, threshold at 5% false-Unknown, mean +/- std over 5 seeds)", "",
              "Zero-day = Worms + Shellcode (Shellcode is 89.5% of the 1,627 flows). Threshold fixed on the known THRESHOLD half of the validation flows; `false-Unknown cal half` is the held-out validation half, "
              "`false-Unknown test` the official test known flows (the gap to 5% is the cost of the shift). `chosen` = candidates after the rule choice; `*` = best on pseudo-unknown validation "
              "(used downstream), `+` = best on the real zero-day AUROC (reported only). Pseudo-unknown AUROC = validation flows of Reconnaissance / Generic held out of an inner model.", ""]
@@ -80,7 +80,7 @@ def rotation_table(runs: pd.DataFrame, names: list[str]) -> pd.DataFrame:
 
 
 def render_step2(tables: dict[str, tuple[pd.DataFrame, str]]) -> str:
-    lines = ["# Task 4 Step 2: leave-one-attack-class-out (XGBoost, official split, threshold at 5% false-Unknown on block-grouped known validation, mean +/- std over 5 seeds)", "",
+    lines = ["# Open-set study Step 2: leave-one-attack-class-out (XGBoost, official split, threshold at 5% false-Unknown on block-grouped known validation, mean +/- std over 5 seeds)", "",
              "Each class is held out in turn (never trained on); `best` = the pool's pseudo-unknown-selected score, compared with `msp`. Overlap-Group-1 members are held out one at a time "
              "(siblings stay known and still form the merged group); the trio is also held out as a unit. `exact twin share` = share of the class's flows with an identical feature vector among the known flows.", ""]
     for label, (t, best) in tables.items():
@@ -103,7 +103,7 @@ CURVE_COLS = ["alert_fpr_off", "alert_fpr_on", "confident_alert_fpr", "review_ra
 
 
 def render_step3(tables: dict[str, tuple[pd.DataFrame, str]]) -> str:
-    lines = ["# Task 4 Step 3: alert-level FPR and the review queue (XGBoost, official split, mean +/- std over 5 seeds)", "",
+    lines = ["# Open-set study Step 3: alert-level FPR and the review queue (XGBoost, official split, mean +/- std over 5 seeds)", "",
              "Alert FPR OFF = Normal flows predicted as any attack class. Alert FPR ON = Normal flows predicted as an attack class OR sent to review as Unknown (it can only be higher). "
              "Confident-alert FPR = Normal flows called an attack and NOT sent to review (the alerts that skip the queue). Review rate = Normal flows sent to Unknown (the cost). "
              "Zero-day catch = zero-day flows flagged Unknown or called an attack. The declared operating point is the 5% target, chosen on validation only.", ""]
@@ -120,7 +120,7 @@ def render_step3(tables: dict[str, tuple[pd.DataFrame, str]]) -> str:
 
 
 def render_step4(rows: pd.DataFrame, gap_note: str) -> str:
-    lines = ["# Task 4 Step 4: does ct_* carry the open-set gain? (XGBoost, official split, threshold at 5% false-Unknown, mean +/- std over 5 seeds)", "", gap_note, "",
+    lines = ["# Open-set study Step 4: does ct_* carry the open-set gain? (XGBoost, official split, threshold at 5% false-Unknown, mean +/- std over 5 seeds)", "", gap_note, "",
              "| variant | score | unknown AUROC | detection @5% | false-Unknown test |", "|---|---|---|---|---|"]
     for r in rows.itertuples(index=False):
         d = r._asdict()
@@ -177,7 +177,7 @@ def main() -> None:
             step3[label] = (mean_std(curve[curve["score"].isin([sel["best"], "msp"])], ["score", "target"], CURVE_COLS), sel["best"])
     tag = "_".join(step1)
     if step1:
-        src_text = "# Task 4 Step 2 (continued): known classes behind the false-Unknown alarms\n\n"
+        src_text = "# Open-set study Step 2 (continued): known classes behind the false-Unknown alarms\n\n"
         for label, (t, sel) in step1.items():
             src = pd.read_csv(d / f"open_set_sources_{label}.csv")
             src_text += render_sources(label, sel["best"], sources_table(src, list(dict.fromkeys([sel["best"], "msp"]))))
