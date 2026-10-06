@@ -29,6 +29,9 @@
   and quote an uncalibrated confidence. The pipeline's own `check_explainability.py` standardised twice and was fixed. Human ratings are not collected (blank sheet `results/task_5_human_audit_sheet.csv`) (`results/metrics/xgboost/task_5_conclusion.md`).
   **Task 5.5:** a `class_relative` narrative style (config switch, classic is the default) removes the "typical" reasons (45% / 37% of cited numeric features, now 0), cites about 2.6 instead of 4.1 features, adds a calibrated confidence (ECE 0.093 -> 0.070, 0.115 -> 0.086) and keeps every correctness check at 1.000; the cue-direction agreement
   is unchanged (0.78 / 0.73). The explanations of false-positive Normal flows are faithful to the model (top-minus-random 0.35-0.51) but look like those of true attacks, so a narrative alone gives no reason to doubt a false alarm. No human study yet (blank A/B sheet `results/task_5_5_ab_sheet.csv`).
+- **Novelty 4 (Task 6, XGBoost, leak-free on both datasets):** zero-shot transfer between UNSW-NB15 and CICIDS2017 fails in both directions on the 14 common features (AUROC 0.49 UNSW -> CIC, 0.58 CIC -> UNSW and degenerate; leak-free references 0.975 and 0.896 balanced accuracy); 11 of 14 features are near 0.5 in at least one
+  dataset and 7 point opposite ways; the SHAP-selected "stable" set is not better than random subsets of its size; per-dataset standardisation helps ranking in one direction only (AUROC 0.79). Transfer takes labelled target flows: about 1,000 for CIC (FPR 0.10 at 95% detection), 1,000-5,000 for UNSW to match its own ceiling (FPR 0.21), and the
+  source data does not help beyond about 100 labelled rows. Within-capture results (`results/metrics/xgboost/task_6_conclusion.md`).
 - 0.912 / 0.921 is an empirical feature-space ceiling, not a Bayes ceiling.
 
 ## Overview
