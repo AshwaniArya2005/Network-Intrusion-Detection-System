@@ -376,7 +376,7 @@ fallback for models saved without one.
 pytest tests/ -v
 ```
 
-327 tests: preprocessing, models (incl. the two-stage hierarchical model), XAI (batched SHAP, hierarchical
+328 tests: preprocessing, models (incl. the two-stage hierarchical model), XAI (batched SHAP, hierarchical
 class mapping, faithfulness, narrative audit, class-relative narratives), the pipelines (small synthetic end-to-end run for
 every label scheme and for the leakage, few-shot, open-set, FPR, faithfulness, narrative and cross-dataset runners and their
 summary scripts), the cross-dataset study (degenerate detection, feature shift, the CIC loader), feature selection, the

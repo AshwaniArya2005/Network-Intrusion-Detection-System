@@ -117,6 +117,12 @@ def directional_consistency(cue: str | None, rho: float, min_abs: float = 0.10) 
     return "consistent" if (direction == "high") == (rho > 0) else "inconsistent"
 
 
+def shap_trend_phrase(rho: float) -> str:
+    """Words for the sign of `rho` (Spearman of feature value vs SHAP value on training rows), so a failure reason says what the data show: a "reduced" cue that fails (f) has a
+    POSITIVE rho, i.e. SHAP rises with the value, and a "high" cue that fails has a negative one."""
+    return "rises" if rho > 0 else "falls"
+
+
 def _strictly(values, v: float, direction: str) -> float:
     """100 x the share of `values` strictly smaller (direction "higher") or strictly larger ("lower") than v."""
     import numpy as np

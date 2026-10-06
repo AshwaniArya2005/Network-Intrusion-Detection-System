@@ -35,7 +35,7 @@ from src.xai.faithfulness import (
 )
 from src.xai.narrative_audit import (
     check_action, check_categorical, check_category_clause, check_cited_in_top, check_cue, check_label_statement, check_numeric_clause, cue_direction, directional_consistency,
-    parse_narrative,
+    parse_narrative, shap_trend_phrase,
 )
 from src.xai.shap_explainer import SHAPExplainer
 
@@ -213,7 +213,8 @@ def audit_flows(frame: pd.DataFrame, results: list[dict], model, pre, cfg: dict,
             f_cons, f_incons = f_cons + int(verdict == "consistent"), f_incons + int(verdict == "inconsistent")
             f_nomono, f_nodir = f_nomono + int(verdict == "no monotone relation"), f_nodir + int(verdict == "no direction claimed")
             if verdict == "inconsistent":
-                fail.append(("f_direction", f"{feature}: cue {cue!r} but SHAP for {predicted} falls as the value rises (rho {rho[pred_idx[i], features.index(feature)]:.2f} on training rows)"))
+                rho_value = rho[pred_idx[i], features.index(feature)]
+                fail.append(("f_direction", f"{feature}: cue {cue!r} but SHAP for {predicted} {shap_trend_phrase(rho_value)} as the value rises (rho {rho_value:.2f} on training rows)"))
         d_ok = check_action(parsed["action"], "Unknown" if unknown else predicted, actions)
         if not d_ok:
             fail.append(("d_action", f"action {parsed['action']!r} for label {'Unknown' if unknown else predicted!r}"))

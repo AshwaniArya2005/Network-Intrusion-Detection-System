@@ -135,7 +135,7 @@ it is not an honest operating point. Where the false alarms concentrate (previou
 - Random-feature-set and worst-N baselines (10 draws per tier) with a significance statement; same-set/different-seed noise floor
 - Per-class precision/recall, attack-vs-normal view at several operating points, fine-grained recall under every label scheme
 - Exact-twin and best-possible-accuracy analysis of class overlap (`scripts/overlap_analysis.py`)
-- Real-data explainability spot checks (`scripts/check_explainability.py`) plus 327 automated tests
+- Real-data explainability spot checks (`scripts/check_explainability.py`) plus 328 automated tests
 
 ## Remaining Work / Open Items
 
