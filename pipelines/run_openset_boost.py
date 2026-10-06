@@ -1,11 +1,11 @@
-"""Task 4.5: try to improve zero-day (open-set) detection (protocol: results/02_novelty1_open_set.md, section `Source: open_set_boost_protocol.md`). XGBoost, flat model, official split, ZERO-SHOT.
+"""Try to improve zero-day (open-set) detection (protocol: results/02_novelty1_open_set.md, section `Source: open_set_boost_protocol.md`). XGBoost, flat model, official split, ZERO-SHOT.
 
     python pipelines/run_openset_boost.py --idea calibration|perclass|ensemble|distance|oe [--pools full base]   (default: the primary pool 48 only) [--seeds 42 43 44 45 46] [--specs ...]
     python pipelines/run_openset_boost.py --idea selection   # pseudo-unknown validation of every individual score (inner models without Reconnaissance / Generic)
     python pipelines/run_openset_boost.py --idea combo       # rank-average of the two best individual scores by that selection
     python pipelines/run_openset_boost.py --idea iforest     # the isolation-forest sign check
 
-Each idea is evaluated on the same held-out sets as Task 4: Worms + Shellcode, the nine leave-one-class-out classes and the Overlap-Group-1 trio, thresholds fixed at 5% false-Unknown on the
+Each idea is evaluated on the same held-out sets as the open-set study: Worms + Shellcode, the nine leave-one-class-out classes and the Overlap-Group-1 trio, thresholds fixed at 5% false-Unknown on the
 known threshold half of block-grouped validation. Files go under results/metrics/xgboost/ with the pool size in the name (open_set_boost_<idea>_<N>f_<kind>.csv).
 """
 from __future__ import annotations
@@ -34,7 +34,7 @@ from src.openset_extra import (
 )
 from src.openset_scores import RankNormalizer, combine, unknown_auroc
 from src.preprocessing import Preprocessor, balanced_sample_weight
-from src.utils.config_loader import get_metrics_dir, load_config, load_feature_sets, pool_label, resolve_path
+from src.utils.config_loader import get_metrics_dir, load_config, load_feature_sets, pool_label, require_xgboost, resolve_path
 from src.utils.logger import add_file_logging, get_logger
 
 logger = get_logger(__name__)
@@ -238,7 +238,7 @@ PASS_IDEAS = ("calibration", "perclass", "ensemble", "distance")
 
 def run_pass(config: dict, feature_sets: dict, pool: str, seeds, specs, selection: pd.DataFrame | None = None, save=None) -> dict[str, dict[str, pd.DataFrame]]:
     """Ideas 1-4 (and the combination when `selection` is given and its two scores need no Unknown-class model) from ONE base model per held-out set and seed: the closed-set
-    classifier and its Task 4 score suite are fitted once, every extra score is added to it, and the rows are split into one table set per idea (each idea's table also carries
+    classifier and the score suite of the open-set study are fitted once, every extra score is added to it, and the rows are split into one table set per idea (each idea's table also carries
     the `msp` and `entropy` baselines of the same runs). Returns {idea: {"runs", "curve", "composition", "diagnostics", "checks"}}; `iforest` holds the sign check."""
     chosen = top_two(selection) if selection is not None else None
     combo_here = chosen is not None and not any(n.startswith("oe_") for n in chosen)
@@ -381,6 +381,7 @@ def main() -> None:
     parser.add_argument("--specs", nargs="*", help="held-out sets by name (default: Worms + Shellcode, the nine classes and the trio)")
     args = parser.parse_args()
     config, feature_sets = load_config(), load_feature_sets()
+    require_xgboost(config, "the open-set boost study")
     add_file_logging(str(resolve_path(config["logging"]["log_file"])))
     seeds = args.seeds or config["tier_study"]["seeds"]
     for pool in args.pools:

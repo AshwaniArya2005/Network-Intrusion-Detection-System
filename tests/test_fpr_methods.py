@@ -1,4 +1,4 @@
-"""Task 2.7 methods, checked by hand."""
+"""FPR-reduction study methods, checked by hand."""
 import numpy as np
 import pytest
 

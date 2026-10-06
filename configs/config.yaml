@@ -19,7 +19,6 @@ paths:
   rating_dir: "results/rating"   # blank human-rating sheets and their keys (scripts/make_ab_sheet.py, make_human_audit_sheet.py)
 
 data:
-  label_column: "label"                        # binary: 0 = normal, 1 = attack
   target_column: "label_merged"                # primary multiclass target used for training/explanations
   fine_grained_target_column: "attack_cat"     # original, ungrouped attack categories (kept for diagnostics)
   normal_category: "Normal"
@@ -117,7 +116,7 @@ tuning:
     reg_lambda: {loguniform: [0.5, 20.0]}
     reg_alpha: {choice: [0, 0.1, 1, 5]}
     class_weight_power: {uniform: [0.0, 1.0]}   # exponent of the balanced class weights (default model: 0.5)
-  # Task 2.7 (results/06_fpr_and_adaptation.md, section `Source: fpr_reduction_protocol.md`): the same search on block-grouped validation with stronger regularisation
+  # FPR-reduction study (results/06_fpr_and_adaptation.md, section `Source: fpr_reduction_protocol.md`): the same search on block-grouped validation with stronger regularisation
   space_regularised:
     max_depth: {int: [3, 7]}
     learning_rate: {loguniform: [0.03, 0.3]}
@@ -142,7 +141,7 @@ shift:
     ttl: [sttl, dttl, ct_state_ttl]
     connection_counts: [ct_src_dport_ltm, ct_dst_sport_ltm, ct_srv_src, ct_dst_ltm, ct_src_ltm, ct_srv_dst, ct_dst_src_ltm]
 
-# Task 3 tier study (pipelines/run_tier_study.py; protocol in results/04_novelty3_feature_tiers.md, section `Source: feature_tiers_protocol.md`). Training / validation are built from contiguous
+# Feature-tier study tier study (pipelines/run_tier_study.py; protocol in results/04_novelty3_feature_tiers.md, section `Source: feature_tiers_protocol.md`). Training / validation are built from contiguous
 # blocks of the training file (a random validation split shares neighbouring flows with training and is optimistic).
 tier_study:
   block_size: 1000
@@ -168,7 +167,6 @@ open_set:
   target_false_unknown_rate: 0.05
   # Fallback only, used by the dashboard when a model has no saved open_set_*.json.
   confidence_threshold: 0.65
-  unknown_label: "Unknown"
 
 xai:
   shap_background_samples: 100   # background rows for non-tree explainers
@@ -176,7 +174,7 @@ xai:
   top_k_features: 5
 
 narrative:
-  # "classic": every cited feature gets a magnitude cue against the overall training mean / std. "class_relative" (Task 5.5, results/03_novelty2_explanations.md, section `Source: narratives_protocol.md`): features that read "typical" are
+  # "classic": every cited feature gets a magnitude cue against the overall training mean / std. "class_relative" (the narrative study, results/03_novelty2_explanations.md, section `Source: narratives_protocol.md`): features that read "typical" are
   # omitted, the rest are placed among all training flows and the predicted class's flows, and a calibrated confidence is shown next to the raw one (needs the class_reference / calibration
   # files that training saves next to the model).
   style: "classic"
@@ -203,7 +201,6 @@ narrative:
       Isolate the host, then escalate for packet-level inspection to find the exact subtype.
 
 logging:
-  level: "INFO"
   log_file: "results/pipeline.log"
 
 experiments:
@@ -232,7 +229,7 @@ experiments:
   # five other extra official columns help once the three TTL columns (the shifted ones, see the Normal-to-Fuzzers diagnostic) are gone.
   pool_variants:
     full_no_ttl: {pool: full, exclude: [sttl, dttl, ct_state_ttl]}
-    # Task 2.6 (leakage check): the ct_* columns count recent connections (a sliding window), so neighbouring flows share values.
+    # Leakage check (leakage check): the ct_* columns count recent connections (a sliding window), so neighbouring flows share values.
     # full_no_ct_window drops the seven window-count columns, full_no_ct_any every column whose name starts with ct_.
     full_no_ct_window: {pool: full, exclude: [ct_src_dport_ltm, ct_dst_sport_ltm, ct_srv_src, ct_dst_ltm, ct_src_ltm, ct_srv_dst, ct_dst_src_ltm]}
     full_no_ct_any: {pool: full, exclude: [ct_src_dport_ltm, ct_dst_sport_ltm, ct_srv_src, ct_dst_ltm, ct_src_ltm, ct_srv_dst, ct_dst_src_ltm, ct_state_ttl, ct_flw_http_mthd, ct_ftp_cmd]}

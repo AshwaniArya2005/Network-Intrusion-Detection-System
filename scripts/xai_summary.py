@@ -1,4 +1,4 @@
-"""Tables for Task 5 from results/metrics/xgboost/xai_*.csv (protocol: results/03_novelty2_explanations.md, section `Source: explanations_protocol.md`).
+"""Tables for the explanation study from results/metrics/xgboost/xai_*.csv (protocol: results/03_novelty2_explanations.md, section `Source: explanations_protocol.md`).
 
     python scripts/xai_summary.py --pools 40f 45f 48f
 
@@ -46,7 +46,7 @@ def shift_row(test_diffs: np.ndarray, val_diffs: np.ndarray, seed: int = 0) -> d
 
 
 def render_faithfulness(labels: list[str], runs: pd.DataFrame, additivity: pd.DataFrame, flowdiffs: pd.DataFrame) -> str:
-    out = ["# Task 5 Steps 1-2: SHAP additivity and faithfulness (XGBoost, official split, 5 seeds)", "",
+    out = ["# Explanation study Steps 1-2: SHAP additivity and faithfulness (XGBoost, official split, 5 seeds)", "",
            "Sample: 300 flows per predicted class + 200 flagged-Unknown flows per model and source (official test = known + zero-day flows; validation = block-grouped validation flows).", ""]
     out += ["## Step 1: SHAP additivity (sum of SHAP values + expected value against the raw margin of the predicted class)", "",
             "| pool | tier | flows checked | maximum error | flows over 1e-3 |", "|---|---|---|---|---|"]
@@ -94,7 +94,7 @@ def render_audit(summary: pd.DataFrame, failures: pd.DataFrame, narratives: pd.D
               ("b_cue_exact_cite", "(b) cue exact vs training z-score (per cited feature)"), ("b_cue_direction_cite", "(b) cue direction (per cited feature)"),
               ("c_categorical_cite", "(c) categorical named by category (per cited feature)"), ("d_action", "(d) action matches the label"), ("e_label", "(e) no false statement about the label"),
               ("f_consistent_of_determined", "(f) cue direction agrees with the SHAP-vs-value relation (determined cases)")]
-    out = ["# Task 5 Steps 1 and 3: narrative audit through the dashboard path (XGBoost, official split, 5 seeds x 200 flows per pool)", "",
+    out = ["# Explanation study Steps 1 and 3: narrative audit through the dashboard path (XGBoost, official split, 5 seeds x 200 flows per pool)", "",
            "| check | " + " | ".join(sorted(summary["pool_label"].unique())) + " |", "|---|" + "---|" * summary["pool_label"].nunique()]
     allrows = summary[summary["stratum"] == "all"]
     for col, name in checks:

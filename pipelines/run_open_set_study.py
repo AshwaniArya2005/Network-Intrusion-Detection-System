@@ -1,4 +1,4 @@
-"""Task 4: open-set / zero-day detection under an honest protocol (protocol: results/02_novelty1_open_set.md, section `Source: open_set_protocol.md`). XGBoost, flat model, official split, ZERO-SHOT.
+"""Open-set / zero-day detection under an honest protocol (protocol: results/02_novelty1_open_set.md, section `Source: open_set_protocol.md`). XGBoost, flat model, official split, ZERO-SHOT.
 
     python pipelines/run_open_set_study.py --step scores   [--pools full base full_no_ttl]   (default: full) [--seeds 42 43 44 45 46]
     python pipelines/run_open_set_study.py --step rotation [--pools full base]   (default: the primary pool 48 only)
@@ -30,7 +30,7 @@ from src.neighbours import exact_twin_mask
 from src.openset_extra import matched_detection
 from src.openset_scores import BASE_SCORES, RULES, ScoreSuite, flag_threshold, unknown_auroc
 from src.preprocessing import Preprocessor, balanced_sample_weight
-from src.utils.config_loader import get_active_features, get_metrics_dir, load_config, load_feature_sets, pool_label, resolve_path
+from src.utils.config_loader import get_active_features, get_metrics_dir, load_config, load_feature_sets, pool_label, require_xgboost, resolve_path
 from src.utils.logger import add_file_logging, get_logger
 
 logger = get_logger(__name__)
@@ -68,7 +68,7 @@ class OpenSetRun:
         self.cfg, self.seed = cfg, seed
         self.normal = cfg["data"]["normal_category"]
         self.pre, self.model, X_train, y_train = fit_closed_set(cfg, train_df, features)
-        self.X_train, self.y_train, self.train_df, self.features = X_train, y_train, train_df, features   # kept for the Task 4.5 scores (distance, ensemble, outlier exposure)
+        self.X_train, self.y_train, self.train_df, self.features = X_train, y_train, train_df, features   # kept for the open-set boost study scores (distance, ensemble, outlier exposure)
         self.flaggers = {}   # name -> f(part, target) -> boolean flags, for rules that are not one threshold on one score (per-class thresholds)
         self.classes = list(self.pre.target_encoder.classes_)
         self.normal_index = self.classes.index(self.normal)
@@ -252,6 +252,7 @@ def main() -> None:
     parser.add_argument("--classes", nargs="*", help="rotation: held-out classes (default: all nine plus the trio)")
     args = parser.parse_args()
     config, feature_sets = load_config(), load_feature_sets()
+    require_xgboost(config, "the open-set study")
     add_file_logging(str(resolve_path(config["logging"]["log_file"])))
     seeds = args.seeds or config["tier_study"]["seeds"]
     if args.step == "scores":

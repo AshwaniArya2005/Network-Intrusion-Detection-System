@@ -37,7 +37,7 @@ from pipelines.run_operating_point import operating_points
 from pipelines.train_pipeline import evaluate_model, load_split_data, train_and_evaluate
 from src.adaptation import domain_importance_weights, draw_adaptation_sample, with_adaptation
 from src.evaluation.metrics import attack_rates, select_attack_threshold
-from src.utils.config_loader import apply_pool_variant, choose_pool, get_metrics_dir, load_config, load_feature_sets, pool_label, resolve_path
+from src.utils.config_loader import apply_pool_variant, choose_pool, get_metrics_dir, get_plots_dir, load_config, load_feature_sets, pool_label, resolve_path
 from src.utils.logger import add_file_logging, get_logger
 
 logger = get_logger(__name__)
@@ -196,7 +196,7 @@ def main() -> None:
             h = pd.read_csv(headline)
             h = h[(h["pool"] == pool) & (h["split"] == "pooled_random") & (h["metric"] == "false_positive_rate")]
             reference = {"det95_test_fpr": float(h["mean"].iloc[0])} if len(h) else None
-        plot_curve(summary, resolve_path(config["paths"]["results_dir"]) / "plots" / config["model"]["type"] / f"adaptation_curve_{label}.png", reference)
+        plot_curve(summary, get_plots_dir(config) / f"adaptation_curve_{label}.png", reference)
         print(label, "\n", summary[summary["metric"].isin(["det95_test_fpr", "det95_test_detection", "false_positive_rate", "accuracy"])]
               .pivot_table(index=["k", "method"], columns="metric", values="mean").round(4).to_string())
 

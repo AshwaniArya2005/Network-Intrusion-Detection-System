@@ -1,4 +1,4 @@
-"""Task 3 Step 2: stability of global SHAP importance across feature tiers, with the same-tier / different-seed noise floor.
+"""Feature-tier study, step 2: stability of global SHAP importance across feature tiers, with the same-tier / different-seed noise floor.
 
     python scripts/explanation_stability_tiers.py [--model xgboost] [--pools 40f 45f 48f]
 
@@ -47,7 +47,7 @@ def stability_table(importances: pd.DataFrame, top_k: int = 10) -> pd.DataFrame:
 
 
 def render(model: str, tables: dict[str, pd.DataFrame]) -> str:
-    lines = [f"# Task 3 Step 2: explanation stability, {model} (mean over seeds 42-46; zero-shot)", "",
+    lines = [f"# Feature-tier study Step 2: explanation stability, {model} (mean over seeds 42-46; zero-shot)", "",
              "Tier agreement = SHAP importance of two tiers of the same seed; noise floor = the same tier under two seeds. Spearman rank correlation / cosine / top-10 Jaccard. "
              "Stability is evidence about the explanations, not about the cause of the official-split shift.", ""]
     for label, t in tables.items():
@@ -70,7 +70,7 @@ def main() -> None:
     parser.add_argument("--pools", nargs="*", default=["48f"], help="pool sizes, default the primary pool 48f; add 40f 45f for the comparison pools")
     parser.add_argument("--in-dir", help="read and write under <in-dir>/<model>/ instead of results/metrics/<model>/")
     args = parser.parse_args()
-    d = Path(args.in_dir) / args.model if args.in_dir else get_metrics_dir(dict(load_config(), model={"type": args.model}))
+    d = Path(args.in_dir) / args.model if args.in_dir else get_metrics_dir(load_config(), args.model)
     tables = {}
     for label in args.pools:
         path = d / f"shap_importance_{args.model}_{label}.csv"

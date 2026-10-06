@@ -34,7 +34,7 @@ from src.models.model_factory import create_scheme_model
 from src.models.open_set_wrapper import OpenSetWrapper, select_threshold
 from src.preprocessing import Preprocessor, add_merged_label, balanced_sample_weight, split_known_unknown
 from src.utils.config_loader import (
-    artifact_suffix, choose_pool, get_active_features, get_label_scheme, get_metrics_dir, load_config, load_feature_sets,
+    artifact_suffix, choose_pool, get_active_features, get_label_scheme, get_metrics_dir, get_models_dir, get_plots_dir, load_config, load_feature_sets,
     ranking_path, resolve_path, scheme_tag, tagged,
 )
 from src.utils.logger import add_file_logging, get_logger
@@ -138,7 +138,7 @@ def block_validation_splits(config: dict, splits: Splits, seed: int, block_size:
     """`splits` with the training / validation parts rebuilt from contiguous blocks of the training file (in file order): `data.val_size` of
     the blocks, drawn with `seed`, form the validation set and `buffer` rows on each side of every block boundary are dropped from both, so no
     validation row has a neighbour (a row within the sliding window) in training. The official test and zero-day parts are unchanged. A random
-    validation split shares neighbours with the training rows and is optimistic (Task 2.6)."""
+    validation split shares neighbours with the training rows and is optimistic (the leakage check)."""
     from dataclasses import replace
     from src.neighbours import block_split
     ordered = ordered_training_rows(config)
@@ -343,11 +343,11 @@ def train_and_evaluate(
         # so every artifact for a given model — all feature sets, closed/open-set,
         # preprocessors — lives together instead of a flat, hard-to-scan directory.
         # XGBoost artifacts are .json (native format), everything else .pkl.
-        model_dir = resolve_path(config["paths"]["models_dir"]) / model_cfg["type"]
+        model_dir = get_models_dir(config, model_cfg["type"])
         model_dir.mkdir(parents=True, exist_ok=True)
         model.save(str(model_dir / f"{model_name}{artifact_suffix(model_cfg['type'])}"))
         joblib.dump(preprocessor, model_dir / f"preprocessor_{feature_set_name}{scheme_tag(config)}.pkl")
-        # Task 5.5: where flows sit among the training flows of each class, and a temperature fitted on the validation split, for the class-relative narrative and its calibrated confidence
+        # Narrative study: where flows sit among the training flows of each class, and a temperature fitted on the validation split, for the class-relative narrative and its calibrated confidence
         ClassReference.fit(X_train, y_train, list(preprocessor.target_encoder.classes_), list(features), list(preprocessor.categorical_features)
                            ).save(model_dir / f"class_reference_{feature_set_name}{scheme_tag(config)}.npz")
         (model_dir / f"calibration_{feature_set_name}{scheme_tag(config)}.json").write_text(json.dumps({"temperature": fit_temperature(proba_val, y_val)}))
@@ -383,8 +383,7 @@ def main() -> None:
     )
     logger.info(f"Training complete: {result}")
 
-    results_dir = resolve_path(config["paths"]["results_dir"])
-    plots_dir = results_dir / "plots" / config["model"]["type"]
+    plots_dir = get_plots_dir(config)
     scheme_name, merge_groups, _ = get_label_scheme(config)
     write_tier_plots(predictions_out, plots_dir, len(feature_sets["feature_pool"]), feature_set_name, scheme_name, merge_groups,
                      config["data"]["normal_category"], config["model"]["type"])   # confusion_matrix_<T>f.png, roc_curve_<T>f.png

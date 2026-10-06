@@ -1,4 +1,4 @@
-"""Task 2.6: is the few-shot result adaptation or neighbour leakage? (protocol: results/06_fpr_and_adaptation.md, section `Source: leakage_check_protocol.md`)
+"""Is the few-shot result adaptation or neighbour leakage? (protocol: results/06_fpr_and_adaptation.md, section `Source: leakage_check_protocol.md`)
 
     python pipelines/run_leakage_checks.py [--pools full base]   (default: the primary pool 48 only) [--ks 1000 5000] [--runs 5] [--checks twins blocks validation]
 
@@ -12,9 +12,9 @@ twins      check 1: share of evaluation rows with an exact / near (L-inf <= 0.1,
 blocks     check 2: the ordered known official-test rows are cut into contiguous blocks; adaptation rows from some blocks, evaluation rows from
            the others, with a gap dropped at every boundary (src/neighbours.block_split). Conditions on the SAME evaluation rows: zero-shot,
            `within_E` (adaptation rows drawn at random from the evaluation blocks) and `block_disjoint` (adaptation rows from the other blocks).
-shift_auc  check 6: the train-vs-test Normal AUC of Task 2.5 Step A with random vs block-grouped cross-validation.
+shift_auc  check 6: the train-vs-test Normal AUC of the shift and few-shot study Step A with random vs block-grouped cross-validation.
 validation check 5: validation built from contiguous blocks of the training file vs the standard random validation: FPR of the model on its
-           validation rows and on the official test (the validation-vs-test gap of Task 2a).
+           validation rows and on the official test (the validation-vs-test gap of the earlier tuning search).
 
 Writes under results/metrics/<model.type>/ (pool size in the names): leakage_<N>f_runs.csv, leakage_<N>f_summary.csv,
 leakage_<N>f_validation_blocks.csv.
@@ -200,7 +200,7 @@ def run_validation_blocks(config: dict, feature_sets: dict, pool: str, seeds=(42
 
 
 def shift_auc_by_cv(config: dict, feature_sets: dict, pool: str, seed: int = 42, block_size: int = BLOCK_SIZE) -> dict:
-    """Check 6: the train-Normal vs test-Normal classifier of Task 2.5 Step A with random 5-fold CV and with CV grouped by contiguous
+    """Check 6: the train-Normal vs test-Normal classifier of the shift and few-shot study Step A with random 5-fold CV and with CV grouped by contiguous
     blocks of file rows (every block, hence every neighbourhood, sits in a single fold). If neighbouring flows leak between folds the
     random-CV AUC is the inflated one."""
     from sklearn.metrics import roc_auc_score

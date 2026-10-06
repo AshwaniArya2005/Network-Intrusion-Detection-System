@@ -86,7 +86,7 @@ def tune_pool(config: dict, feature_sets: dict, pool: str, stage1: bool = False,
     """Random search for `pool`. With `stage1` the labels are attack (1) vs Normal (0): the search for the binary first
     stage of the hierarchical model (same space and budget; the 2-class macro F1 and attack AUC are scored on validation);
     its files are named hyperparameter_search_stage1_<N>f.csv / tuned_params_stage1_<N>f.json.
-    With `block_validation` (Task 2.7) the validation split is built from contiguous blocks of the training file (no neighbours shared with training) and the
+    With `block_validation` (the FPR-reduction study) the validation split is built from contiguous blocks of the training file (no neighbours shared with training) and the
     search uses `tuning.space_regularised`; the files are named hyperparameter_search_blockval_<N>f.csv / tuned_params_blockval_<N>f.json."""
     cfg = apply_pool_variant(config, pool)
     tuning, seed = dict(cfg["tuning"]), cfg["tuning"]["seed"]
@@ -146,7 +146,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--pools", nargs="*", default=["full"], help="default: the primary pool 48 (full); add base (40) or an experiments.pool_variants name")
     parser.add_argument("--stage1", action="store_true", help="search the binary attack-vs-normal first stage of the hierarchical model")
-    parser.add_argument("--block-validation", action="store_true", help="select on block-grouped validation with the regularised space (Task 2.7)")
+    parser.add_argument("--block-validation", action="store_true", help="select on block-grouped validation with the regularised space (the FPR-reduction study)")
     args = parser.parse_args()
     config = load_config()
     if config["model"]["type"] != "xgboost":

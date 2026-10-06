@@ -1,4 +1,4 @@
-"""Task 5 narrative audit helpers, checked by hand on narratives from the real generator."""
+"""Explanation study: narrative audit helpers, checked by hand on narratives from the real generator."""
 import pandas as pd
 import pytest
 

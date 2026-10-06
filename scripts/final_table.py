@@ -1,10 +1,10 @@
-"""Task 2.5 final table: every method with its access level on the official split (mean +/- std over 5 seeds / runs), next to
+"""The final table of the shift and few-shot study: every method with its access level on the official split (mean +/- std over 5 seeds / runs), next to
 the 40- and 48-feature defaults.
 
     python scripts/final_table.py
 
 Reads the default and tuned headline runs, the zero-shot comparison (methods_zero_shot_b1_*), the few-shot adaptation
-(adaptation_*) and the transductive methods (methods_transductive_b3_*), and writes task_2_5_final_table_<sizes>.csv / .md under
+(adaptation_*) and the transductive methods (methods_transductive_b3_*), and writes shift_and_fewshot_final_table_<sizes>.csv / .md under
 results/metrics/<model.type>/. Columns: accuracy, macro F1, argmax FPR / detection, FPR / detection at the validation-chosen (or, for
 thr_adapt, adaptation-sample) 95%-detection operating point, FPR at 95% detection (threshold-free), ECE, open-set detection and AUROC,
 Normal -> Fuzzers share. Few-shot rows are scored on the official test rows that were NOT used for adaptation. Macro F1 is not
@@ -75,7 +75,7 @@ def rows_for(metrics_dir: Path, label: str, pool: str) -> list[dict]:
 
 def render(df: pd.DataFrame, primary_only: bool = True) -> str:
     fmt = lambda m, s: "n/a" if pd.isna(m) else f"{m:.4f} +/- {s:.4f}"  # noqa: E731
-    lines = ["# Task 2.5 final table (official split; mean +/- std over 5 seeds or runs)", "",
+    lines = ["# Shift and few-shot study final table (official split; mean +/- std over 5 seeds or runs)", "",
              "Access: zero-shot = training data only; transductive = also the unlabelled test features; few-shot = also k labelled test rows "
              "(excluded from evaluation). `det95` columns are the validation-chosen 95%-detection operating point (thr_adapt: chosen on the k rows). "
              "Macro F1 is not comparable between hierarchical (8 classes) and flat (6 classes) models.", ""]
@@ -96,8 +96,8 @@ def main() -> None:
     metrics_dir = get_metrics_dir(load_config())
     frames = [pd.DataFrame(rows_for(metrics_dir, label, pool)) for label, pool in POOLS.items()]
     df = pd.concat(frames, ignore_index=True)
-    df.to_csv(metrics_dir / "task_2_5_final_table_40f_48f.csv", index=False)
-    (metrics_dir / "task_2_5_final_table_40f_48f.md").write_text(render(df), encoding="utf-8")
+    df.to_csv(metrics_dir / "shift_and_fewshot_final_table_40f_48f.csv", index=False)
+    (metrics_dir / "shift_and_fewshot_final_table_40f_48f.md").write_text(render(df), encoding="utf-8")
     print(render(df))
 
 

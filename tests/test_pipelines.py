@@ -903,7 +903,7 @@ def test_leakage_table_reads_the_original_and_the_check_files_without_inventing_
     df = build(tmp_path, {"48f": "48 features", "40f": "40 features"}, {"45f": "no ttl"}, ks=(1000, 5000))
     assert set(df["pool"]) == {"48f"}                                          # 40f and 45f files do not exist: no rows are made up
     by = df.set_index(["k_labelled", "row"])
-    assert by.loc[(5000, "original Task 2.5 result (retrain_split_f0.5, random adaptation rows)"), "det95_test_fpr_mean"] == 0.09
+    assert by.loc[(5000, "original shift and few-shot study result (retrain_split_f0.5, random adaptation rows)"), "det95_test_fpr_mean"] == 0.09
     assert by.loc[(5000, "twins: rows with NO near twin (<= 0.1) in the adaptation set"), "det95_test_fpr_mean"] == 0.2
     assert by.loc[(5000, "blocks: adaptation rows from other blocks (neighbourhood-disjoint)"), "det95_test_fpr_mean"] == 0.22
     assert {"few-shot", "zero-shot"} <= set(df["access"]) and all(f"{m}_mean" in df.columns for m in METRICS)

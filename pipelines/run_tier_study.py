@@ -38,7 +38,7 @@ from pipelines.train_pipeline import block_validation_splits, ensure_feature_ran
 from src.evaluation.plots import write_tier_plots
 from src.models.model_factory import create_scheme_model
 from src.utils.config_loader import (
-    apply_pool_variant, artifact_suffix, choose_pool, get_active_features, get_label_scheme, get_metrics_dir, get_random_features, get_worst_features,
+    apply_pool_variant, artifact_suffix, choose_pool, get_active_features, get_label_scheme, get_metrics_dir, get_models_dir, get_plots_dir, get_random_features, get_worst_features,
     load_config, load_feature_sets, pool_label, resolve_path, scheme_tag,
 )
 from src.utils.logger import add_file_logging, get_logger
@@ -50,15 +50,23 @@ KEEP = ["accuracy", "f1", "detection_rate", "false_positive_rate", "recall_Norma
         "fpr_at_90_detection", "fpr_at_95_detection", "unknown_detection_rate", "false_unknown_alarm_rate", "unknown_auroc", "fine_recall_macro"]
 
 
+_LOGGED_PARAMS: set[str] = set()   # one log line per model type, not one per seed and pool
+
+
 def model_config(cfg: dict, model_type: str, seed: int) -> dict:
-    """`cfg` for `model_type` and `seed`: XGBoost keeps config.yaml's parameters, the other families the declared `tier_study.model_params`."""
-    cfg["model"]["type"] = model_type
-    if model_type != "xgboost":
-        declared = cfg["tier_study"]["model_params"]
+    """`cfg` for `model_type` and `seed`. Hyperparameters: `model.params` when `model_type` is the config's `model.type` (the one place a teammate edits),
+    otherwise the `tier_study.model_params.<type>` declared for that other family."""
+    declared = cfg["tier_study"].get("model_params") or {}
+    if model_type == cfg["model"]["type"]:
+        if model_type not in _LOGGED_PARAMS:
+            _LOGGED_PARAMS.add(model_type)
+            logger.info(f"Tier study: using model.params for {model_type!r}" + (f" (tier_study.model_params.{model_type} is ignored for the configured model type)" if model_type in declared else ""))
+    else:
         if model_type not in declared:
-            raise ValueError(f"No parameters declared for model type {model_type!r}: add tier_study.model_params.{model_type} to configs/config.yaml "
-                             f"(and register the model in src/models/model_factory.py)")
+            raise ValueError(f"No parameters declared for model type {model_type!r}: add tier_study.model_params.{model_type} to configs/config.yaml, "
+                             f"or set model.type to {model_type!r} and put the parameters in model.params (and register the model in src/models/model_factory.py)")
         cfg["model"]["params"] = dict(declared[model_type])
+    cfg["model"]["type"] = model_type
     cfg["model"]["params"]["random_state"] = seed
     cfg["project"]["seed"] = seed
     return cfg
@@ -66,7 +74,7 @@ def model_config(cfg: dict, model_type: str, seed: int) -> dict:
 
 def prepare(config: dict, feature_sets: dict, pool: str, model_type: str, seed: int, pooled: bool = False):
     """(config, feature_sets, splits) of one run: block-grouped train / validation on the official split (or the pooled random split), and the
-    ranking file name set so the Task 3 rankings never overwrite the earlier ones."""
+    ranking file name set so the feature-tier study rankings never overwrite the earlier ones."""
     cfg = model_config(apply_pool_variant(config, pool), model_type, seed)
     splits = load_split_data(cfg, use_official_split=not pooled)
     if not pooled:
@@ -79,7 +87,7 @@ def prepare(config: dict, feature_sets: dict, pool: str, model_type: str, seed: 
 def ensure_pool_ranking(config: dict, feature_sets: dict, pool: str) -> list[str]:
     """The pool's mutual-information ranking on the seed-42 block-grouped training split (written once, shared by every model and seed)."""
     seed = config["tier_study"]["seeds"][0]
-    cfg, sets, splits = prepare(config, feature_sets, pool, "xgboost", seed)
+    cfg, sets, splits = prepare(config, feature_sets, pool, config["model"]["type"], seed)   # the ranking does not depend on the model
     ensure_feature_ranking(cfg, sets, splits.train)
     return get_active_features(cfg, sets, str(len(sets["feature_pool"])))
 
@@ -185,14 +193,14 @@ def run_baselines(config: dict, feature_sets: dict, pool: str, ranked_runs: pd.D
 
 
 def plots_dir_for(config: dict, model_type: str, out_dir: str | None = None) -> Path:
-    """results/plots/<model_type>/, or <out_dir>/plots/<model_type>/ when `--out-dir` is given."""
-    return Path(out_dir) / "plots" / model_type if out_dir else resolve_path(config["paths"]["results_dir"]) / "plots" / model_type
+    """results/plots/<model folder>/ (see `model_folder`), or <out_dir>/plots/<model_type>/ when `--out-dir` is given."""
+    return Path(out_dir) / "plots" / model_type if out_dir else get_plots_dir(config, model_type)
 
 
 def tier_predictions(cfg: dict, sets: dict, splits, features: list[str], tier: str, model_type: str) -> tuple[dict, bool]:
     """Test-split predictions of one tier's model: loaded from models_saved/<model_type>/ when a model AND its preprocessor were saved for exactly this
     (pool, protocol, tier, feature list), otherwise trained (closed set, the config's seed) and saved there for the next run. -> (predictions, reused)."""
-    model_dir = resolve_path(cfg["paths"]["models_dir"]) / model_type
+    model_dir = get_models_dir(cfg, model_type)
     tag = scheme_tag(cfg)                                   # label scheme + "_blockval" + pool tag: the pool and the protocol are in the file name
     model_path = model_dir / f"{model_type}_{tier}_closed{tag}{artifact_suffix(model_type)}"
     pre_path = model_dir / f"preprocessor_{tier}{tag}.pkl"
@@ -226,8 +234,8 @@ def run_tier_plots(config: dict, feature_sets: dict, pool: str, model_type: str,
 
 
 def output_dir(config: dict, model_type: str, out_dir: str | None = None) -> Path:
-    """results/metrics/<model_type>/, or <out_dir>/<model_type>/ when `--out-dir` is given (e.g. the gitignored results/_local_scratch)."""
-    return Path(out_dir) / model_type if out_dir else get_metrics_dir(dict(config, model=dict(config["model"], type=model_type)))
+    """results/metrics/<model folder>/ (see `model_folder`), or <out_dir>/<model_type>/ when `--out-dir` is given (e.g. the gitignored results/_local_scratch)."""
+    return Path(out_dir) / model_type if out_dir else get_metrics_dir(config, model_type)
 
 
 def save(config: dict, model_type: str, label: str, runs: pd.DataFrame | None = None, importances: pd.DataFrame | None = None, boots: dict | None = None,

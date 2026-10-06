@@ -1,11 +1,11 @@
-"""Task 5.5: a more informative narrative, and the explanations of false positives (protocol: results/03_novelty2_explanations.md, section `Source: narratives_protocol.md`). XGBoost, official split, `current` scheme, ZERO-SHOT.
+"""A more informative narrative, and the explanations of false positives (protocol: results/03_novelty2_explanations.md, section `Source: narratives_protocol.md`). XGBoost, official split, `current` scheme, ZERO-SHOT.
 
     python pipelines/run_narrative_study.py --part narrative --source validation --seeds 42 --pools base   # development on block-grouped validation flows only
     python pipelines/run_narrative_study.py --part narrative                                              # the one evaluation on a fresh official-test sample
     python pipelines/run_narrative_study.py --part falsepos
 
 narrative  per model: the narratives of the classic and the class-relative style for the same flows, both through the dashboard's PredictionService on the same saved artifacts, audited with
-           checks a-f of Task 5 and the new check g (clauses and calibrated number against independent computations). Writes narrative_<source>_<N>f_{narratives,failures,summary,calibration}.csv.
+           checks a-f of the explanation study and the new check g (clauses and calibrated number against independent computations). Writes narrative_<source>_<N>f_{narratives,failures,summary,calibration}.csv.
 falsepos   official-test groups (false-positive Normal flows, true Normal flows predicted Normal, true Fuzzers): deletion faithfulness, cited features, raw and calibrated confidence and what
            separates a false positive from a correct flow. Writes narrative_falsepos_<N>f_{faithfulness,groups,features,separation}.csv.
 """
@@ -27,7 +27,7 @@ from dashboard.backend.prediction_service import PredictionService
 from pipelines.run_tier_study import prepare
 from pipelines.run_xai_study import LABEL_COLUMNS, audit_flows, audit_summary, correlation_matrix, strata_of, train_and_save
 from src.fpr_methods import apply_temperature, fit_temperature
-from src.utils.config_loader import get_metrics_dir, load_config, load_feature_sets, pool_label, resolve_path
+from src.utils.config_loader import get_metrics_dir, load_config, load_feature_sets, pool_label, require_xgboost, resolve_path
 from src.utils.logger import add_file_logging, get_logger
 from src.xai.faithfulness import bootstrap_mean_interval, faithfulness_curves
 from src.xai.narrative_audit import parse_narrative
@@ -235,6 +235,7 @@ def main() -> None:
     parser.add_argument("--source", choices=["test", "validation"], default="test")
     args = parser.parse_args()
     config, feature_sets = load_config(), load_feature_sets()
+    require_xgboost(config, "the narrative study")
     add_file_logging(str(resolve_path(config["logging"]["log_file"])))
     seeds = tuple(args.seeds) if args.seeds else SEEDS
     for pool in args.pools:

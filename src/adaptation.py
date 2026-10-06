@@ -1,4 +1,4 @@
-"""Few-shot adaptation helpers (reused by the Task 2.5 official-split study and the Task 6 cross-dataset curve).
+"""Few-shot adaptation helpers (reused by the official-split few-shot study and the cross-dataset curve).
 
 Access level: FEW-SHOT = the training data plus k labelled rows drawn from the TARGET distribution (the official test
 file, or the other dataset). The adaptation rows are removed from the evaluation set, so a method is never scored on

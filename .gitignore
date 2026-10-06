@@ -39,11 +39,12 @@ dashboard/frontend/dist/
 *.log
 
 # Generated per-tier plots (one confusion matrix and one ROC figure per pool and tier of every model, written by
-# pipelines/run_tier_study.py): ignored so results/ does not fill up again. The two headline-tier plots (primary pool 48, tier 48) stay tracked.
+# pipelines/run_tier_study.py): ignored, except the XGBoost reference plots of the primary pool 48 (confusion_matrix_<T>f.png, roc_curve_<T>f.png),
+# which are tracked. Other models' plots (teammates commit their own) and the comparison-pool plots (confusion_matrix_pool<N>_<T>f.png) stay ignored.
 results/plots/*/confusion_matrix_*f*.png
 results/plots/*/roc_curve_*f*.png
-!results/plots/xgboost/confusion_matrix_48f.png
-!results/plots/xgboost/roc_curve_48f.png
+!results/plots/xgboost/confusion_matrix_[0-9]*f.png
+!results/plots/xgboost/roc_curve_[0-9]*f.png
 
 # Screenshots of the dashboard are not kept in the repository, and no script generates one
 results/plots/*/dashboard_*.png

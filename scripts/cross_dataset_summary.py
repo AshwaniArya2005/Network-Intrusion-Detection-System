@@ -1,4 +1,4 @@
-"""Tables for Task 6 from results/metrics/xgboost/cross_dataset_*.csv (protocol: results/05_novelty4_cross_dataset.md, section `Source: cross_dataset_protocol.md`).
+"""Tables for the cross-dataset study from results/metrics/xgboost/cross_dataset_*.csv (protocol: results/05_novelty4_cross_dataset.md, section `Source: cross_dataset_protocol.md`).
 
     python scripts/cross_dataset_summary.py
 
@@ -85,7 +85,7 @@ def source_helps(runs: pd.DataFrame, metric: str = "fpr_at_threshold") -> dict:
 
 # ---------------------------------------------------------------- rendering
 def render_step1(runs: pd.DataFrame, types: pd.DataFrame, block_mix: pd.DataFrame, eval_mix: pd.DataFrame) -> str:
-    out = ["# Task 6 Step 1: leak-free zero-shot baseline (5 seeds, mean +/- std; target = the evaluation blocks, 200-row gaps)", ""]
+    out = ["# Cross-dataset study Step 1: leak-free zero-shot baseline (5 seeds, mean +/- std; target = the evaluation blocks, 200-row gaps)", ""]
     for direction in ("UNSW_to_CIC", "CIC_to_UNSW"):
         g = runs[runs["direction"] == direction]
         out += [f"## {direction.replace('_to_', ' -> ')}", "", *metric_table(g.assign(method=g["method"].replace({"random": "random (10 subsets x 5 seeds)"})), ["method"]), ""]
@@ -116,7 +116,7 @@ def render_step1(runs: pd.DataFrame, types: pd.DataFrame, block_mix: pd.DataFram
 
 def render_step2(univariate: pd.DataFrame, agreement: pd.DataFrame, zero: pd.DataFrame) -> str:
     u = univariate.copy()
-    out = ["# Task 6 Step 2: why zero-shot fails (diagnostic)", "", "AUROC of each common feature alone for attack against normal (all rows of each dataset; above 0.5 = attack flows have higher values). `absent` = |AUROC - 0.5| < 0.05 in at least one dataset.", "",
+    out = ["# Cross-dataset study Step 2: why zero-shot fails (diagnostic)", "", "AUROC of each common feature alone for attack against normal (all rows of each dataset; above 0.5 = attack flows have higher values). `absent` = |AUROC - 0.5| < 0.05 in at least one dataset.", "",
            "| feature | UNSW | CIC | same direction | absent in either dataset | flipped (clear and opposite) |", "|---|---|---|---|---|---|"]
     out += [f"| {r.feature} | {r.UNSW:.3f} | {r.CIC:.3f} | {'yes' if r.agree else 'no'} | {'yes' if r.absent_in_either else 'no'} | {'yes' if r.flipped else 'no'} |" for r in u.sort_values("feature").itertuples()]
     out += ["", f"Of {len(u)} features: {int(u['agree'].sum())} point the same way, {int((~u['agree']).sum())} do not, {int(u['absent_in_either'].sum())} are absent (near 0.5) in at least one dataset and {int(u['flipped'].sum())} are clearly flipped. "
@@ -129,14 +129,14 @@ def render_step2(univariate: pd.DataFrame, agreement: pd.DataFrame, zero: pd.Dat
 def render_step3(align: pd.DataFrame, zero: pd.DataFrame) -> str:
     base = zero[zero["method"] == "common_all"].assign(method="baseline: common_all (ZERO-SHOT, Step 1)")
     runs = pd.concat([base, align], ignore_index=True)
-    out = ["# Task 6 Step 3: label-free alignment (TRANSDUCTIVE) against the zero-shot baseline (5 seeds, mean +/- std)", ""]
+    out = ["# Cross-dataset study Step 3: label-free alignment (TRANSDUCTIVE) against the zero-shot baseline (5 seeds, mean +/- std)", ""]
     for direction in ("UNSW_to_CIC", "CIC_to_UNSW"):
         out += [f"## {direction.replace('_to_', ' -> ')}", "", *metric_table(runs[runs["direction"] == direction], ["method"]), ""]
     return "\n".join(out) + "\n"
 
 
 def render_step4(curves: dict[str, pd.DataFrame]) -> str:
-    out = ["# Task 6 Step 4: few-shot curve, both directions (25 runs per cell = 5 seeds x 5 draws; mean +/- std)", "",
+    out = ["# Cross-dataset study Step 4: few-shot curve, both directions (25 runs per cell = 5 seeds x 5 draws; mean +/- std)", "",
            "k labelled target rows: half retrain the model (together with the source data for source+target), half choose the threshold; evaluation on target rows from other blocks. Success level: FPR at the held-out-half threshold <= 0.15 with detection >= 0.90, or balanced accuracy within 0.05 of the leak-free reference.", ""]
     for direction, runs in curves.items():
         ref = runs[runs["method"] == "within_dataset_reference"]

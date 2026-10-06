@@ -1,4 +1,4 @@
-"""Tables for Task 2.7 from results/metrics/xgboost/fpr_study_<step>_<N>f_runs.csv (protocol: results/06_fpr_and_adaptation.md, section `Source: fpr_reduction_protocol.md`).
+"""Tables for the FPR-reduction study from results/metrics/xgboost/fpr_study_<step>_<N>f_runs.csv (protocol: results/06_fpr_and_adaptation.md, section `Source: fpr_reduction_protocol.md`).
 
     python scripts/fpr_summary.py --step tuned|prior|self|fewshot --pools 40f 45f 48f
 
@@ -60,8 +60,8 @@ def table(rows: pd.DataFrame, first: list[str], metrics: list[str] = METRICS) ->
 
 
 def render_tuned(runs: pd.DataFrame) -> str:
-    out = ["# Task 2.7 Step 1 (ZERO-SHOT): re-tuning on block-grouped validation, official test, mean +/- std over seeds 42-46", "",
-           "Primary metric `det95_test_fpr` (threshold at 95% detection chosen on block-grouped validation). `earlier_tuned_*` = the Task 2a search on random validation (40 and 48 features only); "
+    out = ["# FPR-reduction study Step 1 (ZERO-SHOT): re-tuning on block-grouped validation, official test, mean +/- std over seeds 42-46", "",
+           "Primary metric `det95_test_fpr` (threshold at 95% detection chosen on block-grouped validation). `earlier_tuned_*` = the earlier tuning search on random validation (40 and 48 features only); "
            "`blockval_tuned_*` = the 40-trial search on block-grouped validation with the regularised space. Verdict = the declared rule against `default` on the same seeds.", ""]
     for label, g in runs.groupby("pool_label", sort=False):
         out += [f"## {label}", "", *table(g, ["method"]), "", "| method | mean paired diff in det95 FPR | better in | detection diff | clearly beats default |", "|---|---|---|---|---|"]
@@ -74,7 +74,7 @@ def render_tuned(runs: pd.DataFrame) -> str:
 
 
 def render_prior(runs: pd.DataFrame) -> str:
-    out = ["# Task 2.7 Step 2: temperature scaling and class-prior correction, official test, mean +/- std over seeds 42-46", "",
+    out = ["# FPR-reduction study Step 2: temperature scaling and class-prior correction, official test, mean +/- std over seeds 42-46", "",
            "`calibrated` and `calibrated_valprior` are ZERO-SHOT; `calibrated_em` is TRANSDUCTIVE (uses the unlabelled test features). The same transformation is applied to validation and test; "
            "the det95 threshold is chosen on the transformed validation scores.", ""]
     for label, g in runs.groupby("pool_label", sort=False):
@@ -93,7 +93,7 @@ def render_prior(runs: pd.DataFrame) -> str:
 
 
 def render_self(runs: pd.DataFrame) -> str:
-    out = ["# Task 2.7 Step 3 (TRANSDUCTIVE): self-training, mean +/- std over seeds 42-46", "",
+    out = ["# FPR-reduction study Step 3 (TRANSDUCTIVE): self-training, mean +/- std over seeds 42-46", "",
            "Two rounds, tau = 0.90, pseudo-labelled rows carry 20% of the sample weight, rounds are not cumulative. Pseudo-labels come from the unlabelled blocks and every metric is on the other blocks (200-row gaps). "
            "`validation` rows are the check made before looking at the test file (half of the block-grouped validation blocks treated as unlabelled).", ""]
     for label, g in runs.groupby("pool_label", sort=False):
@@ -114,7 +114,7 @@ def render_self(runs: pd.DataFrame) -> str:
 
 
 def render_fewshot(runs: pd.DataFrame) -> str:
-    out = ["# Task 2.7 Step 4 (FEW-SHOT): label budget and selection strategy, mean +/- std over 5 runs", "",
+    out = ["# FPR-reduction study Step 4 (FEW-SHOT): label budget and selection strategy, mean +/- std over 5 runs", "",
            "Half of the k labelled rows retrain the model (weight fraction 0.5), the other half chooses the 95%-detection threshold. Candidates and evaluation rows come from different time blocks "
            "(200-row gaps); every method is scored on the same evaluation rows as the zero-shot baseline. Two FPRs are shown: `det95 FPR` at the threshold chosen on the held-out labelled half (its test detection is in the next column and is often below 95%, which flatters the FPR) "
            "and the threshold-free FPR at exactly 95% detection. Smallest k with mean FPR <= 0.15 is stated per strategy for both.", ""]
@@ -188,7 +188,7 @@ def main() -> None:
                 path = d / f"fpr_study_{step}_{p}_runs.csv"
                 return pd.read_csv(path) if path.exists() else pd.DataFrame(columns=["method", "source", "k", "strategy", "held_half_fpr"])
             parts.append(render_final(read("tuned"), read("prior"), read("combined"), read("self"), read("fewshot"), p))
-        text = "# Task 2.7 Step 5: final table (official split, mean +/- std over seeds 42-46)\n\n" + "\n".join(parts)
+        text = "# FPR-reduction study Step 5: final table (official split, mean +/- std over seeds 42-46)\n\n" + "\n".join(parts)
         out = d / f"fpr_study_final_{'_'.join(args.pools)}.md"
         out.write_text(text, encoding="utf-8")
         print(text)

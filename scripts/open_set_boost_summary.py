@@ -1,4 +1,4 @@
-"""Tables for Task 4.5 from results/metrics/xgboost/open_set_boost_<idea>_<N>f_<kind>.csv (protocol: results/02_novelty1_open_set.md, section `Source: open_set_boost_protocol.md`).
+"""Tables for the open-set boost study from results/metrics/xgboost/open_set_boost_<idea>_<N>f_<kind>.csv (protocol: results/02_novelty1_open_set.md, section `Source: open_set_boost_protocol.md`).
 
     python scripts/open_set_boost_summary.py --idea calibration|perclass|ensemble|distance|oe|combo --pools 40f 48f
 
@@ -112,7 +112,7 @@ def render(idea: str, label: str, tables: dict[str, pd.DataFrame]) -> str:
     if len(tables.get("composition", [])):
         out += ["### Composition of the flagged-Unknown bucket on the official test (Worms + Shellcode held out)", "", *composition_table(tables["composition"], names), ""]
     if len(tables.get("curve", [])):
-        out += ["### Alert FPR and the review queue at the 5% target (Task 4 Step 3 measures; Worms + Shellcode held out)", "", *queue_table(tables["curve"], names), ""]
+        out += ["### Alert FPR and the review queue at the 5% target (the open-set study Step 3 measures; Worms + Shellcode held out)", "", *queue_table(tables["curve"], names), ""]
     diag = tables.get("diagnostics")
     if diag is not None and len(diag):
         numeric = diag.select_dtypes("number").drop(columns=["seed"], errors="ignore")
@@ -143,7 +143,7 @@ def main() -> None:
     parser.add_argument("--pools", nargs="+", required=True)
     args = parser.parse_args()
     d = get_metrics_dir(load_config())
-    text = f"# Task 4.5: {args.idea}\n\n"
+    text = f"# Open-set boost study: {args.idea}\n\n"
     if args.idea == "iforest":
         for pool in args.pools:
             text += render_iforest(pool, pd.read_csv(d / f"open_set_boost_iforest_{pool}_checks.csv"))

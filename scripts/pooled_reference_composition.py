@@ -1,4 +1,4 @@
-"""What each split protocol trains on, by official source file (Task 2.6 check 4):
+"""What each split protocol trains on, by official source file (leakage check 4):
 
     python scripts/pooled_reference_composition.py
 

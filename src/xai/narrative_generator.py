@@ -91,7 +91,7 @@ class NarrativeGenerator:
     """Generates human-readable, actionable explanations from SHAP output.
 
     `style="classic"` (default): every cited feature gets a magnitude cue against the overall training mean / std, "typical" included.
-    `style="class_relative"` (Task 5.5, protocol results/03_novelty2_explanations.md, section `Source: narratives_protocol.md`): features whose cue would read "typical" are omitted and the others say where the value sits among
+    `style="class_relative"` (the narrative study, protocol results/03_novelty2_explanations.md, section `Source: narratives_protocol.md`): features whose cue would read "typical" are omitted and the others say where the value sits among
     ALL training flows and among the flows of the PREDICTED class, using a `ClassReference` (src/xai/class_reference.py); a calibrated confidence can be shown next to the raw one."""
 
     def __init__(self, suggested_actions: dict[str, str] | None = None, style: str = "classic", reference=None):
