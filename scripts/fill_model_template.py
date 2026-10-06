@@ -83,6 +83,9 @@ def fill(config: dict, model: str, pool: str, template: pd.DataFrame) -> tuple[p
             if tier == full:
                 for col in STAB_PAIR.values():
                     r[f"{col}_mean"] = r[f"{col}_std"] = "not applicable"
+        if split == "pooled_random" and not r["protocol"].startswith("headline"):
+            for col in (*STAB_PAIR.values(), *STAB_FLOOR.values()):                  # SHAP is only computed on the official split
+                r[f"{col}_mean"] = r[f"{col}_std"] = "not applicable"
         out.append(r)
     names = [n for n, t in (("headline summary", headline), ("tier_summary", tiers), ("pooled tier runs", pooled), ("stability", stability)) if t is not None]
     for r in out:

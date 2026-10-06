@@ -105,10 +105,11 @@ results/             the six numbered area files (01-06: conclusions, tables, pr
 Everything is driven by `configs/config.yaml` (settings, `model.type`, `model.params`) and `configs/feature_sets.yaml` (feature pools and tiers). Every entry point reads the config through `src/utils/config_loader.py` and writes into folders named after the model:
 `results/metrics/<model.type>/` (tables), `results/plots/<model.type>/` (figures), `models_saved/<model.type>/` (saved models, git-ignored). `src/` holds the shared library (data loading and splits, preprocessing, the model registry in `src/models/model_factory.py`, SHAP and narratives in `src/xai/`, metrics and plots in `src/evaluation/`); nothing in `src/` is an entry point.
 
-**Shared workflow, for any `model.type`** (what every teammate runs):
+**Shared workflow, for any `model.type`** (what every teammate runs; `run_model.py` chains the first steps below):
 
 | Entry point | What it does | Reads | Writes |
 |---|---|---|---|
+| `pipelines/run_model.py` | **the shared workflow for any `model.type`**: steps A headline, B tier study, C stability, then a filled results table; pre-flight, refusal to overwrite, `--run-name`, `--out-dir` | data files, config (`--config` or `$XAI_IDS_CONFIG`) | the three model-named folders, `run_config.yaml`, `model_results_<model>.csv` |
 | `pipelines/train_pipeline.py` | trains one model on the active feature set, evaluates it, writes the feature ranking with `--write-ranking` | data files, config | model, preprocessor and metadata in `models_saved/<model.type>/`; `results/rankings/` on request |
 | `pipelines/run_all_experiments.py` | the experiment suite: feature sets, closed and open set, random and worst-feature baselines, stability, cross-dataset | data files, config | tables in `results/metrics/<model.type>/`, models, the per-tier plots |
 | `pipelines/run_headline_seeds.py` | headline metrics over five seeds on the official and the pooled split | data files, config | `headline_*` tables |
@@ -168,15 +169,17 @@ and the loader switches to a 48-feature pool automatically when all 8 are presen
 [Feature sets](#feature-sets)). The local copy's train file matches the official training set row for row
 on the shared columns (checked against a third-party mirror); the official test file was not compared.
 
-**Until those files exist, every pipeline in this repo falls back to a small
-synthetic, dataset-shaped stand-in** (see `src/data_loader.py`), so the whole
-system — training, explanations, dashboard — is runnable immediately for
-development/demo purposes. Replace the files with the real datasets before
-reporting research results.
+**`pipelines/run_model.py` stops when the real files are missing** (and says which pools the files allow); `--allow-synthetic` runs it on a small generated
+stand-in for a smoke test. The other pipelines fall back to that stand-in (`src/data_loader.py`) with a loud `SYNTHETIC DATA` warning in the log, so the system
+stays runnable for development and demos. Replace the files with the real datasets before reporting research results.
 
 ## Quick start
 
 ```bash
+# 0. The shared workflow for ONE model, in one command: set model.type and model.params in configs/config.yaml, then
+python pipelines/run_model.py              # headline (5 seeds), tier study with plots and saved models, explanation stability, filled results table
+#    options: --config my.yaml  --steps A B  --pool 40  --run-name NAME  --out-dir DIR  --overwrite  (see ONBOARDING.md)
+
 # 1. Train one model using the settings in configs/config.yaml
 python pipelines/train_pipeline.py
 
@@ -201,12 +204,10 @@ trained artifacts in `models_saved/<model.type>/` (`.json` for XGBoost, `.pkl` f
 
 ## Swapping the model
 
-See **[ONBOARDING.md](ONBOARDING.md)** — a full audit of what's actually
-swappable (model interface, SHAP explainability, open-set logic, config-driven
-selection), which files to touch (3) vs. leave alone, and a worked example
-adding LightGBM. Short version: create `src/models/your_model.py` implementing
-`BaseModel`, register it in `src/models/model_factory.py`, set `model.type` in
-`configs/config.yaml`, run `python pipelines/run_all_experiments.py`.
+See **[ONBOARDING.md](ONBOARDING.md)**, the single page a teammate needs (install, data files, config, the one command, where outputs appear, adding a
+model, comparing with the reference, troubleshooting). Short version: set `model.type` and `model.params` in `configs/config.yaml` (register a new model in
+`src/models/model_factory.py` first), run `python pipelines/run_model.py`; results appear in `results/metrics/<model.type>/`, `results/plots/<model.type>/` and
+`models_saved/<model.type>/`, and an existing model's folders are never overwritten silently.
 
 ## Data split
 

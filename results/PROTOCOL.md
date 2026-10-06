@@ -28,6 +28,7 @@ Outputs of a model go to `results/metrics/<model.type>/` only; never edit or ove
 ## Commands (details and the config key for a new model: `ONBOARDING.md`)
 | step | command |
 |---|---|
+| the whole workflow in one command | `python pipelines/run_model.py` (steps A, B, C below, then a filled `model_results_<model>.csv`; `--run-name`, `--out-dir`, `--pool`, `--overwrite`) |
 | A headline, 5 seeds, official and pooled | `python pipelines/run_headline_seeds.py --pools full` (primary pool; add `base` for pool 40; `model.type` set to your model) |
 | B tier study | `python pipelines/run_tier_study.py --model <type>` (default: the primary pool 48; `--pools base full_no_ttl full` for all three) then `python scripts/tier_summary.py --model <type>` |
 | C explanation stability across tiers | `python scripts/explanation_stability_tiers.py --model <type>` |
