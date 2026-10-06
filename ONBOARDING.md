@@ -160,8 +160,8 @@ rows, byte-for-byte identical to before the refactor (a one-off check of that re
 
 ## Reproducing the feature-tier and explanation-stability study for your own model
 
-XGBoost's Task 3 study (feature tiers, SHAP stability, cross-model agreement) is committed. Each teammate runs the **same** study for their own model
-so the numbers are comparable. The protocol is in `results/task_3_protocol.md` (read it first). The rules that make runs comparable:
+XGBoost's feature-tier and explanation-stability study (feature tiers, SHAP stability, cross-model agreement) is committed. Each teammate runs the **same** study for their own model
+so the numbers are comparable. The shared rules are on one page in `results/PROTOCOL.md` (read it first); the full declared protocol is inside `results/04_novelty3_feature_tiers.md` (section `Source: task_3_protocol.md`). The rules that make runs comparable:
 
 - **Zero-shot, official split, scheme `current`.** Nothing is tuned on the official test file.
 - **Block-grouped validation.** Training / validation are rebuilt from contiguous blocks of the training file (`tier_study.block_size` / `tier_study.buffer` in
@@ -203,6 +203,32 @@ so the numbers are comparable. The protocol is in `results/task_3_protocol.md` (
 - **Random forest** uses `n_jobs: -1`. At the declared settings the SHAP step takes several times longer than the fit (it grows with trees x depth), so keep the declared size; for logistic regression the fit dominates and SHAP is negligible.
 - Outputs of a model whose parameters you change are not comparable with the declared settings: say so in your write-up.
 - Tests that exercise all of this on synthetic data: `python -m pytest tests/test_pipelines.py -k "tier or cross_model or explainer_type"`.
+
+## Reference results and how to compare
+
+What to compare with, all under `results/`:
+
+| file | what it is |
+|---|---|
+| `PROTOCOL.md` | the one-page shared rules (official split primary, duplicate removal, block-grouped validation, seeds 42-46, tier grid, zero-shot, the pooled split labelled as optimistic) |
+| `REFERENCE_XGBOOST.csv` | the XGBoost headline, tier and explanation-stability numbers (mean and std over 5 seeds); a cell reads `not computed` where the XGBoost tables have no such number and `not applicable` where the quantity does not exist |
+| `TEMPLATE_model_results.csv` | blank, one row per (model, pool, tier, split, protocol), with the same columns: fill it and compare row by row |
+| `metrics/xgboost/shap_importance_xgboost_<N>f.csv`, `shap_boot_xgboost_<N>f.npz` | the XGBoost SHAP files that step D needs |
+| `01_...` to `06_...md` | XGBoost conclusions, tables and the declared protocols by research area (protocol and headline, open-set, explanations, feature tiers, cross-dataset, false-positive rate and adaptation); `NUMBERS_LEDGER.md` lists every quoted number with its source |
+
+Steps (run from the repository root; `<type>` is your `model.type`):
+
+| step | command | writes | what a new model needs |
+|---|---|---|---|
+| A. headline metrics, 5 seeds, official split and the pooled split (best case, optimistic) | set `model.type: <type>` (and its `model.params`) in `configs/config.yaml`, then `python pipelines/run_headline_seeds.py` | `results/metrics/<type>/headline_*` | a branch in `src/models/model_factory.py` (`elif model_type == "<type>": ...`); the declared parameters in `model.params` |
+| B. feature-tier study (48 / 40 / 30 / 20 / 15, pools 40 / 45 / 48) | `python pipelines/run_tier_study.py --model <type>`, then `python scripts/tier_summary.py --model <type>` | `tier_study_<type>_<N>f_runs.csv`, `shap_importance_<type>_<N>f.csv`, `shap_boot_<type>_<N>f.npz`, `tier_summary_<type>*` | `tier_study.model_params.<type>` in `configs/config.yaml` (the runner stops with an error naming the key if it is missing), and the same `model_factory` branch |
+| C. explanation stability across tiers | `python scripts/explanation_stability_tiers.py --model <type>` | `stability_<type>_<N>f.csv`, `stability_<type>.md` | step B finished |
+| D. cross-model SHAP agreement, once two models have finished step B | `python scripts/cross_model_agreement.py --models xgboost <type>` | `results/metrics/cross_model/` | the XGBoost SHAP files above and your own from step B |
+| E. optional: open-set and explanation checks (XGBoost only for now) | `python pipelines/run_open_set_study.py --step scores`, `python pipelines/run_xai_study.py --part faithfulness` | `results/metrics/xgboost/` | not implemented for other models yet |
+
+Add `--out-dir results/_local_scratch` (step B) and `--in-dir results/_local_scratch` (steps B-D) to keep your runs local and untracked, as described above.
+
+**The repository is trimmed.** Per-seed, per-flow and per-trial result files were removed from `results/metrics/xgboost/` (they are in git tag `pre-cleanup-2026-10`). The summary scripts (`scripts/*_summary.py`, `tier_summary.py`, `final_table.py`, `leakage_table.py`, `accuracy_table.py`, `compare_pools.py`, `compare_tuned.py`, ...) read the outputs of their pipeline, so they will not run on the XGBoost side of the trimmed repository until that pipeline has been run first; for your own model they work as described because you run the pipeline yourself. Do not treat a missing XGBoost file as an error in your run: compare with `REFERENCE_XGBOOST.csv`.
 
 ## A concrete example
 

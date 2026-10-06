@@ -1,39 +1,43 @@
 # results/
 
-Committed CSV metrics (`metrics/<model.type>/`), per-task tables, charts (`plots/<model.type>/`), the feature rankings, the declared protocols and the numbers ledger.
+Everything the report and a teammate need, and nothing else. XGBoost is the only model with results here.
 
-## Start here
-- `NUMBERS_LEDGER.md`: every headline number the README, PROJECT_PLAN and the conclusions quote, with its source file and column (each entry checked by program), plus the gaps found.
-- `metrics/xgboost/task_*_conclusion.md` and `shift_conclusion_40f_45f_48f.md`: one conclusion per task. `task_*_protocol.md` (here): the protocols, declared before any result.
-- `CLEANUP_MANIFEST.md`: what the Task 7 cleanup removed, merged and kept, and why. The pre-cleanup state is git tag `pre-cleanup-2026-10`.
+## For the report
+| file | content |
+|---|---|
+| `01_protocol_and_headline.md` | headline (official split against the optimistic pooled split, 5 seeds), tuning, bootstrap intervals, accuracy ceiling, per-class headline metrics, label schemes and class overlap, the earlier single-seed run, shift diagnostics |
+| `02_novelty1_open_set.md` | open-set / zero-day detection and its boosts |
+| `03_novelty2_explanations.md` | explanation faithfulness, narrative audit, class-relative narratives, false-positive explanations |
+| `04_novelty3_feature_tiers.md` | feature tiers and explanation stability |
+| `05_novelty4_cross_dataset.md` | cross-dataset generalisation (UNSW-NB15 and CICIDS2017) |
+| `06_fpr_and_adaptation.md` | why the false-positive rate stays high, what labels do, neighbour-leakage checks, what did not help |
+| `NUMBERS_LEDGER.md` | every headline number the documents quote, with the file, section and cell it comes from (checked by program) |
+| `plots/xgboost/` | the figures: confusion matrix and ROC (40 features), open-set sweep, explanation stability, feature-set metrics, adaptation curves (40 and 48 features), dashboard screenshot |
+| `metrics/xgboost/xai_audit_40f_narratives.csv`, `xai_audit_40f_example_failures.csv`, `narrative_test_40f_narratives.csv` | narrative samples (1,000 audited narratives; ten example failures; the sample the A/B sheet is built from) |
+| `task_5_5_ab_sheet.csv`, `task_5_5_ab_key.csv`, `task_5_5_ab_instructions.md`; `task_5_human_audit_sheet.csv`, `task_5_human_audit_key.csv`, `task_5_human_audit_instructions.md` | the two blank rating sheets with their keys and instructions (no ratings collected yet) |
 
-## What was removed in the cleanup, and how to get it back
-Per-seed / per-run / per-flow rows whose summary table is kept, the twin tables of the non-default label schemes, the `none` / `wide` confusion-matrix CSVs, the per-tier plots, the `normal_fuzzers_diagnostic/` scratch folder and a few superseded single files were removed (list: `CLEANUP_MANIFEST.md`). They are in git tag `pre-cleanup-2026-10` (`git show pre-cleanup-2026-10:<path>`) and in the pipelines that wrote them. The summary scripts (`scripts/*_summary.py`, `tier_summary.py`, ...) read those per-seed files, so re-running one needs its pipeline (named in its docstring) first.
+Each numbered file holds the original conclusion, table and protocol files of its area unchanged, one `Source: <original file name>` section each (headings demoted two levels), followed by tables rendered from small CSV files that were removed. The file names mentioned inside them are those `Source:` sections.
 
-## Merged table files (`metrics/xgboost/`)
-Each is the original per-table markdown files, verbatim, one section `Source: <original file name>` each:
-`task_2_7_tables.md` (fpr_study_*), `task_3_tables.md` (tier_summary_xgboost, stability_xgboost), `task_4_tables.md` (open_set_step1-4), `task_4_5_tables.md` (open_set_boost_<idea>), `task_5_tables.md` (xai_faithfulness, xai_audit, narrative_test, narrative_falsepos), `task_6_tables.md` (cross_dataset_step1-4), `headline_tables.md` (headline_*_summary, operating_point_summary, accuracy_three_numbers_*, pool_comparison_*, tuned_vs_default). The generation scripts still write the original per-table names if re-run.
+## For handing over
+| file | content |
+|---|---|
+| `PROTOCOL.md` | one page: the shared rules every model follows, and the commands |
+| `REFERENCE_XGBOOST.csv` | the XGBoost headline, tier and stability numbers to compare with (`not computed` / `not applicable` where a value does not exist in the XGBoost tables) |
+| `TEMPLATE_model_results.csv` | the same columns, blank: one row per (model, pool, tier, split, protocol) |
+| `../ONBOARDING.md` | how to add a model and run steps A-E (section "Reference results and how to compare") |
+| `feature_ranking_mutual_info*.csv` (+ `.meta.json`) | the shared feature rankings that define the tiers; read by the pipelines, never regenerate |
+| `metrics/xgboost/shap_importance_xgboost_<N>f.csv`, `shap_boot_xgboost_<N>f.npz` | the XGBoost SHAP files used by the cross-model agreement step |
 
-## File naming
-- `_48f` suffix: the 48-feature pool (42 raw official columns + 6 engineered). No suffix: the 40-feature pool
-  (34 raw + 6 engineered) run on the SAME deduplicated rows and splits (`feature_selection.pool: base`).
-- `_wide`, `_none`, `_pooled`: label scheme / pooled random split variants (see `config.yaml`). Only the default-scheme (`current`) confusion matrices are kept.
-- `confusion_matrix_<tier>_<official|pooled_random>[_rownorm].csv`: test confusion matrix, rows = true class.
-- `headline_*_summary.csv`: 5-seed headline metrics (mean / std / min / max); `headline_tuned_<f1|auc>_official_*` use validation-tuned hyperparameters;
-  `headline_full_no_ttl_*` is the 45-feature ablation (48 minus `sttl`, `dttl`, `ct_state_ttl`).
-- `operating_point_summary_<N>f.csv`: attack-vs-normal thresholds chosen on validation and their official-test cost (the validation-vs-test gap).
-- `hyperparameter_search_<N>f.csv`, `tuned_params_<N>f.json`, `tuned_vs_default.*`: the capped validation search and its test effect.
-- `bootstrap_ci_40f_48f_45f.csv`, `bootstrap_paired_diff_40f_48f_45f.csv`: 95% intervals over official test rows and paired pool differences.
-- `accuracy_three_numbers_*`: official split, pooled split and best-possible ceiling together; `pool_comparison_*`: pools side by side.
-- `overlap/pooled_34f/`, `overlap/pooled_42f/`: `summary.md` and `best_possible_accuracy.csv` of the exact/near-twin analysis (`scripts/overlap_analysis.py`; the per-class twin tables are regenerated by that command).
-- `xai_audit_40f_narratives.csv` (1,000 audited narratives) and `xai_audit_40f_example_failures.csv` (ten example failures of check f, with the real SHAP trend in `shap_trend_on_training_rows`) are the Task 5 samples; `narrative_test_40f_narratives.csv` is the source of the Task 5.5 A/B sheet.
+Outputs of any model go to `results/metrics/<model.type>/`; plots to `results/plots/<model.type>/` (written by the pipelines, hence not moved).
 
 ## Data version
-All numbers here are on the 42-feature UNSW-NB15 training/testing sets (`data/raw`, 257,673 rows, 162,745 after exact
-deduplication). Figures in older documents (78 % F1, 67-75 % zero-day detection, 0.97 ROC-AUC) are withdrawn.
+All numbers are on the 42-feature UNSW-NB15 training and testing sets (257,673 rows, 162,745 after exact deduplication). `_48f` in a name: the 48-feature pool; no suffix: the 40-feature pool on the same rows and splits. Figures in older documents (78% F1, 67-75% zero-day detection, 0.97 ROC-AUC) are withdrawn. `feature_ranking_mutual_info.csv` was regenerated on the 42-feature data (commit `70a845d`); results produced before that commit are tied to the older ranking.
 
-## Feature rankings were regenerated
-`feature_ranking_mutual_info.csv` (40-feature pool) was regenerated on the 42-feature data, because deduplication over
-42 columns keeps ~17,500 more rows than over 34 and the ranking depends on the training rows. **Its order and top-15 set
-differ from the ranking behind the older 34-feature results** (committed at `af809d2`); results produced before
-commit `70a845d` are tied to the old ranking. The 48-feature ranking is `feature_ranking_mutual_info_48f.csv`.
+## What was removed, and where to recover it
+Per-seed, per-run and per-flow result files, per-trial lists, per-tier plots, scratch diagnostics, duplicate and superseded files, and the standalone copies of everything that now lives in the numbered files (the conclusion, table and protocol files, and about 50 small CSV and JSON files rendered into tables). Nothing quoted was dropped; the numbers that now exist only as markdown tables are listed in `NUMBERS_LEDGER.md`.
+- Git tag `pre-lean-2026-10`: the state before the last consolidation (`git show pre-lean-2026-10:<path>`).
+- Git tag `pre-cleanup-2026-10`: the state before the first cleanup, with the per-seed and per-flow files.
+- Backup zip `D:\Github Projects\_backups\xai-ids-results-pre-cleanup.zip`: the whole `results/` folder (including untracked scratch) at that time.
+- The manifests of both cleanups are in git history: `results/CLEANUP_MANIFEST.md` (last version at commit `6b92da7`) and `results/LEAN_MANIFEST.md` (commit `b2387f1`; it lists every removed file and the reason). `git log --diff-filter=D --name-only -- results/` shows where each file was deleted.
+
+The scripts that summarise runs (`scripts/*_summary.py`, `tier_summary.py`, ...) read the per-run files of their pipeline; they need that pipeline run first.
