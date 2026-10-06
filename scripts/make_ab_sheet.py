@@ -1,4 +1,4 @@
-"""Task 5.5 Step 3: a blank A/B sheet for teammates (protocol: results/task_5_5_protocol.md).
+"""Task 5.5 Step 3: a blank A/B sheet for teammates (protocol: results/03_novelty2_explanations.md, section `Source: narratives_protocol.md`).
 
     python scripts/make_ab_sheet.py
 

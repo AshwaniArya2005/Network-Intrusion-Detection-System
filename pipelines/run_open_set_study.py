@@ -1,4 +1,4 @@
-"""Task 4: open-set / zero-day detection under an honest protocol (protocol: results/task_4_protocol.md). XGBoost, flat model, official split, ZERO-SHOT.
+"""Task 4: open-set / zero-day detection under an honest protocol (protocol: results/02_novelty1_open_set.md, section `Source: open_set_protocol.md`). XGBoost, flat model, official split, ZERO-SHOT.
 
     python pipelines/run_open_set_study.py --step scores   [--pools base full_no_ttl full] [--seeds 42 43 44 45 46]
     python pipelines/run_open_set_study.py --step rotation [--pools base full]

@@ -1,4 +1,4 @@
-"""Task 5 Step 5: a blank rating sheet for teammates (protocol: results/task_5_protocol.md).
+"""Task 5 Step 5: a blank rating sheet for teammates (protocol: results/03_novelty2_explanations.md, section `Source: explanations_protocol.md`).
 
     python scripts/make_human_audit_sheet.py
 

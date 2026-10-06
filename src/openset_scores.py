@@ -1,4 +1,4 @@
-"""Open-set / zero-day scoring functions (Task 4; protocol: results/task_4_protocol.md).
+"""Open-set / zero-day scoring functions (Task 4; protocol: results/02_novelty1_open_set.md, section `Source: open_set_protocol.md`).
 
 Every score is "higher = more likely Unknown", so a flow is flagged Unknown when its score exceeds a threshold taken as a quantile of the scores of KNOWN
 validation flows (`flag_threshold`). Nothing here sees a zero-day flow or an official-test label when a threshold, a calibration or a normalisation is fitted.

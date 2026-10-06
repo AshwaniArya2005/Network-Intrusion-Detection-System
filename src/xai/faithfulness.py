@@ -1,4 +1,4 @@
-"""Faithfulness of SHAP explanations by deletion and insertion (Task 5; protocol: results/task_5_protocol.md).
+"""Faithfulness of SHAP explanations by deletion and insertion (Task 5; protocol: results/03_novelty2_explanations.md, section `Source: explanations_protocol.md`).
 
 An explanation is faithful when the features it calls important change the model's output when they are removed. For one flow with predicted class c and SHAP values s (class c):
   deletion   replace the chosen features by a baseline value -> drop in P(c), and whether the predicted class flips

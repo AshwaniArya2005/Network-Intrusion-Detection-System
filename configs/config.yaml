@@ -117,7 +117,7 @@ tuning:
     reg_lambda: {loguniform: [0.5, 20.0]}
     reg_alpha: {choice: [0, 0.1, 1, 5]}
     class_weight_power: {uniform: [0.0, 1.0]}   # exponent of the balanced class weights (default model: 0.5)
-  # Task 2.7 (results/task_2_7_protocol.md): the same search on block-grouped validation with stronger regularisation
+  # Task 2.7 (results/06_fpr_and_adaptation.md, section `Source: fpr_reduction_protocol.md`): the same search on block-grouped validation with stronger regularisation
   space_regularised:
     max_depth: {int: [3, 7]}
     learning_rate: {loguniform: [0.03, 0.3]}
@@ -142,7 +142,7 @@ shift:
     ttl: [sttl, dttl, ct_state_ttl]
     connection_counts: [ct_src_dport_ltm, ct_dst_sport_ltm, ct_srv_src, ct_dst_ltm, ct_src_ltm, ct_srv_dst, ct_dst_src_ltm]
 
-# Task 3 tier study (pipelines/run_tier_study.py; protocol in results/task_3_protocol.md). Training / validation are built from contiguous
+# Task 3 tier study (pipelines/run_tier_study.py; protocol in results/04_novelty3_feature_tiers.md, section `Source: feature_tiers_protocol.md`). Training / validation are built from contiguous
 # blocks of the training file (a random validation split shares neighbouring flows with training and is optimistic).
 tier_study:
   block_size: 1000
@@ -176,7 +176,7 @@ xai:
   top_k_features: 5
 
 narrative:
-  # "classic": every cited feature gets a magnitude cue against the overall training mean / std. "class_relative" (Task 5.5, results/task_5_5_protocol.md): features that read "typical" are
+  # "classic": every cited feature gets a magnitude cue against the overall training mean / std. "class_relative" (Task 5.5, results/03_novelty2_explanations.md, section `Source: narratives_protocol.md`): features that read "typical" are
   # omitted, the rest are placed among all training flows and the predicted class's flows, and a calibrated confidence is shown next to the raw one (needs the class_reference / calibration
   # files that training saves next to the model).
   style: "classic"

@@ -1,4 +1,4 @@
-"""Methods for lowering the official-split Normal false-positive rate (Task 2.7; protocol: results/task_2_7_protocol.md).
+"""Methods for lowering the official-split Normal false-positive rate (Task 2.7; protocol: results/06_fpr_and_adaptation.md, section `Source: fpr_reduction_protocol.md`).
 
 TRANSDUCTIVE helpers read the unlabelled FEATURES (through the model's probabilities) of the target rows and nothing else:
   fit_temperature / apply_temperature   temperature scaling fitted on known validation rows (ZERO-SHOT)

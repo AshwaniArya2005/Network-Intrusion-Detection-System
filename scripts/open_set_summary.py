@@ -151,7 +151,7 @@ def render_sources(label: str, best: str, t: pd.DataFrame) -> str:
 
 
 def ct_verdict(det_by_label: dict[str, float]) -> tuple[str, float, float]:
-    """Declared reading (results/task_4_protocol.md): with gap = detection(48f) - detection(40f) for msp, the ct_* window counts carry the gain if removing them lowers the detection by at
+    """Declared reading (results/02_novelty1_open_set.md, section `Source: open_set_protocol.md`): with gap = detection(48f) - detection(40f) for msp, the ct_* window counts carry the gain if removing them lowers the detection by at
     least half the gap (confirm), by less than a quarter (reject), otherwise partial. Returns (verdict, drop, gap)."""
     gap = det_by_label["48f"] - det_by_label["40f"]
     drop = det_by_label["48f"] - det_by_label["41f"]

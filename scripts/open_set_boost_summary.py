@@ -1,4 +1,4 @@
-"""Tables for Task 4.5 from results/metrics/xgboost/open_set_boost_<idea>_<N>f_<kind>.csv (protocol: results/task_4_5_protocol.md).
+"""Tables for Task 4.5 from results/metrics/xgboost/open_set_boost_<idea>_<N>f_<kind>.csv (protocol: results/02_novelty1_open_set.md, section `Source: open_set_boost_protocol.md`).
 
     python scripts/open_set_boost_summary.py --idea calibration|perclass|ensemble|distance|oe|combo --pools 40f 48f
 

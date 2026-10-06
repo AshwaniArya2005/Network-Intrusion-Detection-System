@@ -1,4 +1,4 @@
-"""Task 5 Step 4: does the dashboard backend say what the pipeline says? (protocol: results/task_5_protocol.md)
+"""Task 5 Step 4: does the dashboard backend say what the pipeline says? (protocol: results/03_novelty2_explanations.md, section `Source: explanations_protocol.md`)
 
     python scripts/dashboard_end_to_end.py [--csv data/samples/sample_flows.csv]
 

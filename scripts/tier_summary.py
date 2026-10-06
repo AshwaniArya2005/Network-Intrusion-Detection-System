@@ -4,7 +4,7 @@
 
 Reads results/metrics/<model>/tier_study_<model>_<N>f_runs.csv (and, when present, *_pooled.csv, tier_baselines_summary_*.csv and the earlier
 random-validation operating-point file for the full tier) and writes tier_summary_<model>_<N>f.csv and tier_summary_<model>.md.
-Claim tested (declared in results/task_3_protocol.md): shrinking the feature set costs no more than retraining noise. For every tier
+Claim tested (declared in results/04_novelty3_feature_tiers.md, section `Source: feature_tiers_protocol.md`): shrinking the feature set costs no more than retraining noise. For every tier
 `drop_f1` = full-pool mean macro F1 - tier mean, `meets_noise` = drop <= 2 x the full pool's seed-to-seed std, `meets_practical` = drop <= 0.02,
 `welch_z_f1` = drop / sqrt(var_full / n + var_tier / n).
 """

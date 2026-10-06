@@ -9,7 +9,7 @@ them from the evaluation set and scores, on the same remaining rows:
   zero_shot      access zero-shot       the model as trained; det95 threshold chosen on validation
   thr_adapt      access few-shot (ii)   the same model, det95 threshold re-chosen on the k adaptation rows
   retrain_f<f>   access few-shot (i)    retrained on train + the k rows carrying a fraction f of the sample weight
-                                        (f = 0.1 / 0.3 / 0.5; the primary f = 0.3 was declared in results/task_2_5_protocol.md);
+                                        (f = 0.1 / 0.3 / 0.5; the primary f = 0.3 was declared in results/06_fpr_and_adaptation.md, section `Source: shift_and_fewshot_protocol.md`);
                                         det95 threshold chosen on validation
   retrain_split_f<f>   few-shot (i)+(ii) (--split-threshold)   the k rows are split in two halves: the model is retrained on one half
                                         (weight fraction f) and the det95 threshold is chosen on the OTHER half, which the model never saw

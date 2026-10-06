@@ -1,4 +1,4 @@
-"""Tables for Task 5.5 from results/metrics/xgboost/narrative_*.csv (protocol: results/task_5_5_protocol.md).
+"""Tables for Task 5.5 from results/metrics/xgboost/narrative_*.csv (protocol: results/03_novelty2_explanations.md, section `Source: narratives_protocol.md`).
 
     python scripts/narrative_summary.py --pools 40f 48f [--source test]
 
