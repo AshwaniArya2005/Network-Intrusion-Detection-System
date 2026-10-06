@@ -87,7 +87,7 @@ def prepare(config: dict, feature_sets: dict, pool: str, model_type: str, seed: 
 def ensure_pool_ranking(config: dict, feature_sets: dict, pool: str) -> list[str]:
     """The pool's mutual-information ranking on the seed-42 block-grouped training split (written once, shared by every model and seed)."""
     seed = config["tier_study"]["seeds"][0]
-    cfg, sets, splits = prepare(config, feature_sets, pool, "xgboost", seed)
+    cfg, sets, splits = prepare(config, feature_sets, pool, config["model"]["type"], seed)   # the ranking does not depend on the model
     ensure_feature_ranking(cfg, sets, splits.train)
     return get_active_features(cfg, sets, str(len(sets["feature_pool"])))
 

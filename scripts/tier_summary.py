@@ -90,7 +90,7 @@ def main() -> None:
     parser.add_argument("--in-dir", help="read and write under <in-dir>/<model>/ instead of results/metrics/<model>/")
     args = parser.parse_args()
     config = load_config()
-    d = Path(args.in_dir) / args.model if args.in_dir else get_metrics_dir(dict(config, model=dict(config["model"], type=args.model)))
+    d = Path(args.in_dir) / args.model if args.in_dir else get_metrics_dir(config, args.model)
     tables, baselines, pooled = {}, {}, {}
     for label in args.pools:
         path = d / f"tier_study_{args.model}_{label}_runs.csv"

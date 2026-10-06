@@ -50,7 +50,7 @@ def model_dir(config: dict, model: str, in_dir: str | None = None) -> Path:
     """<in-dir>/<model>/ when that folder exists (local runs of a model family), else results/metrics/<model>/."""
     if in_dir and (Path(in_dir) / model).exists():
         return Path(in_dir) / model
-    return get_metrics_dir(dict(config, model={"type": model}))
+    return get_metrics_dir(config, model)
 
 
 def load_model(config: dict, model: str, label: str, in_dir: str | None = None):
