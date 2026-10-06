@@ -1,6 +1,6 @@
 """Accuracy as three numbers together, per feature pool:
 
-    python scripts/accuracy_table.py [--pools base full] [--tuned f1 auc]
+    python scripts/accuracy_table.py [--pools full base]   (default: the primary pool 48 only) [--tuned f1 auc]
 
   official split   mean +/- std over seeds (results/metrics/<model.type>/headline_*_summary.csv)
   pooled split     same, pooled random split
@@ -64,7 +64,8 @@ def accuracy_rows(config: dict, feature_sets: dict, pools: list[str], tuned: lis
                     found = accuracy(output_stem(None, ALL_PROTOCOLS, DEFAULT_POOLS), pool, split) \
                         or accuracy(output_stem(None, ALL_PROTOCOLS, (pool,)), pool, split)
                 else:
-                    found = accuracy(output_stem(variant, ("official",), DEFAULT_POOLS), pool, split) if split == "official" else None
+                    found = (accuracy(output_stem(variant, ("official",), DEFAULT_POOLS), pool, split)
+                             or accuracy(output_stem(variant, ("official",), (pool,)), pool, split)) if split == "official" else None
                 row[f"{split}_mean"], row[f"{split}_std"] = found if found else (float("nan"), float("nan"))
             if not pd.isna(row["official_mean"]):
                 row["official_minus_ceiling"] = round(row["official_mean"] - bound, 4)
@@ -88,7 +89,7 @@ def render(df: pd.DataFrame) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--pools", nargs="*", default=["base", "full"])
+    parser.add_argument("--pools", nargs="*", default=["full"])
     parser.add_argument("--tuned", nargs="*", choices=["f1", "auc"], default=[])
     args = parser.parse_args()
     config = load_config()

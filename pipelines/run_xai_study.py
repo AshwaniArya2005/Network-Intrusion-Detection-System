@@ -1,7 +1,7 @@
 """Task 5: are the explanations faithful and are the narratives correct? (protocol: results/03_novelty2_explanations.md, section `Source: explanations_protocol.md`). XGBoost, official split, `current` scheme, ZERO-SHOT.
 
-    python pipelines/run_xai_study.py --part faithfulness [--pools base full_no_ttl full] [--seeds 42 43 44 45 46]
-    python pipelines/run_xai_study.py --part audit        [--pools base full]
+    python pipelines/run_xai_study.py --part faithfulness [--pools full base full_no_ttl]   (default: full) [--seeds 42 43 44 45 46]
+    python pipelines/run_xai_study.py --part audit        [--pools full base]   (default: the primary pool 48 only)
 
 faithfulness  Steps 1 (SHAP additivity) and 2 (deletion / insertion) for every pool and its 30- and 15-feature tiers, on a stratified sample of official-test flows and of block-grouped
               validation flows (the shift check). Writes xai_faithfulness_<N>f_runs.csv and xai_additivity_<N>f.csv.
@@ -300,7 +300,7 @@ def main() -> None:
     config, feature_sets = load_config(), load_feature_sets()
     add_file_logging(str(resolve_path(config["logging"]["log_file"])))
     seeds = tuple(args.seeds) if args.seeds else SEEDS
-    for pool in args.pools or (["base", "full_no_ttl", "full"] if args.part == "faithfulness" else ["base", "full"]):
+    for pool in args.pools or ["full"]:   # the primary pool 48; --pools base full_no_ttl adds the comparison pools
         label = pool_label(prepare(config, feature_sets, pool, "xgboost", 42)[1])
         if args.part == "faithfulness":
             save(config, "faithfulness", label, run_faithfulness(config, feature_sets, pool, seeds))

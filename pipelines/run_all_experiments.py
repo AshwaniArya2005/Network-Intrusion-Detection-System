@@ -76,7 +76,7 @@ def run_experiment_grid(config: dict, feature_sets: dict, splits: Splits) -> pd.
 
             if predictions_out:
                 write_tier_plots(predictions_out, plots_dir, len(feature_sets["feature_pool"]), feature_set_name, scheme_name, merge_groups,
-                                 config["data"]["normal_category"], config["model"]["type"])   # confusion_matrix_pool<N>_tier<T>.png, roc_curve_pool<N>_tier<T>.png
+                                 config["data"]["normal_category"], config["model"]["type"])   # confusion_matrix_<T>f.png, roc_curve_<T>f.png
 
                 diagnostics = build_overlap_diagnostics(predictions_out["fine_grained_true"],
                                                          predictions_out["y_pred_labels"],

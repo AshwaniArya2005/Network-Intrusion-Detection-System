@@ -18,7 +18,7 @@ from src.data_loader import UNSW_RAW_COLUMNS, load_unsw
 from src.evaluation.overlap import normal_overlap_floor
 from src.utils.config_loader import apply_pool_variant, choose_pool, get_metrics_dir, load_config, load_feature_sets, pool_label, resolve_path
 
-POOLS = ("base", "full")
+POOLS = ("full",)   # the primary pool 48; add "base" for the 40-feature comparison pool
 
 
 def main() -> None:

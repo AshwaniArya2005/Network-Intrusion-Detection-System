@@ -1,6 +1,6 @@
 """Headline metrics over several seeds, for both feature pools and both split protocols:
 
-    python pipelines/run_headline_seeds.py [--pools base full] [--seeds 42 43 44 45 46]
+    python pipelines/run_headline_seeds.py [--pools full base]   (default: the primary pool 48 only) [--seeds 42 43 44 45 46]
                                            [--tuned f1|auc] [--protocols official pooled_random]
 
 For every (pool, split protocol, seed) it trains the configured model on the whole pool (40 or 48
@@ -112,7 +112,7 @@ def render_summary(summary: pd.DataFrame, seeds: list[int]) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--pools", nargs="*", default=["base", "full"], help="base, full, or an experiments.pool_variants name")
+    parser.add_argument("--pools", nargs="*", default=["full"], help="default: the primary pool 48 (full); add base (40), full_no_ttl (45) or an experiments.pool_variants name for the comparison pools")
     parser.add_argument("--seeds", nargs="*", type=int)
     parser.add_argument("--tuned", choices=["f1", "auc"], help="use the validation-selected hyperparameters of this objective")
     parser.add_argument("--protocols", nargs="*", choices=[name for name, _ in PROTOCOLS])

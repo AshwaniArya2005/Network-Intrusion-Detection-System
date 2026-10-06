@@ -1,6 +1,6 @@
 """Attack-vs-normal operating point chosen on VALIDATION, and what it costs on the official test split:
 
-    python pipelines/run_operating_point.py [--pools base full] [--seeds 42 43 44 45 46]
+    python pipelines/run_operating_point.py [--pools full base]   (default: the primary pool 48 only) [--seeds 42 43 44 45 46]
 
 For every (pool, seed) it trains the configured model on the official split (scheme `current`, whole pool) and
 compares three decision rules on the validation split (drawn from the training file, so it carries no split
@@ -64,7 +64,7 @@ def operating_points(pred: dict, normal: str, rules: dict = RULES) -> list[dict]
     return rows
 
 
-def run_operating_point(config: dict, feature_sets: dict, pools=("base", "full"), seeds=None) -> dict[str, pd.DataFrame]:
+def run_operating_point(config: dict, feature_sets: dict, pools=("full",), seeds=None) -> dict[str, pd.DataFrame]:
     seeds = list(seeds or config["experiments"]["headline_seeds"])
     normal = config["data"]["normal_category"]
     metrics_dir = get_metrics_dir(config)
@@ -115,7 +115,7 @@ def render_summary(summaries: dict[str, pd.DataFrame], seeds: list[int]) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--pools", nargs="*", default=["base", "full"], help="base, full, or an experiments.pool_variants name")
+    parser.add_argument("--pools", nargs="*", default=["full"], help="default: the primary pool 48 (full); add base (40) or an experiments.pool_variants name")
     parser.add_argument("--seeds", nargs="*", type=int)
     args = parser.parse_args()
     config = load_config()

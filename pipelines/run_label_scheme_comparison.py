@@ -133,8 +133,8 @@ Recall of each ORIGINAL class under each scheme (share of its rows predicted as 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--schemes", nargs="*", help="label_schemes entries to compare (default: all)")
-    parser.add_argument("--pools", nargs="*", choices=["base", "full"], default=["base", "full"],
-                        help="feature pools to run (40- and 48-feature; the full pool needs the 8 extra official columns)")
+    parser.add_argument("--pools", nargs="*", choices=["base", "full"], default=["full"],
+                        help="feature pools to run: default the primary 48-feature pool (needs the 8 extra official columns); add base for the 40-feature comparison pool")
     args = parser.parse_args()
     config = load_config()
     add_file_logging(str(resolve_path(config["logging"]["log_file"])))

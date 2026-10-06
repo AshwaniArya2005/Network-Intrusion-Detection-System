@@ -1,6 +1,6 @@
 """FEW-SHOT adaptation on the official split: how many labelled test-distribution rows does it take to close the gap?
 
-    python pipelines/run_adaptation.py [--pools base full] [--ks 100 500 1000 5000] [--runs 5]
+    python pipelines/run_adaptation.py [--pools full base]   (default: the primary pool 48 only) [--ks 100 500 1000 5000] [--runs 5]
 
 Per run i (model seed 42 + i, adaptation draw seed 1000 + i) and per pool it trains the zero-shot model once, then for each k
 draws k labelled rows from the official test file (stratified by the training target classes, src/adaptation.py), REMOVES
@@ -168,7 +168,7 @@ def plot_curve(summary: pd.DataFrame, path: Path, pooled_reference: dict[str, fl
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--pools", nargs="*", default=["base", "full"])
+    parser.add_argument("--pools", nargs="*", default=["full"], help="default: the primary pool 48 (full); add base (40) or full_no_ttl (45) for the comparison pools")
     parser.add_argument("--ks", nargs="*", type=int, default=[100, 500, 1000, 5000])
     parser.add_argument("--runs", type=int, default=5)
     parser.add_argument("--fractions", nargs="*", type=float, default=[0.1, 0.3, 0.5])

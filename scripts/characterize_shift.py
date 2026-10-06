@@ -1,6 +1,6 @@
 """Characterise the official-split shift (diagnostic only: no model, threshold or protocol changes).
 
-    python scripts/characterize_shift.py [--steps a1 a2 a3] [--pools base full_no_ttl full]
+    python scripts/characterize_shift.py [--steps a1 a2 a3] [--pools full base full_no_ttl]   (default: full)
 
 a1  Normal flows only: a classifier telling train-Normal (train + validation) from official-test-Normal. Reports its
     cross-validated AUC over `shift.seeds`, ranks the features by SHAP importance and by per-feature KS (TVD for
@@ -198,8 +198,8 @@ def run_a3(config: dict, feature_sets: dict, pool: str) -> pd.DataFrame:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--steps", nargs="*", choices=["a1", "a2", "a3"], default=["a1", "a2", "a3"])
-    parser.add_argument("--pools", nargs="*", default=["base", "full_no_ttl", "full"])
-    parser.add_argument("--ablation-pools", nargs="*", default=["base", "full"], help="pools for a3 (it retrains many models)")
+    parser.add_argument("--pools", nargs="*", default=["full"], help="default: the primary pool 48; add base full_no_ttl for the comparison pools")
+    parser.add_argument("--ablation-pools", nargs="*", default=["full"], help="pools for a3 (it retrains many models)")
     args = parser.parse_args()
     config, feature_sets = load_config(), load_feature_sets()
     add_file_logging(str(resolve_path(config["logging"]["log_file"])))
