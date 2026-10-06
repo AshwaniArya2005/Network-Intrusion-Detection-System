@@ -334,7 +334,7 @@ neither does any strategy ranking.
 
 ## Reported metrics
 
-`experiment_results.csv` has, per model: macro accuracy/precision/recall/F1 on the active label
+`experiment_results.csv` (committed as the rendered table `results/01_protocol_and_headline.md`, section `Source: experiment_results.csv`) has, per model: macro accuracy/precision/recall/F1 on the active label
 scheme's target (by default Analysis/Backdoor/DoS are one `Overlap-Group-1` class); per-class
 `precision_*`, `recall_*`, `f1_*`; the attack-vs-normal `detection_rate` and `false_positive_rate` and
 the `fpr_at_90/95/99_detection` operating points; `recall_<Analysis|Backdoor|DoS>_as_Overlap-Group-1`;
