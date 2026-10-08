@@ -23,6 +23,11 @@ def create_model(model_type: str, params: dict[str, Any] | None = None) -> BaseM
     params = params or {}
     if model_type == "xgboost":
         return XGBoostModel(params)
+    
+    elif model_type == "lightgbm":
+        from src.models.lightgbm_model import lightgbm_classifier
+        return lightgbm_classifier(params)
+
     elif model_type == "random_forest":
         return random_forest(params)
     elif model_type == "logistic_regression":
@@ -30,7 +35,7 @@ def create_model(model_type: str, params: dict[str, Any] | None = None) -> BaseM
     else:
         raise ValueError(
             f"Unknown model.type '{model_type}'. Add it to src/models/model_factory.py "
-            f"(known types: xgboost, random_forest, logistic_regression)."
+            f"(known types: xgboost, lightgbm, random_forest, logistic_regression)."
         )
 
 
