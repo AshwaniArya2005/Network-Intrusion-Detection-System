@@ -1,0 +1,341 @@
+project:
+  name: xai-ids
+  seed: 42
+paths:
+  raw_dir: data/raw
+  processed_dir: data/processed
+  models_dir: models_saved
+  results_dir: results
+  unsw_train: data/raw/unsw_nb15_train.csv
+  unsw_test: data/raw/unsw_nb15_test.csv
+  cic_file: data/raw/cicids2017_combined.csv
+  feature_ranking: results/rankings/feature_ranking_{source}.csv
+  rating_dir: results/rating
+data:
+  target_column: label_merged
+  fine_grained_target_column: attack_cat
+  normal_category: Normal
+  unknown_attack_categories:
+  - Worms
+  - Shellcode
+  use_official_split: true
+  test_size: 0.2
+  val_size: 0.15
+  synthetic_fallback_rows: 4000
+  cic_max_rows: 200000
+  report_fine_recall:
+  - Analysis
+  - Backdoor
+  - DoS
+  - Exploits
+  - Fuzzers
+  - Generic
+  - Reconnaissance
+  - Normal
+  label_scheme: current
+  label_schemes:
+    current:
+      merge_groups:
+        Overlap-Group-1:
+        - Analysis
+        - Backdoor
+        - DoS
+    none:
+      merge_groups: {}
+    wide:
+      merge_groups:
+        Overlap-Group-2:
+        - Analysis
+        - Backdoor
+        - DoS
+        - Exploits
+    hierarchical:
+      merge_groups: {}
+      hierarchical: true
+feature_selection:
+  pool: auto
+  exclude: []
+  active_set: '40'
+  ranking_source: mutual_info
+  ranking_max_rows: 20000
+  redundancy_threshold: null
+model:
+  class_weight_power: 0.5
+  type: logistic_regression
+  params:
+    max_iter: 3000
+    C: 10.0
+    solver: lbfgs
+tuning:
+  n_trials: 40
+  seed: 42
+  early_stopping_rounds: 30
+  max_estimators: 1000
+  space:
+    max_depth:
+      int:
+      - 3
+      - 10
+    learning_rate:
+      loguniform:
+      - 0.03
+      - 0.3
+    min_child_weight:
+      choice:
+      - 1
+      - 3
+      - 5
+      - 10
+      - 20
+    subsample:
+      uniform:
+      - 0.6
+      - 1.0
+    colsample_bytree:
+      uniform:
+      - 0.5
+      - 1.0
+    reg_lambda:
+      loguniform:
+      - 0.5
+      - 20.0
+    reg_alpha:
+      choice:
+      - 0
+      - 0.1
+      - 1
+      - 5
+    class_weight_power:
+      uniform:
+      - 0.0
+      - 1.0
+  space_regularised:
+    max_depth:
+      int:
+      - 3
+      - 7
+    learning_rate:
+      loguniform:
+      - 0.03
+      - 0.3
+    min_child_weight:
+      choice:
+      - 5
+      - 10
+      - 20
+      - 50
+      - 100
+    subsample:
+      uniform:
+      - 0.6
+      - 1.0
+    colsample_bytree:
+      uniform:
+      - 0.5
+      - 1.0
+    reg_lambda:
+      loguniform:
+      - 2.0
+      - 100.0
+    reg_alpha:
+      choice:
+      - 0
+      - 0.1
+      - 1
+      - 5
+    class_weight_power:
+      uniform:
+      - 0.0
+      - 1.0
+shift:
+  seeds:
+  - 42
+  - 43
+  - 44
+  - 45
+  - 46
+  shap_rows: 3000
+  feature_groups:
+    volume_size:
+    - spkts
+    - dpkts
+    - sbytes
+    - dbytes
+    - smean
+    - dmean
+    - total_bytes
+    - total_pkts
+    - byte_ratio
+    - pkt_ratio
+    - avg_pkt_size
+    - response_body_len
+    rate_load:
+    - rate
+    - sload
+    - dload
+    timing:
+    - dur
+    - duration_log
+    - sinpkt
+    - dinpkt
+    - sjit
+    - djit
+    - tcprtt
+    - synack
+    - ackdat
+    tcp_window_loss:
+    - swin
+    - dwin
+    - stcpb
+    - dtcpb
+    - sloss
+    - dloss
+    protocol_state:
+    - proto
+    - service
+    - state
+    - trans_depth
+    - is_ftp_login
+    - ct_ftp_cmd
+    - ct_flw_http_mthd
+    - is_sm_ips_ports
+    ttl:
+    - sttl
+    - dttl
+    - ct_state_ttl
+    connection_counts:
+    - ct_src_dport_ltm
+    - ct_dst_sport_ltm
+    - ct_srv_src
+    - ct_dst_ltm
+    - ct_src_ltm
+    - ct_srv_dst
+    - ct_dst_src_ltm
+tier_study:
+  block_size: 1000
+  buffer: 200
+  seeds:
+  - 42
+  - 43
+  - 44
+  - 45
+  - 46
+  shap_rows: 1000
+  bootstrap: 100
+  random_draws: 10
+  random_tiers:
+  - '30'
+  - '20'
+  - '15'
+  pools:
+  - full
+  model_params:
+    random_forest:
+      n_estimators: 150
+      max_depth: 10
+      min_samples_leaf: 5
+      n_jobs: -1
+    logistic_regression:
+      max_iter: 300
+evaluation:
+  ece_bins: 15
+open_set:
+  enabled: true
+  target_false_unknown_rate: 0.05
+  confidence_threshold: 0.65
+xai:
+  shap_background_samples: 100
+  importance_samples: 2000
+  top_k_features: 5
+narrative:
+  style: classic
+  suggested_actions:
+    DoS: Consider rate-limiting or temporarily blocking this source IP.
+    Exploits: Isolate the target host and check for unpatched vulnerabilities.
+    Fuzzers: Inspect the application for crash logs; consider input validation hardening.
+    Generic: Review firewall rules for this flow's protocol/service combination.
+    Reconnaissance: Flag source IP for monitoring; likely pre-attack scanning.
+    Analysis: Review web server logs for injection or scanning patterns.
+    Backdoor: Isolate host immediately and inspect for persistence mechanisms.
+    Worms: Quarantine the host and scan the subnet for lateral movement.
+    Shellcode: Isolate host and inspect payload for known exploit signatures.
+    Unknown: "Unrecognized pattern \u2014 escalate to a human analyst for manual review."
+    Normal: No action required.
+    Overlap-Group-1: "Flagged as DoS, Backdoor, or Analysis-type behavior \u2014 this\
+      \ dataset's flow-level features can't reliably distinguish the three. Escalate\
+      \ for manual / packet-level inspection to determine the specific subtype."
+    Overlap-Group-2: "Flagged as Exploits, DoS, Backdoor, or Analysis-type behavior\
+      \ \u2014 these four share flow-level feature vectors in this dataset, so the\
+      \ classifier can't tell them apart. Isolate the host, then escalate for packet-level\
+      \ inspection to find the exact subtype."
+logging:
+  log_file: results/pipeline.log
+experiments:
+  feature_sets:
+  - '40'
+  - '30'
+  - '20'
+  - '15'
+  feature_sets_full:
+  - '48'
+  - '40'
+  - '30'
+  - '20'
+  - '15'
+  open_set_modes:
+  - false
+  - true
+  output_csv: experiment_results.csv
+  stability_csv: explanation_stability.csv
+  cross_dataset_csv: cross_dataset_results.csv
+  baselines_csv: feature_selection_baselines.csv
+  baselines_summary_csv: feature_selection_baselines_summary.csv
+  pooled_split_csv: pooled_split_results.csv
+  split_summary_csv: split_summary.csv
+  save_per_tier_diagnostics: false
+  run_nonredundant: false
+  nonredundant_threshold: 0.8
+  random_baseline_draws: 10
+  report_pooled_split: true
+  pool_variants:
+    full_no_ttl:
+      pool: full
+      exclude:
+      - sttl
+      - dttl
+      - ct_state_ttl
+    full_no_ct_window:
+      pool: full
+      exclude:
+      - ct_src_dport_ltm
+      - ct_dst_sport_ltm
+      - ct_srv_src
+      - ct_dst_ltm
+      - ct_src_ltm
+      - ct_srv_dst
+      - ct_dst_src_ltm
+    full_no_ct_any:
+      pool: full
+      exclude:
+      - ct_src_dport_ltm
+      - ct_dst_sport_ltm
+      - ct_srv_src
+      - ct_dst_ltm
+      - ct_src_ltm
+      - ct_srv_dst
+      - ct_dst_src_ltm
+      - ct_state_ttl
+      - ct_flw_http_mthd
+      - ct_ftp_cmd
+  headline_seeds:
+  - 42
+  - 43
+  - 44
+  - 45
+  - 46
+  stability_seeds:
+  - 43
+  - 44
+dashboard:
+  feature_set: '40'
+  max_rows: 500
