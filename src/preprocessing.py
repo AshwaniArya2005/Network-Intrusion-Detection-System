@@ -38,8 +38,9 @@ BASE_COLUMNS = ["sbytes", "dbytes", "spkts", "dpkts", "dur"]
 UNDEFINED_RATIO = -1.0
 
 
-def balanced_sample_weight(y: np.ndarray) -> np.ndarray:
-    """Square-rooted "balanced" class weights, used by every model fit in this project.
+def balanced_sample_weight(y: np.ndarray, power: float = 0.5) -> np.ndarray:
+    """Square-rooted ("balanced" ** `power`, default 0.5) class weights, used by every model fit in this
+    project; `model.class_weight_power` in configs/config.yaml sets the exponent (0 = unweighted, 1 = fully balanced).
 
     UNSW-NB15's attack categories are heavily imbalanced (e.g. Normal=56k rows vs.
     Analysis=2k). Full inverse-frequency weighting (Analysis at ~28x Normal) proved
@@ -48,7 +49,7 @@ def balanced_sample_weight(y: np.ndarray) -> np.ndarray:
     tried too and scored worse on every metric (F1 0.60 vs 0.61, weaker zero-day
     detection) — square-rooting the weights was the best of the three in practice.
     """
-    return compute_sample_weight("balanced", y) ** 0.5
+    return compute_sample_weight("balanced", y) ** power
 
 
 def _clean_numeric(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:

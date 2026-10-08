@@ -154,6 +154,11 @@ class SHAPExplainer:
         rows = [per_class[min(int(c), len(per_class) - 1)][i] for i, c in enumerate(class_idx)]
         return pd.DataFrame(np.vstack(rows), columns=self.feature_names)
 
+    def expected_values(self, X: np.ndarray) -> np.ndarray:
+        """The explainer's expected value (the base value of the raw margin) for every class, shape (n_classes,). Tree explainers only (the additivity check of the explanation study)."""
+        base = np.atleast_1d(np.asarray(self._get_explainer(X).expected_value, dtype=float))
+        return base
+
     def local_explanation(self, x_row: np.ndarray, predicted_class_idx: int) -> pd.Series:
         """SHAP values for a single sample (x_row shape (1, n_features)), for the class
         it was predicted as. See local_explanations() for the non-tree-model caveat."""

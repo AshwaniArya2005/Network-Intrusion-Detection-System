@@ -25,7 +25,7 @@ from pipelines.train_pipeline import load_split_data
 from src.models.model_factory import create_model
 from src.utils.config_loader import get_active_features, get_dashboard_paths, load_config, load_feature_sets
 from src.utils.logger import get_logger
-from src.xai.narrative_generator import NarrativeGenerator
+from src.xai.narrative_generator import NarrativeGenerator, standardised_value_statistics
 from src.xai.shap_explainer import SHAPExplainer
 
 logger = get_logger(__name__)
@@ -62,8 +62,8 @@ def main() -> None:
 
     explainer = SHAPExplainer(model, features, background_samples=config["xai"]["shap_background_samples"])
     generator = NarrativeGenerator(config["narrative"]["suggested_actions"])
-    feature_means = pd.Series(preprocessor.scaler.mean_, index=preprocessor.numeric_features)
-    feature_stds = pd.Series(preprocessor.scaler.scale_, index=preprocessor.numeric_features)
+    # X_test is already standardised by the preprocessor, so the narrative's z-scores need mean 0 / std 1 (the raw scaler mean / scale here standardised a second time).
+    feature_means, feature_stds = standardised_value_statistics(preprocessor.numeric_features)
 
     test_df = test_df.reset_index(drop=True)
     for cls in preprocessor.target_encoder.classes_:

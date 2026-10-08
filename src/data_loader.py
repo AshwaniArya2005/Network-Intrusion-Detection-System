@@ -163,7 +163,7 @@ def load_unsw(train_path: str | Path, test_path: str | Path | None = None, seed:
             frames.append(pd.read_csv(test_path).assign(split="test"))
         df = pd.concat(frames, ignore_index=True)
     else:
-        logger.warning(f"UNSW-NB15 file not found at {train_path}; using synthetic fallback data.")
+        logger.warning(f"SYNTHETIC DATA: UNSW-NB15 file not found at {train_path}; using generated fallback data. Numbers from this run are not results; fetch the real files with python scripts/download_datasets.py.")
         df = make_synthetic_unsw(n_rows=synthetic_rows, seed=seed).assign(split="train")
 
     df.columns = [c.strip().lower() for c in df.columns]
@@ -209,16 +209,14 @@ def stratified_subsample(df: pd.DataFrame, max_rows: int, column: str = "attack_
     return out.reset_index(drop=True)
 
 
-def load_cic(cic_path: str | Path, seed: int = 7, synthetic_rows: int = 3000) -> pd.DataFrame:
-    """Load a CICIDS2017 CSV and remap it onto the common feature namespace shared with UNSW."""
-    cic_path = Path(cic_path)
-    if cic_path.exists():
-        logger.info(f"Loading CICIDS2017 data from {cic_path}")
-        df = pd.read_csv(cic_path)
-    else:
-        logger.warning(f"CICIDS2017 file not found at {cic_path}; using synthetic fallback data.")
-        df = make_synthetic_cic(n_rows=synthetic_rows, seed=seed)
+CIC_DAY_FILES = [("Friday-DDoS", 225745), ("Friday-PortScan", 286467), ("Friday-Morning", 191033), ("Monday", 529918), ("Thursday-Afternoon", 288602),
+                 ("Thursday-Morning", 170366), ("Tuesday", 445909), ("Wednesday", 692703)]   # the original day files in the order of cicids2017_combined.csv (alphabetical); sums to CIC_TOTAL_ROWS
+CIC_TOTAL_ROWS = sum(n for _, n in CIC_DAY_FILES)
 
+
+def _normalise_cic(df: pd.DataFrame) -> pd.DataFrame:
+    """Remap raw CIC columns onto the common namespace and clean the label (shared by load_cic and load_cic_common)."""
+    df = df.copy()
     df.columns = [c.strip().lower() for c in df.columns]
     df = df.rename(columns=CIC_TO_COMMON)
     df["attack_cat"] = df["attack_cat"].astype(str).str.strip()
@@ -231,6 +229,40 @@ def load_cic(cic_path: str | Path, seed: int = 7, synthetic_rows: int = 3000) ->
     df["attack_cat"] = df["attack_cat"].str.replace("�", "-", regex=False)
     df.loc[df["attack_cat"].str.upper() == "BENIGN", "attack_cat"] = "Normal"
     df["label"] = (df["attack_cat"] != "Normal").astype(int)
-
     common_cols = [c for c in CIC_TO_COMMON.values() if c in df.columns and c != "attack_cat"]
     return df[common_cols + ["attack_cat", "label"]].reset_index(drop=True)
+
+
+def load_cic(cic_path: str | Path, seed: int = 7, synthetic_rows: int = 3000) -> pd.DataFrame:
+    """Load a CICIDS2017 CSV and remap it onto the common feature namespace shared with UNSW."""
+    cic_path = Path(cic_path)
+    if cic_path.exists():
+        logger.info(f"Loading CICIDS2017 data from {cic_path}")
+        df = pd.read_csv(cic_path)
+    else:
+        logger.warning(f"SYNTHETIC DATA: CICIDS2017 file not found at {cic_path}; using generated fallback data. Numbers from this run are not results; fetch the real file with python scripts/download_datasets.py.")
+        df = make_synthetic_cic(n_rows=synthetic_rows, seed=seed)
+    return _normalise_cic(df)
+
+
+def load_cic_common(cic_path: str | Path, cache_path: str | Path | None = None, chunk_rows: int = 500_000, seed: int = 7, synthetic_rows: int = 3000) -> pd.DataFrame:
+    """The same frame as `load_cic` (common columns, attack_cat, label), in FILE ORDER, read in chunks with only the needed columns (the 1 GB file never sits in memory whole) and cached
+    as parquet. When the file has the known size of the combined CICIDS2017 file a `day` column names the original day file of every row (CIC_DAY_FILES). Falls back to synthetic data."""
+    cic_path = Path(cic_path)
+    if not cic_path.exists():
+        return load_cic(cic_path, seed, synthetic_rows)
+    cache = Path(cache_path) if cache_path else None
+    if cache is not None and cache.exists() and cache.stat().st_mtime >= cic_path.stat().st_mtime:
+        logger.info(f"Loading cached common-column CICIDS2017 frame {cache}")
+        return pd.read_parquet(cache)
+    header = pd.read_csv(cic_path, nrows=0, encoding_errors="replace").columns
+    wanted = [c for c in header if c.strip().lower() in CIC_TO_COMMON]
+    logger.info(f"Streaming CICIDS2017 from {cic_path}: {len(wanted)} of {len(header)} columns, {chunk_rows} rows per chunk")
+    df = pd.concat([_normalise_cic(chunk) for chunk in pd.read_csv(cic_path, usecols=wanted, chunksize=chunk_rows, encoding_errors="replace")], ignore_index=True)
+    if len(df) == CIC_TOTAL_ROWS:
+        df["day"] = np.repeat([name for name, _ in CIC_DAY_FILES], [n for _, n in CIC_DAY_FILES])
+    if cache is not None:
+        cache.parent.mkdir(parents=True, exist_ok=True)
+        df.to_parquet(cache, index=False)
+        logger.info(f"Cached {len(df)} rows to {cache}")
+    return df

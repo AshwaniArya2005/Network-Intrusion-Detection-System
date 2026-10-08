@@ -3,7 +3,7 @@
     python pipelines/run_all_experiments.py
 
 - Ranks the feature pool by mutual information on the training split (written to
-  results/feature_ranking.csv); the 30/20/15 feature sets are the top-N of that ranking.
+  results/rankings/feature_ranking_<source>.csv); the 30/20/15 feature sets are the top-N of that ranking.
 - Trains XGBoost (or whatever model.type is configured) on all 4 feature sets
   (40/30/20/15), each in closed-set and open-set mode -> 8 models saved to
   models_saved/<model.type>/, metrics collected into
@@ -32,12 +32,12 @@ from pipelines.train_pipeline import (
 from src.data_loader import load_cic, load_unsw, stratified_subsample
 from src.evaluation.cross_dataset import feature_shift_table, run_cross_dataset_study
 from src.evaluation.metrics import build_overlap_diagnostics
-from src.evaluation.plots import generate_all_plots, plot_confusion_matrix_for_scheme, plot_roc_curve
+from src.evaluation.plots import generate_all_plots, write_tier_plots
 from src.models.model_factory import create_model
 from src.preprocessing import Preprocessor, balanced_sample_weight
 from src.utils.config_loader import (
-    choose_pool, get_active_features, get_label_scheme, get_metrics_dir, get_random_features, get_worst_features,
-    load_config, load_feature_sets, resolve_path, tagged,
+    choose_pool, get_active_features, get_label_scheme, get_metrics_dir, get_plots_dir, get_random_features, get_worst_features,
+    load_config, load_feature_sets, model_folder, resolve_path, tagged,
 )
 from src.utils.logger import add_file_logging, get_logger
 from src.xai.explanation_stability import compare_importances, run_stability_study
@@ -56,7 +56,7 @@ CROSS_DATASET_COMMON_FEATURES = [
 def run_experiment_grid(config: dict, feature_sets: dict, splits: Splits) -> pd.DataFrame:
     metrics_dir = get_metrics_dir(config)
     metrics_dir.mkdir(parents=True, exist_ok=True)
-    plots_dir = resolve_path(config["paths"]["results_dir"]) / "plots" / config["model"]["type"]
+    plots_dir = get_plots_dir(config)
     scheme_name, merge_groups, _ = get_label_scheme(config)
     rows = []
     for feature_set_name in config["experiments"]["feature_sets"]:
@@ -70,17 +70,13 @@ def run_experiment_grid(config: dict, feature_sets: dict, splits: Splits) -> pd.
             result = train_and_evaluate(
                 config, feature_sets, feature_set_name, open_set_enabled,
                 splits, save_artifacts=True, predictions_out=predictions_out,
+                write_confusion=not open_set_enabled,
             )
             rows.append(result)
 
             if predictions_out:
-                plot_confusion_matrix_for_scheme(predictions_out["y_test"], predictions_out["y_pred"],
-                                                  predictions_out["class_names"],
-                                                  plots_dir / tagged(config, f"confusion_matrix_{feature_set_name}.png"),
-                                                  scheme_name, merge_groups)
-                plot_roc_curve(predictions_out["y_test"], predictions_out["y_proba"],
-                                predictions_out["class_names"],
-                                plots_dir / tagged(config, f"roc_curve_{feature_set_name}.png"))
+                write_tier_plots(predictions_out, plots_dir, len(feature_sets["feature_pool"]), feature_set_name, scheme_name, merge_groups,
+                                 config["data"]["normal_category"], config["model"]["type"])   # confusion_matrix_<T>f.png, roc_curve_<T>f.png
 
                 diagnostics = build_overlap_diagnostics(predictions_out["fine_grained_true"],
                                                          predictions_out["y_pred_labels"],
@@ -185,7 +181,8 @@ def run_pooled_split_report(config: dict, feature_sets: dict) -> tuple[pd.DataFr
     """Same models evaluated on a pooled random split (use_official_split=False), so both
     the official-split and pooled numbers can be shown side by side."""
     splits = load_split_data(config, use_official_split=False)
-    rows = [dict(train_and_evaluate(config, feature_sets, name, True, splits, save_artifacts=False), split="pooled_random")
+    rows = [dict(train_and_evaluate(config, feature_sets, name, True, splits, save_artifacts=False,
+                                         write_confusion=True), split="pooled_random")
             for name in config["experiments"]["feature_sets"]]
     df = pd.DataFrame(rows)
     df.to_csv(get_metrics_dir(config) / tagged(config, config["experiments"]["pooled_split_csv"]), index=False)
@@ -304,7 +301,7 @@ def main() -> None:
 
     results = run_all(config, feature_sets)
     plots_dir = generate_all_plots(
-        config["model"]["type"], resolve_path(config["paths"]["results_dir"]), scheme=get_label_scheme(config)[0],
+        model_folder(config), resolve_path(config["paths"]["results_dir"]), scheme=get_label_scheme(config)[0],
         experiment_df=results["experiments"], stability_df=results["stability"],
         cross_dataset_df=results["cross_dataset"],
     )

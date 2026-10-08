@@ -3,7 +3,7 @@ import pandas as pd
 import pytest
 
 from src.evaluation.overlap import (
-    analyse, best_possible_accuracy, exact_twin_matrix, largest_multilabel_vector, near_twin_rates,
+    analyse, best_possible_accuracy, exact_twin_matrix, largest_multilabel_vector, near_twin_rates, normal_overlap_floor,
 )
 
 FEATURES = ["x", "y"]
@@ -49,3 +49,18 @@ def test_analyse_covers_every_label_set(toy):
     result = analyse(toy, FEATURES, {"original": "label", "merged": "merged"}, near=False)
     assert list(result["ceilings"]["label_scheme"]) == ["original", "merged"]
     assert set(result["twin_rows"]) == {"original", "merged"}
+
+
+def test_normal_overlap_floor_by_hand():
+    cols = ["x", "y", "attack_cat"]
+    train = pd.DataFrame([(1, 1, "Normal"), (2, 2, "Fuzzers"), (2, 2, "Fuzzers"), (2, 2, "Normal"), (3, 3, "Normal")], columns=cols)
+    # test Normal rows: (1,1) no attack twin; (2,2) x2 with 3 attack rows in the file; (4,4) never seen in train
+    test = pd.DataFrame([(1, 1, "Normal"), (2, 2, "Normal"), (2, 2, "Normal"), (2, 2, "Exploits"), (2, 2, "Exploits"), (2, 2, "Exploits"), (4, 4, "Normal")], columns=cols)
+    r = normal_overlap_floor(train, test, ["x", "y"])
+    assert r["n_test_normal"] == 4
+    assert r["within_test_attack_twin"] == pytest.approx(2 / 4)       # the two (2,2) Normal rows
+    assert r["within_test_forced"] == pytest.approx(2 / 4)            # 3 attack rows > 2 Normal rows at (2,2)
+    assert r["from_train_unseen"] == pytest.approx(1 / 4)             # (4,4)
+    assert r["from_train_seen_attack_only"] == pytest.approx(0.0)     # (2,2) has a Normal row in train
+    assert r["from_train_seen_attack_majority"] == pytest.approx(2 / 4)  # (2,2): 2 attack vs 1 Normal in train
+    assert r["from_train_seen_normal_majority"] == pytest.approx(1 / 4)  # (1,1)

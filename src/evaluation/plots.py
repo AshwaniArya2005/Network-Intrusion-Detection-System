@@ -10,10 +10,14 @@ from __future__ import annotations
 
 import logging
 import re
+import textwrap
 from pathlib import Path
 
-import matplotlib.pyplot as plt
-import pandas as pd
+import matplotlib
+
+matplotlib.use("Agg")  # this module only writes PNG files: never open a GUI backend (headless runs, background jobs, tests)
+import matplotlib.pyplot as plt  # noqa: E402
+import pandas as pd  # noqa: E402
 
 from src.utils.logger import get_logger
 
@@ -221,7 +225,7 @@ def _render_confusion_matrix(cm_norm: "np.ndarray", labels: list[str], title: st
     cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
     cbar.ax.tick_params(colors=INK_MUTED, labelsize=8)
     cbar.set_label("Recall (row-normalized)", color=INK_SECONDARY)
-    ax.set_title(title, fontsize=12, fontweight="bold", color=INK_PRIMARY)
+    ax.set_title(textwrap.fill(title, 58, replace_whitespace=False), fontsize=10, fontweight="bold", color=INK_PRIMARY)   # wrapped: long titles are clipped by the figure edge
     _save(fig, out_path)
 
 
@@ -266,20 +270,24 @@ def plot_confusion_matrix_grouped(y_test, y_pred, class_names, out_path: Path,
 
 
 def plot_confusion_matrix_for_scheme(y_test, y_pred, class_names, out_path: Path, scheme_name: str,
-                                     merge_groups: dict, normal_label: str = "Normal") -> None:
+                                     merge_groups: dict, normal_label: str = "Normal", title_prefix: str = "") -> None:
     """Confusion matrix laid out for the active label scheme: blocks Normal | each merged group |
-    other attacks when the scheme merges classes, the plain matrix when it merges none."""
+    other attacks when the scheme merges classes, the plain matrix when it merges none.
+    `title_prefix` (for example "xgboost, 48 features, tier 30: ") says which model and feature set it is."""
     if merge_groups:
         plot_confusion_matrix_grouped(y_test, y_pred, class_names, out_path, normal_label, tuple(merge_groups),
-                                      title=f"Confusion matrix, scheme '{scheme_name}' (Normal | {' | '.join(merge_groups)} | other attacks)")
+                                      title=f"{title_prefix}Confusion matrix, scheme '{scheme_name}' (Normal | {' | '.join(merge_groups)} | other attacks)")
     else:
-        plot_confusion_matrix(y_test, y_pred, class_names, out_path, title=f"Confusion matrix, scheme '{scheme_name}'")
+        plot_confusion_matrix(y_test, y_pred, class_names, out_path, title=f"{title_prefix}Confusion matrix, scheme '{scheme_name}'")
 
 
-def plot_roc_curve(y_test, y_proba, class_names, out_path: Path) -> None:
-    """One-vs-rest ROC curve per class plus a macro-average — up to 8 classes fit the
+def plot_roc_curve(y_test, y_proba, class_names, out_path: Path, normal_label: str | None = "Normal", title_prefix: str = "") -> None:
+    """ROC figure with two kinds of curve: one thin one-vs-rest curve per class (their mean AUC is the
+    macro AUC), and, when `normal_label` is one of the classes, one bold attack-versus-normal curve whose
+    score is 1 - P(Normal) (the attack-vs-normal AUC of the reports). Up to 8 classes fit the
     project's validated 8-hue categorical order (adjacent-pair CVD gates hold for
-    line/bar forms across the full set, unlike scatter/small-multiples)."""
+    line/bar forms across the full set, unlike scatter/small-multiples). The title states both AUCs."""
+    import numpy as np
     from sklearn.metrics import auc as _auc
     from sklearn.metrics import roc_curve as _roc_curve
     from sklearn.preprocessing import label_binarize
@@ -302,13 +310,48 @@ def plot_roc_curve(y_test, y_proba, class_names, out_path: Path) -> None:
         tprs.append((fpr, tpr))
 
     macro_auc = sum(_auc(fpr, tpr) for fpr, tpr in tprs) / len(tprs)
+    if normal_label is not None and normal_label in list(class_names):
+        normal_idx = list(class_names).index(normal_label)
+        y_attack = (np.asarray(y_test) != normal_idx).astype(int)
+        a_fpr, a_tpr, _ = _roc_curve(y_attack, 1.0 - np.asarray(y_proba)[:, normal_idx])
+        attack_auc = _auc(a_fpr, a_tpr)
+        ax.plot(a_fpr, a_tpr, linewidth=3.5, color=INK_PRIMARY, label=f"Attack vs {normal_label}, score 1 - P({normal_label}) (AUC={attack_auc:.3f})", zorder=5)
+        title = (f"{title_prefix}ROC curves\nbold: attack vs {normal_label} (score 1 - P({normal_label})), AUC={attack_auc:.3f}\n"
+                 f"thin: each class one-vs-rest, macro AUC={macro_auc:.3f}")
+    else:
+        title = f"{title_prefix}ROC curves, each class one-vs-rest (macro AUC={macro_auc:.3f})"
     ax.set_xlabel("False positive rate", color=INK_SECONDARY)
     ax.set_ylabel("True positive rate", color=INK_SECONDARY)
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1.02)
-    ax.set_title(f"ROC curve, one-vs-rest (macro-avg AUC={macro_auc:.2f})", fontsize=12, fontweight="bold")
+    ax.set_title("\n".join(textwrap.fill(line, 64) for line in title.split("\n")), fontsize=10, fontweight="bold")
     ax.legend(frameon=False, labelcolor=INK_SECONDARY, fontsize=8, loc="lower right")
     _save(fig, out_path)
+
+
+PRIMARY_POOL = 48   # the primary feature pool; its plots carry no pool prefix
+
+
+def tier_plot_paths(plots_dir: Path, pool_size: int, tier: str, label_scheme: str = "current") -> tuple[Path, Path]:
+    """(confusion-matrix path, ROC path) of one tier of one pool: `confusion_matrix_<T>f.png` for the primary pool (48), and
+    `confusion_matrix_pool<N>_<T>f.png` for a comparison pool, because the same tier number in another pool is another feature set;
+    a non-default label scheme adds its name."""
+    suffix = "" if label_scheme == "current" else f"_{label_scheme}"
+    stem = f"{tier}f{suffix}" if pool_size == PRIMARY_POOL else f"pool{pool_size}_{tier}f{suffix}"
+    d = Path(plots_dir)
+    return d / f"confusion_matrix_{stem}.png", d / f"roc_curve_{stem}.png"
+
+
+def write_tier_plots(predictions: dict, plots_dir: Path, pool_size: int, tier: str, scheme_name: str, merge_groups: dict,
+                     normal_label: str = "Normal", model_type: str = "") -> tuple[Path, Path]:
+    """Write the confusion matrix and the ROC figure of one (pool, tier) from a `predictions_out` dict
+    (y_test, y_pred, y_proba, class_names); returns the two paths (see `tier_plot_paths`)."""
+    cm_path, roc_path = tier_plot_paths(plots_dir, pool_size, tier, scheme_name)
+    prefix = f"{model_type + ', ' if model_type else ''}{pool_size}-feature pool, tier {tier}: "
+    plot_confusion_matrix_for_scheme(predictions["y_test"], predictions["y_pred"], predictions["class_names"], cm_path, scheme_name, merge_groups,
+                                     normal_label, title_prefix=prefix)
+    plot_roc_curve(predictions["y_test"], predictions["y_proba"], predictions["class_names"], roc_path, normal_label, title_prefix=prefix)
+    return cm_path, roc_path
 
 
 def generate_all_plots(model_type: str, results_dir: Path,

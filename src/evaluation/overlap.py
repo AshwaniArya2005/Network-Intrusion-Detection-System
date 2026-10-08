@@ -47,6 +47,34 @@ def largest_multilabel_vector(df: pd.DataFrame, features: list[str], label_col: 
     return {"vector": row.to_dict(), "label_counts": multi.loc[vec].to_dict()}
 
 
+def normal_overlap_floor(train: pd.DataFrame, test: pd.DataFrame, features: list[str], label_col: str = "attack_cat", normal: str = "Normal") -> dict:
+    """How much of the Normal-flow false-positive rate is forced by feature-vector overlap (exact twins), as shares of the test Normal rows.
+
+    within_test_*: counted among the test file's own rows (what a model that had seen the test labels could not escape).
+      attack_twin   the Normal row's vector also occurs on an attack row of the test file
+      forced        its vector has strictly more attack rows than Normal rows (ties count as Normal, so this is a lower bound)
+    from_train_*: what the training labels say about the test Normal row's vector.
+      seen_attack_only / seen_attack_majority / seen_normal_majority / unseen"""
+    test_ids = vector_ids(test, features)
+    is_attack = (test[label_col] != normal).to_numpy()
+    counts = pd.DataFrame({"vec": test_ids, "attack": is_attack}).groupby("vec")["attack"].agg(n_attack="sum", n="size")
+    counts["n_normal"] = counts["n"] - counts["n_attack"]
+    mine = counts.reindex(test_ids[~is_attack])
+    train_ids = vector_ids(train, features)
+    tr = pd.DataFrame({"vec": train_ids, "attack": (train[label_col] != normal).to_numpy()}).groupby("vec")["attack"].agg(n_attack="sum", n="size")
+    tr["n_normal"] = tr["n"] - tr["n_attack"]
+    seen = tr.reindex(test_ids[~is_attack])
+    unseen = seen["n"].isna().to_numpy()
+    n_attack, n_normal = seen["n_attack"].fillna(0).to_numpy(), seen["n_normal"].fillna(0).to_numpy()
+    return {"n_test_normal": int(len(mine)),
+            "within_test_attack_twin": float((mine["n_attack"] > 0).mean()),
+            "within_test_forced": float((mine["n_attack"] > mine["n_normal"]).mean()),
+            "from_train_unseen": float(unseen.mean()),
+            "from_train_seen_attack_only": float(((n_attack > 0) & (n_normal == 0)).mean()),
+            "from_train_seen_attack_majority": float((n_attack > n_normal).mean()),
+            "from_train_seen_normal_majority": float((n_normal >= n_attack)[~unseen].sum() / len(mine))}
+
+
 def exact_twin_matrix(df: pd.DataFrame, features: list[str], label_col: str) -> tuple[pd.DataFrame, pd.DataFrame]:
     """(rows_pct, vectors_pct): for each class A (row) and each other class B (column, plus
     "any_other"), the % of A's rows / of A's distinct vectors that also occur under B."""

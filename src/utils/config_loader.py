@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import copy
+import os
 from pathlib import Path
 from typing import Any
 
@@ -27,8 +28,17 @@ def load_yaml(path: str | Path) -> dict[str, Any]:
         return yaml.safe_load(f)
 
 
-def load_config(config_path: str | Path = "configs/config.yaml") -> dict[str, Any]:
-    """Load the main pipeline config."""
+DEFAULT_CONFIG = "configs/config.yaml"
+CONFIG_ENV = "XAI_IDS_CONFIG"   # path of a config file that replaces configs/config.yaml for every entry point of the process
+
+
+def load_config(config_path: str | Path = DEFAULT_CONFIG) -> dict[str, Any]:
+    """Load the main pipeline config; $XAI_IDS_CONFIG replaces the default path, and any file other than the default is logged when loaded."""
+    override = os.environ.get(CONFIG_ENV)
+    if override and str(config_path) == DEFAULT_CONFIG:
+        config_path = override
+    if str(config_path) != DEFAULT_CONFIG:
+        logger.info(f"Config: {Path(config_path) if Path(config_path).is_absolute() else PROJECT_ROOT / config_path}" + (f" (from ${CONFIG_ENV})" if override else ""))
     return load_yaml(config_path)
 
 
@@ -41,6 +51,13 @@ def ranking_path(config: dict[str, Any]) -> Path:
     """Where the ranking for `feature_selection.ranking_source` lives (one file per source)."""
     path = resolve_path(config["paths"]["feature_ranking"].format(source=config["feature_selection"]["ranking_source"]))
     return path.with_name(tagged(config, path.name))  # the target (hence MI ranking) depends on the label scheme
+
+
+def rating_dir(config: dict[str, Any]) -> Path:
+    """Where the blank rating sheets and their keys are written (`paths.rating_dir`, default results/rating/); created on demand."""
+    path = resolve_path(config["paths"].get("rating_dir", "results/rating"))
+    path.mkdir(parents=True, exist_ok=True)
+    return path
 
 
 def _ranked_pool(config: dict[str, Any], feature_sets: dict[str, Any]) -> list[str]:
@@ -94,10 +111,13 @@ def get_label_scheme(config: dict[str, Any]) -> tuple[str, dict[str, list[str]],
 
 def scheme_tag(config: dict[str, Any]) -> str:
     """Filename suffix of the active output variant: the label scheme ("" for the default
-    "current", else "_<name>") plus `feature_selection.variant_tag` (e.g. "_nonredundant"; unset by
-    default), so a non-default run's outputs never overwrite the default's."""
+    "current", else "_<name>"), `feature_selection.variant_tag` (e.g. "_nonredundant"; unset by
+    default) and the feature pool ("_48f" for the full pool, set by choose_pool; "" for the
+    40-feature base pool), so a non-default run's outputs never overwrite the default's and the
+    two pools' results (and rankings) coexist."""
     name = config["data"]["label_scheme"]
-    return ("" if name == "current" else f"_{name}") + config["feature_selection"].get("variant_tag", "")
+    fs = config["feature_selection"]
+    return ("" if name == "current" else f"_{name}") + fs.get("variant_tag", "") + fs.get("pool_tag", "")
 
 
 def tagged(config: dict[str, Any], filename: str) -> str:
@@ -107,22 +127,63 @@ def tagged(config: dict[str, Any], filename: str) -> str:
 
 
 def choose_pool(config: dict[str, Any], feature_sets: dict[str, Any], columns) -> tuple[dict, dict]:
-    """Pick the feature pool for the loaded data: `feature_pool_full` when every extra official
-    column it adds is present in `columns`, else `feature_pool`. Returns (config, feature_sets)
-    copies with the pool (and, for the full pool, the tier list `experiments.feature_sets_full`)
-    applied and `feature_sets["pool_name"]` set to "full" or "base"; the choice is logged."""
+    """Pick the feature pool for the loaded data per `feature_selection.pool`: "auto" uses
+    `feature_pool_full` when every extra official column it adds is present in `columns`, else
+    `feature_pool`; "base" forces the 40-feature pool (even if the columns exist, for a like-for-like
+    comparison); "full" requires the columns. `feature_selection.exclude` then removes the named features
+    from that pool, so they reach neither the ranking, the models nor the SHAP output. Returns (config,
+    feature_sets) copies with the pool (and, for the full pool, the tier list `experiments.feature_sets_full`;
+    with exclusions the tiers are the new pool size plus the smaller ones) applied, `feature_sets["pool_name"]`
+    set to "full" or "base" and `feature_selection.pool_tag` ("_<N>f" for the full pool or any excluded pool,
+    which scheme_tag adds to every output name; "" for the plain 40-feature pool); the choice is logged."""
     config, feature_sets = copy.deepcopy(config), copy.deepcopy(feature_sets)
     full = feature_sets.get("feature_pool_full")
     raw_extra = set(full or []) - set(feature_sets["feature_pool"])  # the extra official columns
-    use_full = full is not None and raw_extra <= set(columns)
+    missing = sorted(raw_extra - set(columns))
+    want = config["feature_selection"].get("pool", "auto")
+    if want not in ("auto", "base", "full"):
+        raise ValueError(f"feature_selection.pool must be auto, base or full, got {want!r}")
+    if want == "full" and (full is None or missing):
+        raise ValueError(f"feature_selection.pool is 'full' but the data lacks official columns: {missing}")
+    use_full = want == "full" or (want == "auto" and full is not None and not missing)
     feature_sets["pool_name"] = "full" if use_full else "base"
     if use_full:
         feature_sets["feature_pool"] = list(full)
         config["experiments"]["feature_sets"] = list(config["experiments"]["feature_sets_full"])
-    missing = sorted(raw_extra - set(columns))
-    logger.info(f"Feature pool: '{feature_sets['pool_name']}' ({len(feature_sets['feature_pool'])} features)"
-                + (f"; missing official columns: {missing}" if missing else ""))
+    exclude = list(config["feature_selection"].get("exclude") or [])
+    if exclude:
+        not_in_pool = sorted(set(exclude) - set(feature_sets["feature_pool"]))
+        if not_in_pool:
+            raise ValueError(f"feature_selection.exclude names features that are not in the {feature_sets['pool_name']} pool: {not_in_pool}")
+        feature_sets["feature_pool"] = [f for f in feature_sets["feature_pool"] if f not in exclude]
+        size = len(feature_sets["feature_pool"])
+        feature_sets["feature_sets"][str(size)] = size
+        config["experiments"]["feature_sets"] = [str(size)] + [t for t in config["experiments"]["feature_sets"] if int(t) < size]
+    config["feature_selection"]["pool_tag"] = f"_{len(feature_sets['feature_pool'])}f" if use_full or exclude else ""
+    logger.info(f"Feature pool: '{feature_sets['pool_name']}' ({len(feature_sets['feature_pool'])} features"
+                + (f", excluding {exclude}" if exclude else "") + ")"
+                + (f"; missing official columns: {missing}" if missing and not use_full else ""))
     return config, feature_sets
+
+
+def apply_pool_variant(config: dict[str, Any], name: str) -> dict[str, Any]:
+    """A copy of `config` set to the named pool: "base" / "full", or a key of `experiments.pool_variants`
+    (a base/full pool minus `exclude` features, e.g. the TTL ablation)."""
+    config = copy.deepcopy(config)
+    variants = config["experiments"].get("pool_variants") or {}
+    if name in ("base", "full"):
+        spec = {"pool": name}
+    elif name in variants:
+        spec = variants[name]
+    else:
+        raise KeyError(f"Unknown pool {name!r} (base, full, or one of experiments.pool_variants: {sorted(variants)})")
+    config["feature_selection"].update(pool=spec["pool"], exclude=list(spec.get("exclude") or []))
+    return config
+
+
+def pool_label(feature_sets: dict[str, Any]) -> str:
+    """"40f" / "48f" / ...: the size of the chosen feature pool, used in the names of per-pool result files."""
+    return f"{len(feature_sets['feature_pool'])}f"
 
 
 def resolve_path(relative_path: str | Path) -> Path:
@@ -149,18 +210,40 @@ def get_dashboard_paths(config: dict[str, Any]) -> tuple[Path, Path]:
     """
     model_type = config["model"]["type"]
     feature_set = config["dashboard"]["feature_set"]
-    model_dir = resolve_path(config["paths"]["models_dir"]) / model_type
+    model_dir = get_models_dir(config)
     tag = scheme_tag(config)
     model_path = model_dir / f"{model_type}_{feature_set}_closed{tag}{artifact_suffix(model_type)}"
     preprocessor_path = model_dir / f"preprocessor_{feature_set}{tag}.pkl"
     return model_path, preprocessor_path
 
 
-def get_metrics_dir(config: dict[str, Any]) -> Path:
-    """Directory for a model type's CSV outputs: results/metrics/<model.type>/ —
-    mirrors get_dashboard_paths' reasoning and results/plots/<model.type>/: every
-    experiment/evaluation/diagnostic CSV is namespaced by model.type, so training a
-    different model never silently overwrites another model's reported numbers.
+def model_folder(config: dict[str, Any], model_type: str | None = None) -> str:
+    """Folder name of one model's outputs: `<model.type>`, or `<model.type>__<project.run_name>` when a run name is set,
+    so several hyperparameter sets of one model type can sit side by side. Every output folder below is named by this."""
+    run_name = (config.get("project") or {}).get("run_name")
+    return f"{model_type or config['model']['type']}__{run_name}" if run_name else (model_type or config["model"]["type"])
+
+
+def get_models_dir(config: dict[str, Any], model_type: str | None = None) -> Path:
+    """models_saved/<model folder>/ (see `model_folder`): saved models and preprocessors."""
+    return resolve_path(config["paths"]["models_dir"]) / model_folder(config, model_type)
+
+
+def get_plots_dir(config: dict[str, Any], model_type: str | None = None) -> Path:
+    """results/plots/<model folder>/ (see `model_folder`): confusion matrices, ROC curves and the study figures."""
+    return resolve_path(config["paths"]["results_dir"]) / "plots" / model_folder(config, model_type)
+
+
+def get_metrics_dir(config: dict[str, Any], model_type: str | None = None) -> Path:
+    """Directory for a model's CSV outputs: results/metrics/<model folder>/ (see `model_folder`), like the plots and
+    models folders, so training a different model never silently overwrites another model's reported numbers.
     Created on demand by the caller (mkdir(parents=True, exist_ok=True)).
     """
-    return resolve_path(config["paths"]["results_dir"]) / "metrics" / config["model"]["type"]
+    return resolve_path(config["paths"]["results_dir"]) / "metrics" / model_folder(config, model_type)
+
+
+def require_xgboost(config: dict[str, Any], study: str) -> None:
+    """Stop an XGBoost-only study when `model.type` is another model: it would train XGBoost but write into that model's folders."""
+    if config["model"]["type"] != "xgboost":
+        raise SystemExit(f"{study} is an XGBoost-only study (it trains XGBoost whatever model.type says); set model.type: xgboost, "
+                         f"or run the shared workflow for {config['model']['type']!r}: python pipelines/run_model.py")

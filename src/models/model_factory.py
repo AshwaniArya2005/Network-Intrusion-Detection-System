@@ -39,12 +39,16 @@ def create_model(model_type: str, params: dict[str, Any] | None = None) -> BaseM
         )
 
 
-def create_scheme_model(model_type: str, params: dict[str, Any] | None, hierarchical: bool, normal_index: int | None = None) -> BaseModel:
+def create_scheme_model(model_type: str, params: dict[str, Any] | None, hierarchical: bool, normal_index: int | None = None,
+                        stage1_params: dict[str, Any] | None = None, stage1_power: float = 0.5) -> BaseModel:
     """The model for the active label scheme: a plain `create_model` classifier, or — when the
     scheme is hierarchical (configs/config.yaml `data.label_schemes`) — a two-stage
-    HierarchicalModel of that model type (needs the encoded index of the Normal class)."""
+    HierarchicalModel of that model type (needs the encoded index of the Normal class). `stage1_params` /
+    `stage1_power` give the attack-vs-normal stage its own hyperparameters and class-weight exponent."""
     if not hierarchical:
         return create_model(model_type, params)
     if normal_index is None:
         raise ValueError("A hierarchical model needs normal_index (the encoded Normal class).")
-    return HierarchicalModel(lambda: create_model(model_type, params), normal_index, artifact_suffix(model_type))
+    make_stage1 = (lambda: create_model(model_type, dict(params or {}, **stage1_params))) if stage1_params else None
+    return HierarchicalModel(lambda: create_model(model_type, params), normal_index, artifact_suffix(model_type),
+                             make_stage1=make_stage1, stage1_power=stage1_power)

@@ -3,7 +3,7 @@
 # `feature_pool` is the full set of candidate features. It is NOT a ranking: the
 # importance ranking is computed from the training split (mutual information with the
 # target) by src/feature_selection.compute_feature_ranking and written to
-# results/feature_ranking_mutual_info.csv by run_all_experiments; the 30/20/15 sets are the
+# results/rankings/feature_ranking_mutual_info.csv by run_all_experiments; the 30/20/15 sets are the
 # top-N of the ranking chosen by feature_selection.ranking_source (src/utils/config_loader.get_active_features).
 # The pool's list order carries no meaning (feature_curated_rank below is the hand-written
 # order); with no ranking file, get_active_features raises instead of guessing.
@@ -17,9 +17,8 @@
 # in each saved preprocessor. A tier name always equals its n_features ("48" only exists
 # with the full pool; experiments.feature_sets_full lists that run's tiers).
 #
-# `categorical_features` marks which are categorical (label-encoded in preprocessing)
-# instead of numeric (scaled). `engineered_features` marks the 6 features derived in
-# src/preprocessing.py from the raw flow fields (not present in the raw dataset).
+# Which features are categorical (label-encoded) and which 6 are engineered from the raw flow fields
+# is defined in src/preprocessing.py (CATEGORICAL_FEATURES and the engineering step).
 
 feature_pool:
   - rate
@@ -164,16 +163,3 @@ feature_sets:
   "30": 30
   "20": 20
   "15": 15
-
-categorical_features:
-  - proto
-  - service
-  - state
-
-engineered_features:
-  - total_bytes
-  - total_pkts
-  - byte_ratio
-  - pkt_ratio
-  - avg_pkt_size
-  - duration_log
